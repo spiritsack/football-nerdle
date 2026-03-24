@@ -57,20 +57,20 @@ function saveDailyResult(status: "won" | "lost", attempts: number) {
 }
 
 export function useGuessGame() {
-  const today = getTodayString();
-  const dailyResult = getDailyResult();
+  const [today] = useState(getTodayString);
+  const [dailyResult] = useState(getDailyResult);
   const alreadyPlayedToday = dailyResult?.date === today;
 
-  const [state, setState] = useState<GuessGameState>({
+  const [state, setState] = useState<GuessGameState>(() => ({
     targetPlayer: null,
     clubs: [],
     attempts: alreadyPlayedToday ? dailyResult.attempts : 0,
-    status: alreadyPlayedToday ? dailyResult.status : "loading",
+    status: "loading",
     wrongGuesses: [],
     error: null,
     isDaily: true,
     dailyCompleted: !!alreadyPlayedToday,
-  });
+  }));
 
   const startDaily = useCallback(async () => {
     setState((s) => ({ ...s, status: "loading", error: null }));
@@ -78,13 +78,15 @@ export function useGuessGame() {
       const index = getDailyPlayerIndex(today);
       const seed = SEED_PLAYERS[index];
       const playerWithTeams = await getPlayerWithTeams(seed);
-      if (alreadyPlayedToday) {
+      const stored = getDailyResult();
+      const completed = stored?.date === today;
+      if (completed) {
         setState((s) => ({
           ...s,
           targetPlayer: playerWithTeams,
           clubs: playerWithTeams.formerTeams,
-          status: dailyResult!.status,
-          attempts: dailyResult!.attempts,
+          status: stored.status,
+          attempts: stored.attempts,
           isDaily: true,
           dailyCompleted: true,
         }));
@@ -104,7 +106,7 @@ export function useGuessGame() {
       const message = e instanceof ApiError ? e.message : "Something went wrong — check your API key";
       setState((s) => ({ ...s, status: "idle", error: message }));
     }
-  }, [today, alreadyPlayedToday, dailyResult]);
+  }, [today]);
 
   const startRandom = useCallback(async () => {
     setState((s) => ({ ...s, status: "loading", error: null }));
