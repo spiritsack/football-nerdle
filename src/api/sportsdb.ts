@@ -82,25 +82,39 @@ export async function getFormerTeams(playerId: string): Promise<FormerTeam[]> {
   return data.formerteams.map(mapFormerTeam);
 }
 
-async function getCurrentTeam(playerId: string): Promise<FormerTeam | null> {
-  const data = await apiFetch(`${BASE_URL}/lookupplayer.php?id=${encodeURIComponent(playerId)}`) as { players?: SportsDbPlayer[] };
+interface CurrentTeamInfo {
+  team: FormerTeam | null;
+  status: string;
+}
+
+async function getCurrentTeamInfo(playerId: string): Promise<CurrentTeamInfo> {
+  const data = await apiFetch(`${BASE_URL}/lookupplayer.php?id=${encodeURIComponent(playerId)}`) as { players?: (SportsDbPlayer & { strStatus?: string })[] };
   const p = data.players?.[0];
-  if (!p?.idTeam || !p.strTeam) return null;
+  const status = p?.strStatus ?? "";
+  if (!p?.idTeam || !p.strTeam || status === "Retired") {
+    return { team: null, status };
+  }
   const year = p.dateSigned ? p.dateSigned.substring(0, 4) : "";
   return {
-    teamId: p.idTeam,
-    teamName: p.strTeam,
-    yearJoined: year,
-    yearDeparted: "",
+    team: {
+      teamId: p.idTeam,
+      teamName: p.strTeam,
+      yearJoined: year,
+      yearDeparted: "",
+    },
+    status,
   };
 }
 
 export async function getPlayerWithTeams(player: Player): Promise<PlayerWithTeams> {
-  const [formerTeams, currentTeam] = await Promise.all([
+  const [formerTeams, currentInfo] = await Promise.all([
     getFormerTeams(player.id),
-    getCurrentTeam(player.id),
+    getCurrentTeamInfo(player.id),
   ]);
-  const allTeams = currentTeam
+  const { team: currentTeam } = currentInfo;
+  // Only add current team if it's not already in former teams
+  const alreadyListed = currentTeam && formerTeams.some((t) => t.teamId === currentTeam.teamId);
+  const allTeams = currentTeam && !alreadyListed
     ? [...formerTeams, currentTeam]
     : formerTeams;
   return { ...player, formerTeams: allTeams };
