@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 import { getPlayerWithTeams, didPlayTogether } from "../api/sportsdb";
 import type { Player, PlayerWithTeams } from "../types";
 
@@ -17,6 +17,7 @@ interface GameState {
   lastSharedClubs: string[];
   wrongResult: WrongResult | null;
   usedPlayerIds: Set<string>;
+  timedOut: boolean;
 }
 
 const SEED_PLAYERS: Player[] = [
@@ -41,6 +42,7 @@ const SEED_PLAYERS: Player[] = [
   { id: "34145536", name: "Didier Drogba", thumbnail: "", nationality: "Ivory Coast" },
 ];
 
+const TURN_TIME = 15;
 const BEST_STREAK_KEY = "football-nerdle-best-streak";
 
 function loadBestStreak(): number {
@@ -48,8 +50,17 @@ function loadBestStreak(): number {
   return stored ? parseInt(stored, 10) || 0 : 0;
 }
 
+function saveBestStreak(score: number, current: number, setBestStreak: (n: number) => void) {
+  if (score > current) {
+    localStorage.setItem(BEST_STREAK_KEY, String(score));
+    setBestStreak(score);
+  }
+}
+
 export function useGame() {
   const [bestStreak, setBestStreak] = useState(loadBestStreak);
+  const [timeLeft, setTimeLeft] = useState(TURN_TIME);
+  const timerRef = useRef<ReturnType<typeof setInterval>>(null);
   const [state, setState] = useState<GameState>({
     chain: [],
     currentPlayer: null,
@@ -58,10 +69,45 @@ export function useGame() {
     lastSharedClubs: [],
     wrongResult: null,
     usedPlayerIds: new Set(),
+    timedOut: false,
   });
 
+  const stopTimer = useCallback(() => {
+    if (timerRef.current) {
+      clearInterval(timerRef.current);
+      timerRef.current = null;
+    }
+  }, []);
+
+  const startTimer = useCallback(() => {
+    stopTimer();
+    setTimeLeft(TURN_TIME);
+    timerRef.current = setInterval(() => {
+      setTimeLeft((t) => {
+        if (t <= 1) {
+          clearInterval(timerRef.current!);
+          timerRef.current = null;
+          return 0;
+        }
+        return t - 1;
+      });
+    }, 1000);
+  }, [stopTimer]);
+
+  // Handle timeout
+  useEffect(() => {
+    if (timeLeft === 0 && state.status === "playing") {
+      saveBestStreak(state.score, loadBestStreak(), setBestStreak);
+      setState((s) => ({ ...s, status: "gameover", timedOut: true }));
+    }
+  }, [timeLeft, state.status, state.score]);
+
+  // Cleanup on unmount
+  useEffect(() => stopTimer, [stopTimer]);
+
   const startGame = useCallback(async () => {
-    setState((s) => ({ ...s, status: "loading", wrongResult: null }));
+    stopTimer();
+    setState((s) => ({ ...s, status: "loading", wrongResult: null, timedOut: false }));
     const seed = SEED_PLAYERS[Math.floor(Math.random() * SEED_PLAYERS.length)];
     const playerWithTeams = await getPlayerWithTeams(seed);
     setState({
@@ -72,13 +118,16 @@ export function useGame() {
       lastSharedClubs: [],
       wrongResult: null,
       usedPlayerIds: new Set([playerWithTeams.id]),
+      timedOut: false,
     });
-  }, []);
+    startTimer();
+  }, [startTimer, stopTimer]);
 
   const submitPlayer = useCallback(
     async (player: Player) => {
       if (!state.currentPlayer) return;
       if (state.usedPlayerIds.has(player.id)) return;
+      stopTimer();
       setState((s) => ({ ...s, status: "checking" }));
 
       const playerWithTeams = await getPlayerWithTeams(player);
@@ -98,13 +147,10 @@ export function useGame() {
             usedPlayerIds: newUsed,
           };
         });
+        startTimer();
       } else {
         setState((s) => {
-          const finalScore = s.score;
-          if (finalScore > loadBestStreak()) {
-            localStorage.setItem(BEST_STREAK_KEY, String(finalScore));
-            setBestStreak(finalScore);
-          }
+          saveBestStreak(s.score, loadBestStreak(), setBestStreak);
           return {
             ...s,
             status: "gameover",
@@ -119,12 +165,13 @@ export function useGame() {
         });
       }
     },
-    [state.currentPlayer]
+    [state.currentPlayer, state.usedPlayerIds, stopTimer, startTimer]
   );
 
   return {
     ...state,
     bestStreak,
+    timeLeft,
     startGame,
     submitPlayer,
   };
