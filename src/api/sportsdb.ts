@@ -49,6 +49,7 @@ interface SportsDbFormerTeam {
   strJoined: string;
   strDeparted: string;
   strMoveType: string;
+  strBadge: string | null;
 }
 
 function mapPlayer(p: SportsDbPlayer): Player {
@@ -66,6 +67,7 @@ function mapFormerTeam(t: SportsDbFormerTeam): FormerTeam {
     teamName: t.strFormerTeam,
     yearJoined: t.strJoined,
     yearDeparted: t.strDeparted,
+    badge: t.strBadge ?? "",
   };
 }
 
@@ -108,6 +110,7 @@ async function getCurrentTeamInfo(playerId: string): Promise<CurrentTeamInfo> {
       teamName: p.strTeam,
       yearJoined: year,
       yearDeparted: "",
+      badge: "",
     },
     status,
   };
