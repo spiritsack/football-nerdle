@@ -60,10 +60,15 @@ export default function GuessGame() {
             <div className="bg-gray-800 border border-gray-600 rounded-xl p-6 max-w-md w-full">
               <h2 className="text-lg font-semibold mb-4 text-center text-gray-300">Club History</h2>
               {hardMode ? (
-                <div className="flex flex-col items-center gap-1">
+                <div className="flex flex-col md:flex-row items-center justify-center gap-1 flex-wrap">
                   {clubs.map((club, i) => (
-                    <div key={`${club.teamId}-${i}`} className="flex flex-col items-center">
-                      {i > 0 && <span className="text-gray-500 text-lg">↓</span>}
+                    <div key={`${club.teamId}-${i}`} className="flex flex-col md:flex-row items-center">
+                      {i > 0 && (
+                        <>
+                          <span className="text-gray-500 text-lg md:hidden">↓</span>
+                          <span className="text-gray-500 text-lg hidden md:block mx-1">→</span>
+                        </>
+                      )}
                       {club.badge ? (
                         <img src={club.badge} alt="" className="w-16 h-16 object-contain" />
                       ) : (
