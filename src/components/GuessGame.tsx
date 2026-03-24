@@ -12,17 +12,34 @@ export default function GuessGame() {
     status,
     wrongGuesses,
     error,
-    startGame,
+    isDaily,
+    dayNumber,
+    startDaily,
+    startRandom,
     submitGuess,
+    getShareText,
   } = useGuessGame();
 
   const [hardMode, setHardMode] = useState(false);
+  const [copied, setCopied] = useState(false);
+
+  function handleShare() {
+    const text = getShareText();
+    navigator.clipboard.writeText(text).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
+  }
+
+  const resultScreen = (status === "won" || status === "lost") && targetPlayer;
 
   return (
     <div className="min-h-screen bg-gray-900 text-white flex flex-col">
       <header className="py-6 border-b border-gray-700">
         <h1 className="text-3xl font-bold text-center">Football Nerdle</h1>
-        <p className="text-gray-400 text-center mt-1">Guess the Player</p>
+        <p className="text-gray-400 text-center mt-1">
+          Guess the Player {isDaily && `— Daily #${dayNumber}`}
+        </p>
         <div className="text-center mt-2">
           <Link to="/" className="text-green-400 hover:text-green-300 text-sm">
             ← Back to Home
@@ -32,16 +49,18 @@ export default function GuessGame() {
 
       <main className="flex-1 flex flex-col items-center px-4 py-8 gap-6">
         {/* Hard mode toggle */}
-        <button
-          onClick={() => setHardMode((h) => !h)}
-          className={`px-4 py-1.5 rounded-full text-sm font-medium transition-colors ${
-            hardMode
-              ? "bg-red-600 hover:bg-red-500 text-white"
-              : "bg-gray-700 hover:bg-gray-600 text-gray-300"
-          }`}
-        >
-          Hard Mode: {hardMode ? "ON" : "OFF"}
-        </button>
+        {status === "playing" && (
+          <button
+            onClick={() => setHardMode((h) => !h)}
+            className={`px-4 py-1.5 rounded-full text-sm font-medium transition-colors ${
+              hardMode
+                ? "bg-red-600 hover:bg-red-500 text-white"
+                : "bg-gray-700 hover:bg-gray-600 text-gray-300"
+            }`}
+          >
+            Hard Mode: {hardMode ? "ON" : "OFF"}
+          </button>
+        )}
 
         {status === "loading" && (
           <p className="text-gray-400">Loading player...</p>
@@ -133,15 +152,9 @@ export default function GuessGame() {
             <p className="text-xl font-bold mb-1">{targetPlayer.name}</p>
             <p className="text-gray-400 mb-4">{targetPlayer.nationality}</p>
             <p className="text-gray-300 mb-4">
-              Guessed in <span className="text-green-400 font-bold">{attempts + 1}</span> {attempts === 0 ? "attempt" : "attempts"}
+              Guessed in <span className="text-green-400 font-bold">{attempts}</span> {attempts === 1 ? "attempt" : "attempts"}
               {hardMode && <span className="text-red-400 ml-1">(Hard)</span>}
             </p>
-            <button
-              onClick={startGame}
-              className="px-6 py-3 bg-green-600 hover:bg-green-500 rounded-lg font-semibold transition-colors"
-            >
-              Play Again
-            </button>
           </div>
         )}
 
@@ -159,11 +172,23 @@ export default function GuessGame() {
             )}
             <p className="text-xl font-bold mb-1">{targetPlayer.name}</p>
             <p className="text-gray-400 mb-6">{targetPlayer.nationality}</p>
+          </div>
+        )}
+
+        {/* Share & Play Again buttons */}
+        {resultScreen && (
+          <div className="flex gap-3">
             <button
-              onClick={startGame}
+              onClick={handleShare}
+              className="px-6 py-3 bg-blue-600 hover:bg-blue-500 rounded-lg font-semibold transition-colors"
+            >
+              {copied ? "Copied!" : "Share Result"}
+            </button>
+            <button
+              onClick={startRandom}
               className="px-6 py-3 bg-green-600 hover:bg-green-500 rounded-lg font-semibold transition-colors"
             >
-              Play Again
+              Random Game
             </button>
           </div>
         )}
