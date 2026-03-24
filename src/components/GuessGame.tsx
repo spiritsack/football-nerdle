@@ -66,6 +66,22 @@ export default function GuessGame() {
           <p className="text-gray-400">Loading player...</p>
         )}
 
+        {status === "idle" && (
+          <div className="flex-1 flex flex-col items-center justify-center gap-4">
+            {error && (
+              <div className="bg-orange-900/30 border border-orange-700 rounded-lg px-4 py-3 max-w-md w-full text-center text-orange-300 text-sm">
+                {error}
+              </div>
+            )}
+            <button
+              onClick={startDaily}
+              className="px-6 py-3 bg-green-600 hover:bg-green-500 rounded-lg font-semibold transition-colors"
+            >
+              Try Again
+            </button>
+          </div>
+        )}
+
         {/* Playing */}
         {status === "playing" && (
           <>

@@ -101,7 +101,7 @@ export function useGuessGame() {
         });
       }
     } catch (e) {
-      const message = e instanceof ApiError ? e.message : "Something went wrong";
+      const message = e instanceof ApiError ? e.message : "Something went wrong — check your API key";
       setState((s) => ({ ...s, status: "idle", error: message }));
     }
   }, [today, alreadyPlayedToday, dailyResult]);
