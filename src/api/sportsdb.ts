@@ -88,7 +88,7 @@ function isValidTeam(t: SportsDbFormerTeam): boolean {
 export async function getFormerTeams(playerId: string): Promise<FormerTeam[]> {
   const data = await apiFetch(`${BASE_URL}/lookupformerteams.php?id=${encodeURIComponent(playerId)}`) as { formerteams?: SportsDbFormerTeam[] };
   if (!data.formerteams) return [];
-  return data.formerteams
+  const sorted = data.formerteams
     .filter(isValidTeam)
     .map(mapFormerTeam)
     .sort((a, b) => {
@@ -96,6 +96,35 @@ export async function getFormerTeams(playerId: string): Promise<FormerTeam[]> {
       const bYear = parseInt(b.yearJoined, 10) || 0;
       return aYear - bYear;
     });
+  return mergeClubStints(sorted);
+}
+
+function mergeClubStints(teams: FormerTeam[]): FormerTeam[] {
+  const byClub = new Map<string, FormerTeam>();
+  for (const team of teams) {
+    const existing = byClub.get(team.teamId);
+    if (existing) {
+      // Keep earliest join
+      const existJoin = parseInt(existing.yearJoined, 10) || Infinity;
+      const currJoin = parseInt(team.yearJoined, 10) || Infinity;
+      if (currJoin < existJoin) {
+        existing.yearJoined = team.yearJoined;
+      }
+      // Keep latest departure
+      const existDep = parseInt(existing.yearDeparted, 10) || 0;
+      const currDep = parseInt(team.yearDeparted, 10) || 0;
+      if (!team.yearDeparted || currDep > existDep) {
+        existing.yearDeparted = team.yearDeparted;
+      }
+    } else {
+      byClub.set(team.teamId, { ...team });
+    }
+  }
+  return [...byClub.values()].sort((a, b) => {
+    const aYear = parseInt(a.yearJoined, 10) || 0;
+    const bYear = parseInt(b.yearJoined, 10) || 0;
+    return aYear - bYear;
+  });
 }
 
 interface CurrentTeamInfo {
