@@ -78,27 +78,33 @@ export function useGuessGame() {
       const index = getDailyPlayerIndex(today);
       const seed = SEED_PLAYERS[index];
       const playerWithTeams = await getPlayerWithTeams(seed);
-      setState((s) => ({
-        ...s,
-        targetPlayer: playerWithTeams,
-        clubs: playerWithTeams.formerTeams,
-      }));
-      // If already completed, keep the stored status
-      if (!alreadyPlayedToday) {
+      if (alreadyPlayedToday) {
         setState((s) => ({
           ...s,
+          targetPlayer: playerWithTeams,
+          clubs: playerWithTeams.formerTeams,
+          status: dailyResult!.status,
+          attempts: dailyResult!.attempts,
+          isDaily: true,
+          dailyCompleted: true,
+        }));
+      } else {
+        setState({
+          targetPlayer: playerWithTeams,
+          clubs: playerWithTeams.formerTeams,
           attempts: 0,
           status: "playing",
           wrongGuesses: [],
+          error: null,
           isDaily: true,
           dailyCompleted: false,
-        }));
+        });
       }
     } catch (e) {
       const message = e instanceof ApiError ? e.message : "Something went wrong";
       setState((s) => ({ ...s, status: "idle", error: message }));
     }
-  }, [today, alreadyPlayedToday]);
+  }, [today, alreadyPlayedToday, dailyResult]);
 
   const startRandom = useCallback(async () => {
     setState((s) => ({ ...s, status: "loading", error: null }));
