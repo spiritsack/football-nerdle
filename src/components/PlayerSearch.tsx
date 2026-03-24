@@ -14,8 +14,10 @@ export default function PlayerSearch({ onSelect, disabled, usedPlayerIds }: Play
   const [isOpen, setIsOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [highlightIndex, setHighlightIndex] = useState(-1);
+  const [dropUp, setDropUp] = useState(false);
   const debounceRef = useRef<ReturnType<typeof setTimeout>>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLUListElement>(null);
 
   useEffect(() => {
@@ -54,6 +56,11 @@ export default function PlayerSearch({ onSelect, disabled, usedPlayerIds }: Play
           ? players.filter((p) => !usedPlayerIds.has(p.id))
           : players;
         setResults(filtered);
+        if (filtered.length > 0 && inputRef.current) {
+          const rect = inputRef.current.getBoundingClientRect();
+          const spaceBelow = window.innerHeight - rect.bottom;
+          setDropUp(spaceBelow < 320);
+        }
         setIsOpen(filtered.length > 0);
       } catch {
         setResults([]);
@@ -94,6 +101,7 @@ export default function PlayerSearch({ onSelect, disabled, usedPlayerIds }: Play
   return (
     <div ref={containerRef} className="relative w-full max-w-md mx-auto">
       <input
+        ref={inputRef}
         type="text"
         value={query}
         onChange={(e) => handleChange(e.target.value)}
@@ -112,7 +120,9 @@ export default function PlayerSearch({ onSelect, disabled, usedPlayerIds }: Play
         <ul
           ref={listRef}
           role="listbox"
-          className="absolute z-10 w-full mt-1 bg-gray-800 border border-gray-600 rounded-lg overflow-hidden shadow-lg max-h-80 overflow-y-auto"
+          className={`absolute z-10 w-full bg-gray-800 border border-gray-600 rounded-lg overflow-hidden shadow-lg max-h-80 overflow-y-auto ${
+            dropUp ? "bottom-full mb-1" : "mt-1"
+          }`}
         >
           {results.map((player, index) => (
             <li
