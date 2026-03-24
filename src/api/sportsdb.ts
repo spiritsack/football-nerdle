@@ -100,31 +100,20 @@ export async function getFormerTeams(playerId: string): Promise<FormerTeam[]> {
 }
 
 function mergeClubStints(teams: FormerTeam[]): FormerTeam[] {
-  const byClub = new Map<string, FormerTeam>();
+  const merged: FormerTeam[] = [];
   for (const team of teams) {
-    const existing = byClub.get(team.teamId);
-    if (existing) {
-      // Keep earliest join
-      const existJoin = parseInt(existing.yearJoined, 10) || Infinity;
-      const currJoin = parseInt(team.yearJoined, 10) || Infinity;
-      if (currJoin < existJoin) {
-        existing.yearJoined = team.yearJoined;
-      }
-      // Keep latest departure
-      const existDep = parseInt(existing.yearDeparted, 10) || 0;
+    const last = merged[merged.length - 1];
+    if (last && last.teamId === team.teamId) {
+      const lastDep = parseInt(last.yearDeparted, 10) || 0;
       const currDep = parseInt(team.yearDeparted, 10) || 0;
-      if (!team.yearDeparted || currDep > existDep) {
-        existing.yearDeparted = team.yearDeparted;
+      if (!team.yearDeparted || currDep > lastDep) {
+        last.yearDeparted = team.yearDeparted;
       }
     } else {
-      byClub.set(team.teamId, { ...team });
+      merged.push({ ...team });
     }
   }
-  return [...byClub.values()].sort((a, b) => {
-    const aYear = parseInt(a.yearJoined, 10) || 0;
-    const bYear = parseInt(b.yearJoined, 10) || 0;
-    return aYear - bYear;
-  });
+  return merged;
 }
 
 interface CurrentTeamInfo {
