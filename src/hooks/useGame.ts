@@ -1,5 +1,5 @@
 import { useState, useCallback, useRef, useEffect } from "react";
-import { getPlayerWithTeams, didPlayTogether } from "../api/sportsdb";
+import { getPlayerWithTeams, didPlayTogether, ApiError } from "../api/sportsdb";
 import type { Player, PlayerWithTeams } from "../types";
 
 type GameStatus = "loading" | "playing" | "checking" | "wrong" | "gameover";
@@ -18,6 +18,7 @@ interface GameState {
   wrongResult: WrongResult | null;
   usedPlayerIds: Set<string>;
   timedOut: boolean;
+  error: string | null;
 }
 
 const SEED_PLAYERS: Player[] = [
@@ -70,6 +71,7 @@ export function useGame() {
     wrongResult: null,
     usedPlayerIds: new Set(),
     timedOut: false,
+    error: null,
   });
 
   const stopTimer = useCallback(() => {
@@ -107,20 +109,26 @@ export function useGame() {
 
   const startGame = useCallback(async () => {
     stopTimer();
-    setState((s) => ({ ...s, status: "loading", wrongResult: null, timedOut: false }));
-    const seed = SEED_PLAYERS[Math.floor(Math.random() * SEED_PLAYERS.length)];
-    const playerWithTeams = await getPlayerWithTeams(seed);
-    setState({
-      chain: [playerWithTeams],
-      currentPlayer: playerWithTeams,
-      score: 0,
-      status: "playing",
-      lastSharedClubs: [],
-      wrongResult: null,
-      usedPlayerIds: new Set([playerWithTeams.id]),
-      timedOut: false,
-    });
-    startTimer();
+    setState((s) => ({ ...s, status: "loading", wrongResult: null, timedOut: false, error: null }));
+    try {
+      const seed = SEED_PLAYERS[Math.floor(Math.random() * SEED_PLAYERS.length)];
+      const playerWithTeams = await getPlayerWithTeams(seed);
+      setState({
+        chain: [playerWithTeams],
+        currentPlayer: playerWithTeams,
+        score: 0,
+        status: "playing",
+        lastSharedClubs: [],
+        wrongResult: null,
+        usedPlayerIds: new Set([playerWithTeams.id]),
+        timedOut: false,
+        error: null,
+      });
+      startTimer();
+    } catch (e) {
+      const message = e instanceof ApiError ? e.message : "Something went wrong";
+      setState((s) => ({ ...s, status: "gameover", error: message }));
+    }
   }, [startTimer, stopTimer]);
 
   const submitPlayer = useCallback(
@@ -128,41 +136,47 @@ export function useGame() {
       if (!state.currentPlayer) return;
       if (state.usedPlayerIds.has(player.id)) return;
       stopTimer();
-      setState((s) => ({ ...s, status: "checking" }));
+      setState((s) => ({ ...s, status: "checking", error: null }));
 
-      const playerWithTeams = await getPlayerWithTeams(player);
-      const result = didPlayTogether(state.currentPlayer, playerWithTeams);
+      try {
+        const playerWithTeams = await getPlayerWithTeams(player);
+        const result = didPlayTogether(state.currentPlayer, playerWithTeams);
 
-      if (result.together) {
-        setState((s) => {
-          const newUsed = new Set(s.usedPlayerIds);
-          newUsed.add(playerWithTeams.id);
-          return {
-            ...s,
-            chain: [...s.chain, playerWithTeams],
-            currentPlayer: playerWithTeams,
-            score: s.score + 1,
-            status: "playing",
-            lastSharedClubs: result.clubs,
-            usedPlayerIds: newUsed,
-          };
-        });
-        startTimer();
-      } else {
-        setState((s) => {
-          saveBestStreak(s.score, loadBestStreak(), setBestStreak);
-          return {
-            ...s,
-            status: "gameover",
-            wrongResult: {
-              player,
-              checkedClubs: {
-                a: s.currentPlayer!.formerTeams.map((t) => t.teamName),
-                b: playerWithTeams.formerTeams.map((t) => t.teamName),
+        if (result.together) {
+          setState((s) => {
+            const newUsed = new Set(s.usedPlayerIds);
+            newUsed.add(playerWithTeams.id);
+            return {
+              ...s,
+              chain: [...s.chain, playerWithTeams],
+              currentPlayer: playerWithTeams,
+              score: s.score + 1,
+              status: "playing",
+              lastSharedClubs: result.clubs,
+              usedPlayerIds: newUsed,
+            };
+          });
+          startTimer();
+        } else {
+          setState((s) => {
+            saveBestStreak(s.score, loadBestStreak(), setBestStreak);
+            return {
+              ...s,
+              status: "gameover",
+              wrongResult: {
+                player,
+                checkedClubs: {
+                  a: s.currentPlayer!.formerTeams.map((t) => t.teamName),
+                  b: playerWithTeams.formerTeams.map((t) => t.teamName),
+                },
               },
-            },
-          };
-        });
+            };
+          });
+        }
+      } catch (e) {
+        const message = e instanceof ApiError ? e.message : "Something went wrong";
+        setState((s) => ({ ...s, status: "playing", error: message }));
+        startTimer();
       }
     },
     [state.currentPlayer, state.usedPlayerIds, stopTimer, startTimer]

@@ -3,6 +3,33 @@ import type { Player, FormerTeam, PlayerWithTeams } from "../types";
 const API_KEY = import.meta.env.VITE_SPORTSDB_API_KEY || "3";
 const BASE_URL = `https://www.thesportsdb.com/api/v1/json/${API_KEY}`;
 
+export class ApiError extends Error {
+  constructor(message: string, public statusCode?: number) {
+    super(message);
+    this.name = "ApiError";
+  }
+}
+
+async function apiFetch(url: string): Promise<unknown> {
+  let res: Response;
+  try {
+    res = await fetch(url);
+  } catch {
+    throw new ApiError("Network error — check your internet connection");
+  }
+  if (res.status === 429) {
+    throw new ApiError("API rate limit reached — wait a moment and try again", 429);
+  }
+  if (!res.ok) {
+    throw new ApiError(`API error (${res.status})`, res.status);
+  }
+  try {
+    return await res.json();
+  } catch {
+    throw new ApiError("Invalid response from API");
+  }
+}
+
 interface SportsDbPlayer {
   idPlayer: string;
   strPlayer: string;
@@ -37,19 +64,17 @@ function mapFormerTeam(t: SportsDbFormerTeam): FormerTeam {
 }
 
 export async function searchPlayers(query: string): Promise<Player[]> {
-  const res = await fetch(`${BASE_URL}/searchplayers.php?p=${encodeURIComponent(query)}`);
-  const data = await res.json();
+  const data = await apiFetch(`${BASE_URL}/searchplayers.php?p=${encodeURIComponent(query)}`) as { player?: SportsDbPlayer[] };
   if (!data.player) return [];
-  return (data.player as SportsDbPlayer[])
+  return data.player
     .filter((p) => p.strSport === "Soccer")
     .map(mapPlayer);
 }
 
 export async function getFormerTeams(playerId: string): Promise<FormerTeam[]> {
-  const res = await fetch(`${BASE_URL}/lookupformerteams.php?id=${encodeURIComponent(playerId)}`);
-  const data = await res.json();
+  const data = await apiFetch(`${BASE_URL}/lookupformerteams.php?id=${encodeURIComponent(playerId)}`) as { formerteams?: SportsDbFormerTeam[] };
   if (!data.formerteams) return [];
-  return (data.formerteams as SportsDbFormerTeam[]).map(mapFormerTeam);
+  return data.formerteams.map(mapFormerTeam);
 }
 
 export async function getPlayerWithTeams(player: Player): Promise<PlayerWithTeams> {

@@ -48,12 +48,17 @@ export default function PlayerSearch({ onSelect, disabled, usedPlayerIds }: Play
 
     setLoading(true);
     debounceRef.current = setTimeout(async () => {
-      const players = await searchPlayers(value.trim());
-      const filtered = usedPlayerIds
-        ? players.filter((p) => !usedPlayerIds.has(p.id))
-        : players;
-      setResults(filtered);
-      setIsOpen(filtered.length > 0);
+      try {
+        const players = await searchPlayers(value.trim());
+        const filtered = usedPlayerIds
+          ? players.filter((p) => !usedPlayerIds.has(p.id))
+          : players;
+        setResults(filtered);
+        setIsOpen(filtered.length > 0);
+      } catch {
+        setResults([]);
+        setIsOpen(false);
+      }
       setLoading(false);
     }, 300);
   }
