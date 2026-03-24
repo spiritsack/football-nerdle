@@ -12,6 +12,8 @@ export default function Game() {
     wrongResult,
     usedPlayerIds,
     bestStreak,
+    timeLeft,
+    timedOut,
     startGame,
     submitPlayer,
   } = useGame();
@@ -28,14 +30,19 @@ export default function Game() {
       </header>
 
       <main className="flex-1 flex flex-col items-center px-4 py-8 gap-6">
-        {/* Score */}
-        <div className="flex gap-6 text-lg">
+        {/* Score & Timer */}
+        <div className="flex gap-6 text-lg items-center">
           <div>
             Chain: <span className="text-green-400 font-bold">{score}</span>
           </div>
           <div>
             Best: <span className="text-yellow-400 font-bold">{bestStreak}</span>
           </div>
+          {(status === "playing" || status === "checking") && (
+            <div className={`font-mono font-bold text-2xl ${timeLeft <= 5 ? "text-red-400" : "text-white"}`}>
+              {timeLeft}s
+            </div>
+          )}
         </div>
 
         {/* Chain display */}
@@ -100,19 +107,25 @@ export default function Game() {
         )}
 
         {/* Game Over */}
-        {status === "gameover" && wrongResult && (
+        {status === "gameover" && (
           <div className="bg-red-900/30 border border-red-700 rounded-xl p-6 max-w-md w-full text-center">
             <h2 className="text-2xl font-bold text-red-400 mb-2">Game Over!</h2>
-            <p className="text-gray-300 mb-4">
-              <span className="text-white font-semibold">{wrongResult.player.name}</span> didn't play with{" "}
-              <span className="text-white font-semibold">{currentPlayer?.name}</span>
-            </p>
-            <div className="text-sm text-gray-400 mb-4 text-left">
-              <p className="mb-1 font-medium text-gray-300">{currentPlayer?.name}'s clubs:</p>
-              <p className="mb-3">{wrongResult.checkedClubs.a.join(", ") || "None found"}</p>
-              <p className="mb-1 font-medium text-gray-300">{wrongResult.player.name}'s clubs:</p>
-              <p>{wrongResult.checkedClubs.b.join(", ") || "None found"}</p>
-            </div>
+            {timedOut ? (
+              <p className="text-gray-300 mb-4">Time's up!</p>
+            ) : wrongResult ? (
+              <>
+                <p className="text-gray-300 mb-4">
+                  <span className="text-white font-semibold">{wrongResult.player.name}</span> didn't play with{" "}
+                  <span className="text-white font-semibold">{currentPlayer?.name}</span>
+                </p>
+                <div className="text-sm text-gray-400 mb-4 text-left">
+                  <p className="mb-1 font-medium text-gray-300">{currentPlayer?.name}'s clubs:</p>
+                  <p className="mb-3">{wrongResult.checkedClubs.a.join(", ") || "None found"}</p>
+                  <p className="mb-1 font-medium text-gray-300">{wrongResult.player.name}'s clubs:</p>
+                  <p>{wrongResult.checkedClubs.b.join(", ") || "None found"}</p>
+                </div>
+              </>
+            ) : null}
             <p className="text-lg mb-2">
               Final score: <span className="text-green-400 font-bold">{score}</span>
             </p>
