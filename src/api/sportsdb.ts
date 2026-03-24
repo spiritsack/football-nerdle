@@ -38,6 +38,9 @@ interface SportsDbPlayer {
   strThumb: string | null;
   strNationality: string | null;
   strSport: string;
+  idTeam: string | null;
+  strTeam: string | null;
+  dateSigned: string | null;
 }
 
 interface SportsDbFormerTeam {
@@ -79,9 +82,28 @@ export async function getFormerTeams(playerId: string): Promise<FormerTeam[]> {
   return data.formerteams.map(mapFormerTeam);
 }
 
+async function getCurrentTeam(playerId: string): Promise<FormerTeam | null> {
+  const data = await apiFetch(`${BASE_URL}/lookupplayer.php?id=${encodeURIComponent(playerId)}`) as { players?: SportsDbPlayer[] };
+  const p = data.players?.[0];
+  if (!p?.idTeam || !p.strTeam) return null;
+  const year = p.dateSigned ? p.dateSigned.substring(0, 4) : "";
+  return {
+    teamId: p.idTeam,
+    teamName: p.strTeam,
+    yearJoined: year,
+    yearDeparted: "",
+  };
+}
+
 export async function getPlayerWithTeams(player: Player): Promise<PlayerWithTeams> {
-  const formerTeams = await getFormerTeams(player.id);
-  return { ...player, formerTeams };
+  const [formerTeams, currentTeam] = await Promise.all([
+    getFormerTeams(player.id),
+    getCurrentTeam(player.id),
+  ]);
+  const allTeams = currentTeam
+    ? [...formerTeams, currentTeam]
+    : formerTeams;
+  return { ...player, formerTeams: allTeams };
 }
 
 function parseYear(y: string): number | null {
