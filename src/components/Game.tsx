@@ -1,3 +1,4 @@
+import { Link } from "react-router-dom";
 import { useGame } from "../hooks/useGame";
 import PlayerSearch from "./PlayerSearch";
 
@@ -22,7 +23,12 @@ export default function Game() {
     <div className="min-h-screen bg-gray-900 text-white flex flex-col">
       <header className="py-6 border-b border-gray-700">
         <h1 className="text-3xl font-bold text-center">Football Nerdle</h1>
-        <p className="text-gray-400 text-center mt-1">Practice Mode</p>
+        <p className="text-gray-400 text-center mt-1">Battle Mode</p>
+        <div className="text-center mt-2">
+          <Link to="/" className="text-green-400 hover:text-green-300 text-sm">
+            ← Back to Home
+          </Link>
+        </div>
       </header>
 
       <main className="flex-1 flex flex-col items-center px-4 py-8 gap-6">
