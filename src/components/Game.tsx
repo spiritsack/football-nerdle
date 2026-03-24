@@ -1,4 +1,3 @@
-import { useEffect } from "react";
 import { useGame } from "../hooks/useGame";
 import PlayerSearch from "./PlayerSearch";
 
@@ -19,10 +18,6 @@ export default function Game() {
     submitPlayer,
   } = useGame();
 
-  useEffect(() => {
-    startGame();
-  }, [startGame]);
-
   return (
     <div className="min-h-screen bg-gray-900 text-white flex flex-col">
       <header className="py-6 border-b border-gray-700">
@@ -31,87 +26,108 @@ export default function Game() {
       </header>
 
       <main className="flex-1 flex flex-col items-center px-4 py-8 gap-6">
-        {/* Score & Timer */}
-        <div className="flex gap-6 text-lg items-center">
-          <div>
-            Chain: <span className="text-green-400 font-bold">{score}</span>
-          </div>
-          <div>
-            Best: <span className="text-yellow-400 font-bold">{bestStreak}</span>
-          </div>
-          {(status === "playing" || status === "checking") && (
-            <div className={`font-mono font-bold text-2xl ${timeLeft <= 5 ? "text-red-400" : "text-white"}`}>
-              {timeLeft}s
-            </div>
-          )}
-        </div>
-
-        {/* Chain display */}
-        {chain.length > 1 && (
-          <div className="w-full max-w-2xl overflow-x-auto">
-            <div className="flex gap-2 items-center pb-2">
-              {chain.map((p, i) => (
-                <div key={`${p.id}-${i}`} className="flex items-center gap-2 shrink-0">
-                  {i > 0 && <span className="text-gray-500">→</span>}
-                  <div className="bg-gray-800 rounded-lg px-3 py-2 text-sm text-center">
-                    <div className="font-medium">{p.name}</div>
-                    <div className="text-gray-400 text-xs">{p.nationality}</div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Current player card */}
-        {currentPlayer && status !== "gameover" && (
-          <div className="bg-gray-800 border border-gray-600 rounded-xl p-6 text-center max-w-sm w-full">
-            {currentPlayer.thumbnail && (
-              <img
-                src={currentPlayer.thumbnail}
-                alt={currentPlayer.name}
-                className="w-24 h-24 rounded-full mx-auto mb-4 object-cover bg-gray-700"
-              />
-            )}
-            <h2 className="text-2xl font-bold">{currentPlayer.name}</h2>
-            <p className="text-gray-400">{currentPlayer.nationality}</p>
-            {lastSharedClubs.length > 0 && (
-              <p className="text-green-400 text-sm mt-2">
-                Linked via: {lastSharedClubs.join(", ")}
+        {/* Start screen */}
+        {status === "idle" && (
+          <div className="flex-1 flex flex-col items-center justify-center gap-6">
+            <p className="text-gray-300 text-lg text-center max-w-md">
+              Name footballers who played together to build the longest chain.
+              You have 15 seconds per turn.
+            </p>
+            {bestStreak > 0 && (
+              <p className="text-gray-400">
+                Best streak: <span className="text-yellow-400 font-bold">{bestStreak}</span>
               </p>
             )}
+            <button
+              onClick={startGame}
+              className="px-8 py-4 bg-green-600 hover:bg-green-500 rounded-lg text-xl font-semibold transition-colors"
+            >
+              Start
+            </button>
           </div>
-        )}
-
-        {/* Error */}
-        {error && (
-          <div className="bg-orange-900/30 border border-orange-700 rounded-lg px-4 py-3 max-w-md w-full text-center text-orange-300 text-sm">
-            {error}
-          </div>
-        )}
-
-        {/* Prompt */}
-        {status === "playing" && (
-          <p className="text-gray-300">
-            Name a player who played with <span className="text-green-400 font-semibold">{currentPlayer?.name}</span>
-          </p>
-        )}
-
-        {/* Search input */}
-        {(status === "playing" || status === "checking") && (
-          <PlayerSearch
-            onSelect={submitPlayer}
-            disabled={status === "checking"}
-            usedPlayerIds={usedPlayerIds}
-          />
-        )}
-
-        {status === "checking" && (
-          <p className="text-yellow-400">Checking...</p>
         )}
 
         {status === "loading" && (
           <p className="text-gray-400">Starting game...</p>
+        )}
+
+        {/* In-game UI */}
+        {(status === "playing" || status === "checking") && (
+          <>
+            {/* Score & Timer */}
+            <div className="flex gap-6 text-lg items-center">
+              <div>
+                Chain: <span className="text-green-400 font-bold">{score}</span>
+              </div>
+              <div>
+                Best: <span className="text-yellow-400 font-bold">{bestStreak}</span>
+              </div>
+              <div className={`font-mono font-bold text-2xl ${timeLeft <= 5 ? "text-red-400" : "text-white"}`}>
+                {timeLeft}s
+              </div>
+            </div>
+
+            {/* Chain display */}
+            {chain.length > 1 && (
+              <div className="w-full max-w-2xl overflow-x-auto">
+                <div className="flex gap-2 items-center pb-2">
+                  {chain.map((p, i) => (
+                    <div key={`${p.id}-${i}`} className="flex items-center gap-2 shrink-0">
+                      {i > 0 && <span className="text-gray-500">→</span>}
+                      <div className="bg-gray-800 rounded-lg px-3 py-2 text-sm text-center">
+                        <div className="font-medium">{p.name}</div>
+                        <div className="text-gray-400 text-xs">{p.nationality}</div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Current player card */}
+            {currentPlayer && (
+              <div className="bg-gray-800 border border-gray-600 rounded-xl p-6 text-center max-w-sm w-full">
+                {currentPlayer.thumbnail && (
+                  <img
+                    src={currentPlayer.thumbnail}
+                    alt={currentPlayer.name}
+                    className="w-24 h-24 rounded-full mx-auto mb-4 object-cover bg-gray-700"
+                  />
+                )}
+                <h2 className="text-2xl font-bold">{currentPlayer.name}</h2>
+                <p className="text-gray-400">{currentPlayer.nationality}</p>
+                {lastSharedClubs.length > 0 && (
+                  <p className="text-green-400 text-sm mt-2">
+                    Linked via: {lastSharedClubs.join(", ")}
+                  </p>
+                )}
+              </div>
+            )}
+
+            {/* Error */}
+            {error && (
+              <div className="bg-orange-900/30 border border-orange-700 rounded-lg px-4 py-3 max-w-md w-full text-center text-orange-300 text-sm">
+                {error}
+              </div>
+            )}
+
+            {/* Prompt */}
+            {status === "playing" && (
+              <p className="text-gray-300">
+                Name a player who played with <span className="text-green-400 font-semibold">{currentPlayer?.name}</span>
+              </p>
+            )}
+
+            <PlayerSearch
+              onSelect={submitPlayer}
+              disabled={status === "checking"}
+              usedPlayerIds={usedPlayerIds}
+            />
+
+            {status === "checking" && (
+              <p className="text-yellow-400">Checking...</p>
+            )}
+          </>
         )}
 
         {/* Game Over */}
