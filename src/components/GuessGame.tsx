@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Link } from "react-router-dom";
 import { useGuessGame } from "../hooks/useGuessGame";
 import PlayerSearch from "./PlayerSearch";
@@ -15,6 +16,8 @@ export default function GuessGame() {
     submitGuess,
   } = useGuessGame();
 
+  const [hardMode, setHardMode] = useState(false);
+
   return (
     <div className="min-h-screen bg-gray-900 text-white flex flex-col">
       <header className="py-6 border-b border-gray-700">
@@ -28,6 +31,18 @@ export default function GuessGame() {
       </header>
 
       <main className="flex-1 flex flex-col items-center px-4 py-8 gap-6">
+        {/* Hard mode toggle */}
+        <button
+          onClick={() => setHardMode((h) => !h)}
+          className={`px-4 py-1.5 rounded-full text-sm font-medium transition-colors ${
+            hardMode
+              ? "bg-red-600 hover:bg-red-500 text-white"
+              : "bg-gray-700 hover:bg-gray-600 text-gray-300"
+          }`}
+        >
+          Hard Mode: {hardMode ? "ON" : "OFF"}
+        </button>
+
         {status === "loading" && (
           <p className="text-gray-400">Loading player...</p>
         )}
@@ -55,9 +70,14 @@ export default function GuessGame() {
                     ) : (
                       <div className="w-8 h-8 bg-gray-600 rounded" />
                     )}
-                    <span className="text-gray-400 text-sm ml-auto">
-                      {club.yearJoined}{club.yearDeparted ? ` – ${club.yearDeparted}` : " – present"}
-                    </span>
+                    {!hardMode && (
+                      <>
+                        <span className="font-medium">{club.teamName}</span>
+                        <span className="text-gray-400 text-sm ml-auto">
+                          {club.yearJoined}{club.yearDeparted ? ` – ${club.yearDeparted}` : " – present"}
+                        </span>
+                      </>
+                    )}
                   </div>
                 ))}
               </div>
@@ -98,6 +118,7 @@ export default function GuessGame() {
             <p className="text-gray-400 mb-4">{targetPlayer.nationality}</p>
             <p className="text-gray-300 mb-4">
               Guessed in <span className="text-green-400 font-bold">{attempts + 1}</span> {attempts === 0 ? "attempt" : "attempts"}
+              {hardMode && <span className="text-red-400 ml-1">(Hard)</span>}
             </p>
             <button
               onClick={startGame}
