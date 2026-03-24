@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { getPlayerWithTeams, ApiError } from "../api/sportsdb";
 import type { Player, PlayerWithTeams, FormerTeam } from "../types";
 import { SEED_PLAYERS } from "../data/seedPlayers";
@@ -21,7 +21,7 @@ export function useGuessGame() {
     targetPlayer: null,
     clubs: [],
     attempts: 0,
-    status: "idle",
+    status: "loading",
     wrongGuesses: [],
     error: null,
   });
@@ -71,6 +71,11 @@ export function useGuessGame() {
     },
     [state.targetPlayer, state.status, state.attempts]
   );
+
+  // Auto-start on mount
+  useEffect(() => {
+    startGame();
+  }, [startGame]);
 
   return {
     ...state,

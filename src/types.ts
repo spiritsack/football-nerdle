@@ -10,6 +10,7 @@ export interface FormerTeam {
   teamName: string;
   yearJoined: string;
   yearDeparted: string;
+  badge: string;
 }
 
 export interface PlayerWithTeams extends Player {

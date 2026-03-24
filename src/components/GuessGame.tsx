@@ -28,27 +28,6 @@ export default function GuessGame() {
       </header>
 
       <main className="flex-1 flex flex-col items-center px-4 py-8 gap-6">
-        {/* Idle / Start screen */}
-        {status === "idle" && (
-          <div className="flex-1 flex flex-col items-center justify-center gap-6">
-            <p className="text-gray-300 text-lg text-center max-w-md">
-              Guess the footballer from their club history.
-              You have {maxAttempts} attempts.
-            </p>
-            {error && (
-              <div className="bg-orange-900/30 border border-orange-700 rounded-lg px-4 py-3 max-w-md w-full text-center text-orange-300 text-sm">
-                {error}
-              </div>
-            )}
-            <button
-              onClick={startGame}
-              className="px-8 py-4 bg-green-600 hover:bg-green-500 rounded-lg text-xl font-semibold transition-colors"
-            >
-              Start
-            </button>
-          </div>
-        )}
-
         {status === "loading" && (
           <p className="text-gray-400">Loading player...</p>
         )}
@@ -69,10 +48,14 @@ export default function GuessGame() {
                 {clubs.map((club, i) => (
                   <div
                     key={`${club.teamId}-${i}`}
-                    className="flex justify-between items-center bg-gray-700 rounded-lg px-4 py-2"
+                    className="flex items-center gap-3 bg-gray-700 rounded-lg px-4 py-2"
                   >
-                    <span className="font-medium">{club.teamName}</span>
-                    <span className="text-gray-400 text-sm">
+                    {club.badge ? (
+                      <img src={club.badge} alt="" className="w-8 h-8 object-contain" />
+                    ) : (
+                      <div className="w-8 h-8 bg-gray-600 rounded" />
+                    )}
+                    <span className="text-gray-400 text-sm ml-auto">
                       {club.yearJoined}{club.yearDeparted ? ` – ${club.yearDeparted}` : " – present"}
                     </span>
                   </div>
