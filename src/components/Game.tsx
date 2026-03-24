@@ -14,6 +14,7 @@ export default function Game() {
     bestStreak,
     timeLeft,
     timedOut,
+    error,
     startGame,
     submitPlayer,
   } = useGame();
@@ -82,6 +83,13 @@ export default function Game() {
           </div>
         )}
 
+        {/* Error */}
+        {error && (
+          <div className="bg-orange-900/30 border border-orange-700 rounded-lg px-4 py-3 max-w-md w-full text-center text-orange-300 text-sm">
+            {error}
+          </div>
+        )}
+
         {/* Prompt */}
         {status === "playing" && (
           <p className="text-gray-300">
@@ -110,7 +118,9 @@ export default function Game() {
         {status === "gameover" && (
           <div className="bg-red-900/30 border border-red-700 rounded-xl p-6 max-w-md w-full text-center">
             <h2 className="text-2xl font-bold text-red-400 mb-2">Game Over!</h2>
-            {timedOut ? (
+            {error && !timedOut && !wrongResult ? (
+              <p className="text-orange-300 mb-4">{error}</p>
+            ) : timedOut ? (
               <p className="text-gray-300 mb-4">Time's up!</p>
             ) : wrongResult ? (
               <>
