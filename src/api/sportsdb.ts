@@ -88,7 +88,14 @@ function isValidTeam(t: SportsDbFormerTeam): boolean {
 export async function getFormerTeams(playerId: string): Promise<FormerTeam[]> {
   const data = await apiFetch(`${BASE_URL}/lookupformerteams.php?id=${encodeURIComponent(playerId)}`) as { formerteams?: SportsDbFormerTeam[] };
   if (!data.formerteams) return [];
-  return data.formerteams.filter(isValidTeam).map(mapFormerTeam);
+  return data.formerteams
+    .filter(isValidTeam)
+    .map(mapFormerTeam)
+    .sort((a, b) => {
+      const aYear = parseInt(a.yearJoined, 10) || 0;
+      const bYear = parseInt(b.yearJoined, 10) || 0;
+      return aYear - bYear;
+    });
 }
 
 interface CurrentTeamInfo {
