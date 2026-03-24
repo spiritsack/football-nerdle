@@ -72,7 +72,7 @@ export default function GuessGame() {
                       {club.badge ? (
                         <img src={club.badge} alt="" className="w-16 h-16 object-contain" />
                       ) : (
-                        <div className="w-16 h-16 bg-gray-600 rounded" />
+                        <div className="w-16 h-16 bg-gray-600 rounded flex items-center justify-center text-xs text-gray-300 text-center p-1 leading-tight">{club.teamName}</div>
                       )}
                     </div>
                   ))}
@@ -86,7 +86,7 @@ export default function GuessGame() {
                         {club.badge ? (
                           <img src={club.badge} alt="" className="w-8 h-8 object-contain" />
                         ) : (
-                          <div className="w-8 h-8 bg-gray-600 rounded" />
+                          <div className="w-8 h-8 bg-gray-600 rounded flex items-center justify-center text-[0.5rem] text-gray-300 text-center p-0.5 leading-tight">{club.teamName}</div>
                         )}
                         <span className="font-medium">{club.teamName}</span>
                         <span className="text-gray-400 text-sm ml-auto">
