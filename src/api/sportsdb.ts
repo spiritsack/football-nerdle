@@ -4,9 +4,11 @@ const API_KEY = import.meta.env.VITE_SPORTSDB_API_KEY || "3";
 const BASE_URL = `https://www.thesportsdb.com/api/v1/json/${API_KEY}`;
 
 export class ApiError extends Error {
-  constructor(message: string, public statusCode?: number) {
+  statusCode?: number;
+  constructor(message: string, statusCode?: number) {
     super(message);
     this.name = "ApiError";
+    this.statusCode = statusCode;
   }
 }
 
