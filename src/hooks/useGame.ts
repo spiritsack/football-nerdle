@@ -2,7 +2,7 @@ import { useState, useCallback, useRef, useEffect } from "react";
 import { getPlayerWithTeams, didPlayTogether, ApiError } from "../api/sportsdb";
 import type { Player, PlayerWithTeams } from "../types";
 
-type GameStatus = "loading" | "playing" | "checking" | "wrong" | "gameover";
+type GameStatus = "idle" | "loading" | "playing" | "checking" | "wrong" | "gameover";
 
 interface WrongResult {
   player: Player;
@@ -66,7 +66,7 @@ export function useGame() {
     chain: [],
     currentPlayer: null,
     score: 0,
-    status: "loading",
+    status: "idle",
     lastSharedClubs: [],
     wrongResult: null,
     usedPlayerIds: new Set(),
