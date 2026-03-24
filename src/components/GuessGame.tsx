@@ -59,28 +59,39 @@ export default function GuessGame() {
             {/* Club history */}
             <div className="bg-gray-800 border border-gray-600 rounded-xl p-6 max-w-md w-full">
               <h2 className="text-lg font-semibold mb-4 text-center text-gray-300">Club History</h2>
-              <div className="space-y-2">
-                {clubs.map((club, i) => (
-                  <div
-                    key={`${club.teamId}-${i}`}
-                    className="flex items-center gap-3 bg-gray-700 rounded-lg px-4 py-2"
-                  >
-                    {club.badge ? (
-                      <img src={club.badge} alt="" className="w-8 h-8 object-contain" />
-                    ) : (
-                      <div className="w-8 h-8 bg-gray-600 rounded" />
-                    )}
-                    {!hardMode && (
-                      <>
+              {hardMode ? (
+                <div className="flex flex-col items-center gap-1">
+                  {clubs.map((club, i) => (
+                    <div key={`${club.teamId}-${i}`} className="flex flex-col items-center">
+                      {i > 0 && <span className="text-gray-500 text-lg">↓</span>}
+                      {club.badge ? (
+                        <img src={club.badge} alt="" className="w-16 h-16 object-contain" />
+                      ) : (
+                        <div className="w-16 h-16 bg-gray-600 rounded" />
+                      )}
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="space-y-1">
+                  {clubs.map((club, i) => (
+                    <div key={`${club.teamId}-${i}`}>
+                      {i > 0 && <div className="text-gray-500 text-center text-sm">↓</div>}
+                      <div className="flex items-center gap-3 bg-gray-700 rounded-lg px-4 py-2">
+                        {club.badge ? (
+                          <img src={club.badge} alt="" className="w-8 h-8 object-contain" />
+                        ) : (
+                          <div className="w-8 h-8 bg-gray-600 rounded" />
+                        )}
                         <span className="font-medium">{club.teamName}</span>
                         <span className="text-gray-400 text-sm ml-auto">
                           {club.yearJoined}{club.yearDeparted ? ` – ${club.yearDeparted}` : " – present"}
                         </span>
-                      </>
-                    )}
-                  </div>
-                ))}
-              </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
 
             {/* Wrong guesses */}
