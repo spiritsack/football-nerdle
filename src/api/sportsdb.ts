@@ -48,6 +48,7 @@ interface SportsDbFormerTeam {
   strFormerTeam: string;
   strJoined: string;
   strDeparted: string;
+  strMoveType: string;
 }
 
 function mapPlayer(p: SportsDbPlayer): Player {
@@ -76,10 +77,16 @@ export async function searchPlayers(query: string): Promise<Player[]> {
     .map(mapPlayer);
 }
 
+function isValidTeam(t: SportsDbFormerTeam): boolean {
+  if (t.strMoveType === "Manager") return false;
+  if (t.strFormerTeam.startsWith("_")) return false;
+  return true;
+}
+
 export async function getFormerTeams(playerId: string): Promise<FormerTeam[]> {
   const data = await apiFetch(`${BASE_URL}/lookupformerteams.php?id=${encodeURIComponent(playerId)}`) as { formerteams?: SportsDbFormerTeam[] };
   if (!data.formerteams) return [];
-  return data.formerteams.map(mapFormerTeam);
+  return data.formerteams.filter(isValidTeam).map(mapFormerTeam);
 }
 
 interface CurrentTeamInfo {
@@ -91,7 +98,7 @@ async function getCurrentTeamInfo(playerId: string): Promise<CurrentTeamInfo> {
   const data = await apiFetch(`${BASE_URL}/lookupplayer.php?id=${encodeURIComponent(playerId)}`) as { players?: (SportsDbPlayer & { strStatus?: string })[] };
   const p = data.players?.[0];
   const status = p?.strStatus ?? "";
-  if (!p?.idTeam || !p.strTeam || status === "Retired") {
+  if (!p?.idTeam || !p.strTeam || status === "Retired" || p.strTeam.startsWith("_")) {
     return { team: null, status };
   }
   const year = p.dateSigned ? p.dateSigned.substring(0, 4) : "";
