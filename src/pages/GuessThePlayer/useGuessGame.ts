@@ -1,61 +1,11 @@
 import { useState, useCallback, useEffect } from "react";
-import { ApiError } from "../api/sportsdb";
-import { getPlayerWithTeamsCached } from "../api/playerCache";
-import type { Player, PlayerWithTeams, FormerTeam } from "../types";
-import { SEED_PLAYERS } from "../data/seedPlayers";
-
-type GuessStatus = "idle" | "loading" | "playing" | "won" | "lost";
-
-const MAX_ATTEMPTS = 5;
-
-function getTodayString(): string {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-}
-
-function getDailyPlayerIndex(dateStr: string): number {
-  // Simple hash from date string to get a consistent index
-  let hash = 0;
-  for (let i = 0; i < dateStr.length; i++) {
-    hash = (hash * 31 + dateStr.charCodeAt(i)) | 0;
-  }
-  return Math.abs(hash) % SEED_PLAYERS.length;
-}
-
-// Calculate the day number since a fixed start date
-function getDayNumber(dateStr: string): number {
-  const start = new Date("2026-03-24");
-  const current = new Date(dateStr);
-  return Math.floor((current.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1;
-}
-
-interface GuessGameState {
-  targetPlayer: PlayerWithTeams | null;
-  clubs: FormerTeam[];
-  attempts: number;
-  status: GuessStatus;
-  wrongGuesses: Player[];
-  error: string | null;
-  isDaily: boolean;
-  dailyCompleted: boolean;
-}
-
-function getDailyResult(): { date: string; status: "won" | "lost"; attempts: number } | null {
-  const stored = localStorage.getItem("football-nerdle-daily-guess");
-  if (!stored) return null;
-  try {
-    return JSON.parse(stored);
-  } catch {
-    return null;
-  }
-}
-
-function saveDailyResult(status: "won" | "lost", attempts: number) {
-  localStorage.setItem(
-    "football-nerdle-daily-guess",
-    JSON.stringify({ date: getTodayString(), status, attempts })
-  );
-}
+import { ApiError } from "../../api/sportsdb";
+import { getPlayerWithTeamsCached } from "../../api/playerCache";
+import type { Player } from "../../types";
+import { SEED_PLAYERS } from "../../data/seedPlayers";
+import { MAX_ATTEMPTS, SHARE_URL } from "./constants";
+import type { GuessGameState } from "./types";
+import { getTodayString, getDailyPlayerIndex, getDayNumber, getDailyResult, saveDailyResult } from "./helpers";
 
 export function useGuessGame() {
   const [today] = useState(getTodayString);
@@ -172,7 +122,7 @@ export function useGuessGame() {
     }).join("");
     const mode = state.isDaily ? `#${dayNum}` : "Random";
     const hardIndicator = hardMode ? "*" : "";
-    return `Football Nerdle ${mode} ${score}${hardIndicator}\n${squares}\nhttps://spiritsack.github.io/football-nerdle/#/guess`;
+    return `Football Nerdle ${mode} ${score}${hardIndicator}\n${squares}\n${SHARE_URL}`;
   }
 
   // Auto-start daily on mount

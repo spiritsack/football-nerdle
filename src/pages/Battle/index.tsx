@@ -1,8 +1,8 @@
 import { Link } from "react-router-dom";
-import { useGame } from "../hooks/useGame";
-import PlayerSearch from "./PlayerSearch";
+import { useGame } from "./useGame";
+import PlayerSearch from "../../components/PlayerSearch";
 
-export default function Game() {
+export default function Battle() {
   const {
     chain,
     currentPlayer,

@@ -1,9 +1,9 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
-import { useMultiplayerRoom } from "../hooks/useMultiplayerRoom";
+import { useMultiplayerRoom } from "./useMultiplayerRoom";
 import MultiplayerGame from "./MultiplayerGame";
 
-export default function MultiplayerLobby() {
+export default function MultiplayerBattle() {
   const { status, room, playerId, isHost, error, createRoom, joinRoom, cleanup } =
     useMultiplayerRoom();
   const [joinCode, setJoinCode] = useState("");
@@ -18,7 +18,6 @@ export default function MultiplayerLobby() {
     });
   }
 
-  // Clean up lobby channel before game mounts (so game can create its own with presence)
   const [lobbyCleanedUp, setLobbyCleanedUp] = useState(false);
   useEffect(() => {
     if (status === "ready" && !lobbyCleanedUp) {
@@ -27,7 +26,6 @@ export default function MultiplayerLobby() {
     }
   }, [status, lobbyCleanedUp, cleanup]);
 
-  // Once both players are ready AND lobby channel is cleaned up, show the game
   if (status === "ready" && lobbyCleanedUp && room && playerId) {
     return (
       <MultiplayerGame room={room} playerId={playerId} isHost={isHost} />
@@ -50,7 +48,6 @@ export default function MultiplayerLobby() {
       </header>
 
       <main className="flex-1 flex flex-col items-center px-4 py-8 gap-6">
-        {/* Idle — show create/join options */}
         {(status === "idle" || status === "error") && (
           <div className="flex flex-col items-center gap-8 max-w-sm w-full">
             <div className="text-center">
@@ -98,22 +95,18 @@ export default function MultiplayerLobby() {
           </div>
         )}
 
-        {/* Creating */}
         {status === "creating" && (
           <p className="text-gray-400">Creating room...</p>
         )}
 
-        {/* Joining */}
         {status === "joining" && (
           <p className="text-gray-400">Joining room...</p>
         )}
 
-        {/* Reconnecting */}
         {status === "reconnecting" && (
           <p className="text-gray-400">Reconnecting to game...</p>
         )}
 
-        {/* Waiting for opponent */}
         {status === "waiting" && room && (
           <div className="flex flex-col items-center gap-6 max-w-sm w-full">
             <p className="text-gray-300 text-lg">

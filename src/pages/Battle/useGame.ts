@@ -1,42 +1,11 @@
 import { useState, useCallback, useRef, useEffect } from "react";
-import { didPlayTogether, ApiError } from "../api/sportsdb";
-import { getPlayerWithTeamsCached } from "../api/playerCache";
-import type { Player, PlayerWithTeams } from "../types";
-import { SEED_PLAYERS } from "../data/seedPlayers";
-
-type GameStatus = "idle" | "loading" | "playing" | "checking" | "wrong" | "gameover";
-
-interface WrongResult {
-  player: Player;
-  checkedClubs: { a: string[]; b: string[] };
-}
-
-interface GameState {
-  chain: PlayerWithTeams[];
-  currentPlayer: PlayerWithTeams | null;
-  score: number;
-  status: GameStatus;
-  lastSharedClubs: string[];
-  wrongResult: WrongResult | null;
-  usedPlayerIds: Set<string>;
-  timedOut: boolean;
-  error: string | null;
-}
-
-const TURN_TIME = 15;
-const BEST_STREAK_KEY = "football-nerdle-best-streak";
-
-function loadBestStreak(): number {
-  const stored = localStorage.getItem(BEST_STREAK_KEY);
-  return stored ? parseInt(stored, 10) || 0 : 0;
-}
-
-function saveBestStreak(score: number, current: number, setBestStreak: (n: number) => void) {
-  if (score > current) {
-    localStorage.setItem(BEST_STREAK_KEY, String(score));
-    setBestStreak(score);
-  }
-}
+import { didPlayTogether, ApiError } from "../../api/sportsdb";
+import { getPlayerWithTeamsCached } from "../../api/playerCache";
+import type { Player } from "../../types";
+import { SEED_PLAYERS } from "../../data/seedPlayers";
+import { TURN_TIME } from "../../constants";
+import type { GameState } from "./types";
+import { loadBestStreak, saveBestStreak } from "./helpers";
 
 export function useGame() {
   const [bestStreak, setBestStreak] = useState(loadBestStreak);

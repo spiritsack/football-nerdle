@@ -1,17 +1,17 @@
 import { HashRouter, Routes, Route } from "react-router-dom";
-import Home from "./components/Home";
-import Game from "./components/Game";
-import GuessGame from "./components/GuessGame";
-import MultiplayerLobby from "./components/MultiplayerLobby";
+import Home from "./pages/Home";
+import Battle from "./pages/Battle";
+import GuessThePlayer from "./pages/GuessThePlayer";
+import MultiplayerBattle from "./pages/MultiplayerBattle";
 
 function App() {
   return (
     <HashRouter>
       <Routes>
         <Route path="/" element={<Home />} />
-        <Route path="/battle" element={<Game />} />
-        <Route path="/battle/multiplayer" element={<MultiplayerLobby />} />
-        <Route path="/guess" element={<GuessGame />} />
+        <Route path="/battle" element={<Battle />} />
+        <Route path="/battle/multiplayer" element={<MultiplayerBattle />} />
+        <Route path="/guess" element={<GuessThePlayer />} />
       </Routes>
     </HashRouter>
   );
