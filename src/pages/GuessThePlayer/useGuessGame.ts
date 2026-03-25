@@ -4,13 +4,14 @@ import { getPlayerWithTeamsCached } from "../../api/playerCache";
 import type { Player } from "../../types";
 import { SEED_PLAYERS } from "../../data/seedPlayers";
 import { MAX_ATTEMPTS, SHARE_URL } from "./constants";
-import type { GuessGameState } from "./types";
-import { getTodayString, getDailyPlayerIndex, getDayNumber, getDailyResult, saveDailyResult } from "./helpers";
+import type { GuessGameState, GuessStats } from "./types";
+import { getTodayString, getDailyPlayerIndex, getDayNumber, getDailyResult, saveDailyResult, loadStats, recordResult } from "./helpers";
 
 export function useGuessGame() {
   const [today] = useState(getTodayString);
   const [dailyResult] = useState(getDailyResult);
   const alreadyPlayedToday = dailyResult?.date === today;
+  const [stats, setStats] = useState<GuessStats>(loadStats);
 
   const [state, setState] = useState<GuessGameState>(() => ({
     targetPlayer: null,
@@ -87,11 +88,13 @@ export function useGuessGame() {
       if (player.id === state.targetPlayer.id) {
         const finalAttempts = state.attempts + 1;
         if (state.isDaily) saveDailyResult("won", finalAttempts);
+        setStats(recordResult(true));
         setState((s) => ({ ...s, status: "won", attempts: finalAttempts, dailyCompleted: s.isDaily }));
       } else {
         const newAttempts = state.attempts + 1;
         if (newAttempts >= MAX_ATTEMPTS) {
           if (state.isDaily) saveDailyResult("lost", newAttempts);
+          setStats(recordResult(false));
           setState((s) => ({
             ...s,
             attempts: newAttempts,
@@ -132,6 +135,7 @@ export function useGuessGame() {
 
   return {
     ...state,
+    stats,
     maxAttempts: MAX_ATTEMPTS,
     dayNumber: getDayNumber(today),
     startDaily,

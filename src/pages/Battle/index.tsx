@@ -1,8 +1,9 @@
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { useGame } from "./useGame";
 import PlayerSearch from "../../components/PlayerSearch";
 
 export default function Battle() {
+  const navigate = useNavigate();
   const {
     chain,
     currentPlayer,
@@ -32,12 +33,12 @@ export default function Battle() {
       </header>
 
       <main className="flex-1 flex flex-col items-center px-4 py-8 gap-6">
-        {/* Start screen */}
+        {/* Mode selection */}
         {status === "idle" && (
-          <div className="flex-1 flex flex-col items-center justify-center gap-6">
-            <p className="text-gray-300 text-lg text-center max-w-md">
+          <div className="flex-1 flex flex-col items-center justify-center gap-6 max-w-sm w-full">
+            <p className="text-gray-300 text-lg text-center">
               Name footballers who played together to build the longest chain.
-              You have 15 seconds per turn.
+              15 seconds per turn.
             </p>
             {bestStreak > 0 && (
               <p className="text-gray-400">
@@ -46,9 +47,15 @@ export default function Battle() {
             )}
             <button
               onClick={startGame}
-              className="px-8 py-4 bg-green-600 hover:bg-green-500 rounded-lg text-xl font-semibold transition-colors"
+              className="w-full px-6 py-4 bg-green-600 hover:bg-green-500 rounded-lg text-xl font-semibold transition-colors"
             >
-              Start
+              Practice
+            </button>
+            <button
+              onClick={() => navigate("/battle/multiplayer")}
+              className="w-full px-6 py-4 bg-blue-600 hover:bg-blue-500 rounded-lg text-xl font-semibold transition-colors"
+            >
+              Play with a Friend
             </button>
           </div>
         )}

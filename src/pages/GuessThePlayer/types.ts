@@ -18,3 +18,11 @@ export interface DailyResult {
   status: "won" | "lost";
   attempts: number;
 }
+
+export interface GuessStats {
+  played: number;
+  won: number;
+  lost: number;
+  streak: number;
+  longestStreak: number;
+}

@@ -78,6 +78,44 @@ async function saveToCache(player: PlayerWithTeams): Promise<void> {
   }
 }
 
+export async function getRandomCachedPlayer(): Promise<PlayerWithTeams | null> {
+  if (!supabase) return null;
+
+  // Get total count of cached players that have teams
+  const { count, error: countError } = await supabase
+    .from("players")
+    .select("id", { count: "exact", head: true });
+
+  if (countError || !count || count === 0) return null;
+
+  // Pick a random offset
+  const offset = Math.floor(Math.random() * count);
+  const { data, error } = await supabase
+    .from("players")
+    .select("id, name, thumbnail, nationality, player_teams(team_id, team_name, year_joined, year_departed, badge)")
+    .range(offset, offset)
+    .single();
+
+  if (error || !data) return null;
+
+  const row = data as unknown as PlayerRow;
+  if (!row.player_teams || row.player_teams.length === 0) return null;
+
+  return {
+    id: row.id,
+    name: row.name,
+    thumbnail: row.thumbnail,
+    nationality: row.nationality,
+    formerTeams: row.player_teams.map((t) => ({
+      teamId: t.team_id,
+      teamName: t.team_name,
+      yearJoined: t.year_joined,
+      yearDeparted: t.year_departed,
+      badge: t.badge,
+    })),
+  };
+}
+
 export async function getPlayerWithTeamsCached(player: Player): Promise<PlayerWithTeams> {
   // Try cache first
   try {
