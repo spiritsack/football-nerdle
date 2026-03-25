@@ -164,10 +164,10 @@ export function useGuessGame() {
     const dayNum = getDayNumber(today);
     const won = state.status === "won";
     const score = won ? `${state.attempts}/${MAX_ATTEMPTS}` : `X/${MAX_ATTEMPTS}`;
+    const wrongCount = won ? state.attempts - 1 : state.attempts;
     const squares = Array.from({ length: MAX_ATTEMPTS }, (_, i) => {
-      if (i < state.attempts - (won ? 1 : 0)) return "🟥";
-      if (won && i === state.attempts - 1) return "🟩";
-      return "⬛";
+      if (i < wrongCount) return "🟥";
+      return won ? "🟩" : "⬛";
     }).join("");
     const mode = state.isDaily ? `#${dayNum}` : "Random";
     const hardIndicator = hardMode ? "*" : "";
