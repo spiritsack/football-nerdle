@@ -20,11 +20,34 @@ export default function GuessGame() {
     getShareText,
   } = useGuessGame();
 
-  const [hardMode, setHardMode] = useState(false);
+  const [hardModeDisabled] = useState(() => {
+    try {
+      const stored = localStorage.getItem("football-nerdle-hard-mode-disabled");
+      if (!stored) return false;
+      const parsed = JSON.parse(stored);
+      const d = new Date();
+      const today = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+      return parsed.date === today;
+    } catch {
+      return false;
+    }
+  });
+  const [hardMode, setHardMode] = useState(!hardModeDisabled);
   const [copied, setCopied] = useState(false);
 
+  function toggleHardMode() {
+    if (hardMode) {
+      // Disabling hard mode — persist so it can't be re-enabled today
+      const d = new Date();
+      const today = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+      localStorage.setItem("football-nerdle-hard-mode-disabled", JSON.stringify({ date: today }));
+      setHardMode(false);
+    }
+    // Cannot re-enable once disabled
+  }
+
   function handleShare() {
-    const text = getShareText();
+    const text = getShareText(hardMode);
     navigator.clipboard.writeText(text).then(() => {
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
@@ -51,11 +74,12 @@ export default function GuessGame() {
         {/* Hard mode toggle */}
         {status === "playing" && (
           <button
-            onClick={() => setHardMode((h) => !h)}
+            onClick={toggleHardMode}
+            disabled={!hardMode}
             className={`px-4 py-1.5 rounded-full text-sm font-medium transition-colors ${
               hardMode
                 ? "bg-red-600 hover:bg-red-500 text-white"
-                : "bg-gray-700 hover:bg-gray-600 text-gray-300"
+                : "bg-gray-700 text-gray-500 cursor-not-allowed"
             }`}
           >
             Hard Mode: {hardMode ? "ON" : "OFF"}

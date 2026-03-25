@@ -160,7 +160,7 @@ export function useGuessGame() {
     [state.targetPlayer, state.status, state.attempts, state.isDaily]
   );
 
-  function getShareText(): string {
+  function getShareText(hardMode?: boolean): string {
     const dayNum = getDayNumber(today);
     const won = state.status === "won";
     const score = won ? `${state.attempts}/${MAX_ATTEMPTS}` : `X/${MAX_ATTEMPTS}`;
@@ -170,7 +170,8 @@ export function useGuessGame() {
       return "⬛";
     }).join("");
     const mode = state.isDaily ? `#${dayNum}` : "Random";
-    return `Football Nerdle ${mode} ${score}\n${squares}\nhttps://spiritsack.github.io/football-nerdle/#/guess`;
+    const hardIndicator = hardMode ? "*" : "";
+    return `Football Nerdle ${mode} ${score}${hardIndicator}\n${squares}\nhttps://spiritsack.github.io/football-nerdle/#/guess`;
   }
 
   // Auto-start daily on mount
