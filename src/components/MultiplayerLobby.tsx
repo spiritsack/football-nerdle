@@ -1,10 +1,10 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { useMultiplayerRoom } from "../hooks/useMultiplayerRoom";
 import MultiplayerGame from "./MultiplayerGame";
 
 export default function MultiplayerLobby() {
-  const { status, room, playerId, isHost, error, createRoom, joinRoom } =
+  const { status, room, playerId, isHost, error, createRoom, joinRoom, cleanup } =
     useMultiplayerRoom();
   const [joinCode, setJoinCode] = useState("");
   const [copied, setCopied] = useState(false);
@@ -18,8 +18,17 @@ export default function MultiplayerLobby() {
     });
   }
 
-  // Once both players are ready, show the game
-  if (status === "ready" && room && playerId) {
+  // Clean up lobby channel before game mounts (so game can create its own with presence)
+  const [lobbyCleanedUp, setLobbyCleanedUp] = useState(false);
+  useEffect(() => {
+    if (status === "ready" && !lobbyCleanedUp) {
+      cleanup();
+      setLobbyCleanedUp(true);
+    }
+  }, [status, lobbyCleanedUp, cleanup]);
+
+  // Once both players are ready AND lobby channel is cleaned up, show the game
+  if (status === "ready" && lobbyCleanedUp && room && playerId) {
     return (
       <MultiplayerGame room={room} playerId={playerId} isHost={isHost} />
     );
@@ -97,6 +106,11 @@ export default function MultiplayerLobby() {
         {/* Joining */}
         {status === "joining" && (
           <p className="text-gray-400">Joining room...</p>
+        )}
+
+        {/* Reconnecting */}
+        {status === "reconnecting" && (
+          <p className="text-gray-400">Reconnecting to game...</p>
         )}
 
         {/* Waiting for opponent */}

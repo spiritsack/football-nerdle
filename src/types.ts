@@ -31,6 +31,8 @@ export interface GameRoom {
   used_player_ids: string[];
   last_shared_clubs: string[];
   turn_started_at: string | null;
+  host_last_seen: string | null;
+  guest_last_seen: string | null;
   winner: string | null;
   lose_reason: LoseReason | null;
   score: number;
