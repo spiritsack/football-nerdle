@@ -15,6 +15,7 @@ export default function GuessThePlayer() {
     error,
     isDaily,
     dayNumber,
+    stats,
     startDaily,
     startRandom,
     submitGuess,
@@ -207,20 +208,53 @@ export default function GuessThePlayer() {
         )}
 
         {resultScreen && (
-          <div className="flex gap-3">
-            <button
-              onClick={handleShare}
-              className="px-6 py-3 bg-blue-600 hover:bg-blue-500 rounded-lg font-semibold transition-colors"
-            >
-              {copied ? "Copied!" : "Share Result"}
-            </button>
-            <button
-              onClick={startRandom}
-              className="px-6 py-3 bg-green-600 hover:bg-green-500 rounded-lg font-semibold transition-colors"
-            >
-              Random Game
-            </button>
-          </div>
+          <>
+            <div className="flex gap-3">
+              <button
+                onClick={handleShare}
+                className="px-6 py-3 bg-blue-600 hover:bg-blue-500 rounded-lg font-semibold transition-colors"
+              >
+                {copied ? "Copied!" : "Share Result"}
+              </button>
+              <button
+                onClick={startRandom}
+                className="px-6 py-3 bg-green-600 hover:bg-green-500 rounded-lg font-semibold transition-colors"
+              >
+                Random Game
+              </button>
+            </div>
+
+            <div className="bg-gray-800 border border-gray-600 rounded-xl p-6 max-w-md w-full">
+              <h3 className="text-lg font-semibold text-center text-gray-300 mb-4">Your Stats</h3>
+              <div className="grid grid-cols-5 gap-2 text-center">
+                <div>
+                  <div className="text-2xl font-bold">{stats.played}</div>
+                  <div className="text-gray-400 text-xs">Played</div>
+                </div>
+                <div>
+                  <div className="text-2xl font-bold text-green-400">{stats.won}</div>
+                  <div className="text-gray-400 text-xs">Won</div>
+                </div>
+                <div>
+                  <div className="text-2xl font-bold text-red-400">{stats.lost}</div>
+                  <div className="text-gray-400 text-xs">Lost</div>
+                </div>
+                <div>
+                  <div className="text-2xl font-bold text-yellow-400">{stats.streak}</div>
+                  <div className="text-gray-400 text-xs">Streak</div>
+                </div>
+                <div>
+                  <div className="text-2xl font-bold text-yellow-400">{stats.longestStreak}</div>
+                  <div className="text-gray-400 text-xs">Best</div>
+                </div>
+              </div>
+              {stats.played > 0 && (
+                <div className="mt-3 text-center text-gray-400 text-sm">
+                  Win rate: {Math.round((stats.won / stats.played) * 100)}%
+                </div>
+              )}
+            </div>
+          </>
         )}
       </main>
     </div>

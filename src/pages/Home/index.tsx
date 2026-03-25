@@ -19,16 +19,6 @@ export default function Home() {
         </Link>
 
         <Link
-          to="/battle/multiplayer"
-          className="w-full bg-gray-800 border border-gray-600 hover:border-green-500 rounded-xl p-6 text-center transition-colors block"
-        >
-          <h2 className="text-2xl font-bold mb-2">Multiplayer Battle</h2>
-          <p className="text-gray-400">
-            Challenge a friend online! Take turns naming players who played together.
-          </p>
-        </Link>
-
-        <Link
           to="/guess"
           className="w-full bg-gray-800 border border-gray-600 hover:border-green-500 rounded-xl p-6 text-center transition-colors block"
         >
