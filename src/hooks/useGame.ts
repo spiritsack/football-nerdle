@@ -1,5 +1,6 @@
 import { useState, useCallback, useRef, useEffect } from "react";
-import { getPlayerWithTeams, didPlayTogether, ApiError } from "../api/sportsdb";
+import { didPlayTogether, ApiError } from "../api/sportsdb";
+import { getPlayerWithTeamsCached } from "../api/playerCache";
 import type { Player, PlayerWithTeams } from "../types";
 import { SEED_PLAYERS } from "../data/seedPlayers";
 
@@ -91,7 +92,7 @@ export function useGame() {
     setState((s) => ({ ...s, status: "loading", wrongResult: null, timedOut: false, error: null }));
     try {
       const seed = SEED_PLAYERS[Math.floor(Math.random() * SEED_PLAYERS.length)];
-      const playerWithTeams = await getPlayerWithTeams(seed);
+      const playerWithTeams = await getPlayerWithTeamsCached(seed);
       setState({
         chain: [playerWithTeams],
         currentPlayer: playerWithTeams,
@@ -118,7 +119,7 @@ export function useGame() {
       setState((s) => ({ ...s, status: "checking", error: null }));
 
       try {
-        const playerWithTeams = await getPlayerWithTeams(player);
+        const playerWithTeams = await getPlayerWithTeamsCached(player);
         const result = didPlayTogether(state.currentPlayer, playerWithTeams);
 
         if (result.together) {

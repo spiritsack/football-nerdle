@@ -1,5 +1,6 @@
 import { useState, useCallback, useEffect } from "react";
-import { getPlayerWithTeams, ApiError } from "../api/sportsdb";
+import { ApiError } from "../api/sportsdb";
+import { getPlayerWithTeamsCached } from "../api/playerCache";
 import type { Player, PlayerWithTeams, FormerTeam } from "../types";
 import { SEED_PLAYERS } from "../data/seedPlayers";
 
@@ -77,7 +78,7 @@ export function useGuessGame() {
     try {
       const index = getDailyPlayerIndex(today);
       const seed = SEED_PLAYERS[index];
-      const playerWithTeams = await getPlayerWithTeams(seed);
+      const playerWithTeams = await getPlayerWithTeamsCached(seed);
       const stored = getDailyResult();
       const completed = stored?.date === today;
       if (completed) {
@@ -112,7 +113,7 @@ export function useGuessGame() {
     setState((s) => ({ ...s, status: "loading", error: null }));
     try {
       const seed = SEED_PLAYERS[Math.floor(Math.random() * SEED_PLAYERS.length)];
-      const playerWithTeams = await getPlayerWithTeams(seed);
+      const playerWithTeams = await getPlayerWithTeamsCached(seed);
       setState({
         targetPlayer: playerWithTeams,
         clubs: playerWithTeams.formerTeams,
