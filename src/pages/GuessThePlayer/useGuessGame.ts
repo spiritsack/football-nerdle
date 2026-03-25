@@ -1,6 +1,7 @@
 import { useState, useCallback, useEffect } from "react";
 import { ApiError } from "../../api/sportsdb";
 import { getPlayerWithTeamsCached } from "../../api/playerCache";
+import { refreshPoolIfNeeded, getRandomPoolPlayer } from "../../api/playerPool";
 import type { Player } from "../../types";
 import { SEED_PLAYERS } from "../../data/seedPlayers";
 import { MAX_ATTEMPTS, SHARE_URL } from "./constants";
@@ -62,9 +63,10 @@ export function useGuessGame() {
 
   const startRandom = useCallback(async () => {
     setState((s) => ({ ...s, status: "loading", error: null }));
+    // Trigger daily pool refresh in background (fire-and-forget)
+    refreshPoolIfNeeded();
     try {
-      const seed = SEED_PLAYERS[Math.floor(Math.random() * SEED_PLAYERS.length)];
-      const playerWithTeams = await getPlayerWithTeamsCached(seed);
+      const playerWithTeams = await getRandomPoolPlayer();
       setState({
         targetPlayer: playerWithTeams,
         clubs: playerWithTeams.formerTeams,
