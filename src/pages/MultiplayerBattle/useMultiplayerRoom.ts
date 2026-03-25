@@ -1,43 +1,9 @@
 import { useState, useCallback, useEffect, useRef } from "react";
-import { createRoom, joinRoom, subscribeToRoom, getRoom, resetTurnTimer } from "../api/multiplayerRoom";
-import type { GameRoom } from "../types";
+import { createRoom, joinRoom, subscribeToRoom, getRoom, resetTurnTimer } from "../../api/multiplayerRoom";
+import type { GameRoom } from "../../types";
 import type { RealtimeChannel } from "@supabase/supabase-js";
-
-type LobbyStatus = "idle" | "creating" | "waiting" | "joining" | "reconnecting" | "ready" | "error";
-
-interface LobbyState {
-  status: LobbyStatus;
-  room: GameRoom | null;
-  playerId: string | null;
-  isHost: boolean;
-  error: string | null;
-}
-
-const SESSION_KEY = "football-nerdle-mp-session";
-
-interface StoredSession {
-  roomId: string;
-  playerId: string;
-  isHost: boolean;
-}
-
-function saveSession(roomId: string, playerId: string, isHost: boolean) {
-  localStorage.setItem(SESSION_KEY, JSON.stringify({ roomId, playerId, isHost }));
-}
-
-function loadSession(): StoredSession | null {
-  try {
-    const stored = localStorage.getItem(SESSION_KEY);
-    if (!stored) return null;
-    return JSON.parse(stored);
-  } catch {
-    return null;
-  }
-}
-
-function clearSession() {
-  localStorage.removeItem(SESSION_KEY);
-}
+import type { LobbyState } from "./types";
+import { saveSession, loadSession, clearSession } from "./helpers";
 
 export function useMultiplayerRoom() {
   const [state, setState] = useState<LobbyState>({
@@ -84,11 +50,9 @@ export function useMultiplayerRoom() {
     cleanupChannel();
     setState((s) => ({ ...s, status: "joining", error: null }));
     try {
-      // Pass existing playerId from session if available (for reconnection via code)
       const session = loadSession();
       const { room, playerId, isHost } = await joinRoom(code, session?.playerId);
       saveSession(room.id, playerId, isHost);
-      // Only reset turn timer if the current turn has expired
       if (room.status === "playing" && room.turn_started_at) {
         const elapsed = (Date.now() - new Date(room.turn_started_at).getTime()) / 1000;
         if (elapsed > 15) {
@@ -107,8 +71,7 @@ export function useMultiplayerRoom() {
     }
   }, [handleRoomUpdate]);
 
-  // Attempt to reconnect to an existing session
-  const handleReconnect = useCallback(async (session: StoredSession) => {
+  const handleReconnect = useCallback(async (session: { roomId: string; playerId: string; isHost: boolean }) => {
     cleanupChannel();
     setState((s) => ({ ...s, status: "reconnecting", error: null }));
     try {
@@ -118,7 +81,6 @@ export function useMultiplayerRoom() {
         setState({ status: "idle", room: null, playerId: null, isHost: false, error: null });
         return;
       }
-      // Don't reconnect to finished or stale rooms (> 2 hours old)
       const roomAge = Date.now() - new Date(room.created_at).getTime();
       const isStale = roomAge > 2 * 60 * 60 * 1000;
       if (room.status === "finished" || isStale) {
@@ -126,7 +88,6 @@ export function useMultiplayerRoom() {
         setState({ status: "idle", room: null, playerId: null, isHost: false, error: null });
         return;
       }
-      // Verify we're still a participant
       const isParticipant =
         room.host_id === session.playerId || room.guest_id === session.playerId;
       if (!isParticipant) {
@@ -135,7 +96,6 @@ export function useMultiplayerRoom() {
         return;
       }
       const isReady = room.status === "playing" || (room.status === "waiting" && room.guest_id);
-      // Only reset turn timer if the current turn has expired (actual disconnect scenario)
       if (room.status === "playing" && room.turn_started_at) {
         const elapsed = (Date.now() - new Date(room.turn_started_at).getTime()) / 1000;
         if (elapsed > 15) {
@@ -158,20 +118,17 @@ export function useMultiplayerRoom() {
     }
   }, [handleRoomUpdate]);
 
-  // On mount: check for reconnect, then URL code
   const initRan = useRef(false);
   useEffect(() => {
     if (initRan.current) return;
     initRan.current = true;
 
-    // Try reconnecting to existing session first
     const session = loadSession();
     if (session) {
       handleReconnect(session);
       return;
     }
 
-    // Check for ?code= in URL
     const params = new URLSearchParams(window.location.hash.split("?")[1] || "");
     const code = params.get("code");
     if (code) {
@@ -182,12 +139,10 @@ export function useMultiplayerRoom() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Cleanup subscription on unmount
   useEffect(() => {
     return () => cleanupChannel();
   }, []);
 
-  // Poll for room updates as a fallback
   useEffect(() => {
     if (state.status !== "waiting" || !state.room) return;
     const interval = setInterval(async () => {

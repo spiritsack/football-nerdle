@@ -1,12 +1,7 @@
 import { useState, useRef, useEffect } from "react";
-import { searchPlayers } from "../api/sportsdb";
-import type { Player } from "../types";
-
-interface PlayerSearchProps {
-  onSelect: (player: Player) => void;
-  disabled?: boolean;
-  usedPlayerIds?: Set<string>;
-}
+import { searchPlayers } from "../../api/sportsdb";
+import type { Player } from "../../types";
+import type { PlayerSearchProps } from "./types";
 
 export default function PlayerSearch({ onSelect, disabled, usedPlayerIds }: PlayerSearchProps) {
   const [query, setQuery] = useState("");
@@ -30,7 +25,6 @@ export default function PlayerSearch({ onSelect, disabled, usedPlayerIds }: Play
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  // Scroll highlighted item into view
   useEffect(() => {
     if (highlightIndex < 0 || !listRef.current) return;
     const item = listRef.current.children[highlightIndex] as HTMLElement | undefined;

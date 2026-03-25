@@ -34,30 +34,34 @@ src/
   main.tsx              — Entry point
   App.tsx               — Routes: /, /battle, /guess, /battle/multiplayer
   types.ts              — Shared types: Player, FormerTeam, PlayerWithTeams, GameRoom
+  constants.ts          — Shared constants (TURN_TIME)
   index.css             — Global styles (Tailwind imports)
   api/
     sportsdb.ts         — TheSportsDB API client (search, former teams, overlap check)
     supabaseClient.ts   — Supabase client singleton
     playerCache.ts      — Cache-through wrapper: Supabase first, fallback to TheSportsDB
     multiplayerRoom.ts  — Room CRUD: createRoom, joinRoom, updateTurn, subscribeToRoom
+  pages/
+    Home/               — Landing page
+      index.tsx
+    Battle/             — Single-player Battle Mode
+      index.tsx, types.ts, constants.ts, helpers.ts, useGame.ts
+    GuessThePlayer/     — Guess the Player game
+      index.tsx, types.ts, constants.ts, helpers.ts, useGuessGame.ts
+    MultiplayerBattle/  — Online multiplayer Battle Mode
+      index.tsx, types.ts, constants.ts, helpers.ts
+      useMultiplayerRoom.ts, useMultiplayerGame.ts
+      MultiplayerGame/  — In-game component
+        index.tsx
   components/
-    Home.tsx             — Landing page with game mode links
-    Game.tsx             — Single-player Battle Mode UI
-    GuessGame.tsx        — Guess the Player UI
-    PlayerSearch.tsx     — Reusable player autocomplete search component
-    MultiplayerLobby.tsx — Create/join multiplayer room UI
-    MultiplayerGame.tsx  — Multiplayer Battle Mode game UI
-  hooks/
-    useGame.ts           — Single-player Battle Mode state/logic
-    useGuessGame.ts      — Guess the Player state/logic
-    useMultiplayerRoom.ts — Lobby state: create/join room
-    useMultiplayerGame.ts — Multiplayer game state, Realtime subscription, turn logic
+    PlayerSearch/       — Reusable player autocomplete search
+      index.tsx, types.ts
   data/
-    seedPlayers.ts       — 19 hardcoded seed players used for daily puzzle + random starts
+    seedPlayers.ts      — 19 hardcoded seed players
 scripts/
-  seed-players.ts        — Pre-populate Supabase with seed player data
+  seed-players.ts       — Pre-populate Supabase with seed player data
 supabase/
-  migrations/            — SQL migration files for Supabase schema
+  migrations/           — SQL migration files for Supabase schema
 ```
 
 ## Architecture
@@ -68,7 +72,9 @@ supabase/
 ## Conventions
 
 - All components are function components with default exports
-- Hooks are in `src/hooks/` and follow `useXxx` naming
+- Each page/component gets its own folder with `index.tsx`, `types.ts`, and optionally `helpers.ts`, `constants.ts`
+- Page-specific hooks live alongside their page (e.g. `pages/Battle/useGame.ts`)
+- Shared types/constants live at `src/types.ts` and `src/constants.ts`
 - API layer wraps TheSportsDB with typed responses and `ApiError` class
 - No test framework configured
 - No state management library; hooks + useState
@@ -76,5 +82,6 @@ supabase/
 
 ## Game-specific docs
 
-- [src/components/CLAUDE.md](src/components/CLAUDE.md) — Battle Mode details
-- [src/components/CLAUDE-guess.md](src/components/CLAUDE-guess.md) — Guess the Player details
+- [src/pages/Battle/CLAUDE.md](src/pages/Battle/CLAUDE.md) — Battle Mode details
+- [src/pages/GuessThePlayer/CLAUDE.md](src/pages/GuessThePlayer/CLAUDE.md) — Guess the Player details
+- [src/pages/MultiplayerBattle/CLAUDE.md](src/pages/MultiplayerBattle/CLAUDE.md) — Multiplayer Battle details

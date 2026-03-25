@@ -1,29 +1,14 @@
 import { useState, useCallback, useRef, useEffect } from "react";
-import { didPlayTogether, ApiError } from "../api/sportsdb";
-import { getPlayerWithTeamsCached } from "../api/playerCache";
-import { startGame, submitTurn, endGame, subscribeToRoom, getRoom, sendHeartbeat } from "../api/multiplayerRoom";
-import type { Player, GameRoom } from "../types";
-import { SEED_PLAYERS } from "../data/seedPlayers";
+import { didPlayTogether, ApiError } from "../../api/sportsdb";
+import { getPlayerWithTeamsCached } from "../../api/playerCache";
+import { startGame, submitTurn, endGame, subscribeToRoom, getRoom, sendHeartbeat } from "../../api/multiplayerRoom";
+import type { Player, GameRoom } from "../../types";
+import { SEED_PLAYERS } from "../../data/seedPlayers";
+import { TURN_TIME } from "../../constants";
+import { HEARTBEAT_INTERVAL, DISCONNECT_THRESHOLD, DISCONNECT_GRACE } from "./constants";
+import { clearSession } from "./helpers";
+import type { MultiplayerGameStatus, MultiplayerGameState } from "./types";
 import type { RealtimeChannel } from "@supabase/supabase-js";
-
-type GameStatus = "starting" | "playing" | "checking" | "finished";
-
-interface WrongResult {
-  player: Player;
-  checkedClubs: { a: string[]; b: string[] };
-}
-
-interface MultiplayerGameState {
-  room: GameRoom;
-  status: GameStatus;
-  error: string | null;
-  wrongResult: WrongResult | null;
-}
-
-const TURN_TIME = 15;
-const HEARTBEAT_INTERVAL = 3_000;   // send heartbeat every 3s
-const DISCONNECT_THRESHOLD = 10_000; // consider disconnected after 10s without heartbeat
-const DISCONNECT_GRACE = 60_000;     // end game after 60s disconnected
 
 export function useMultiplayerGame(
   initialRoom: GameRoom,
@@ -31,7 +16,7 @@ export function useMultiplayerGame(
   isHost: boolean,
 ) {
   const [state, setState] = useState<MultiplayerGameState>(() => {
-    let status: GameStatus = "starting";
+    let status: MultiplayerGameStatus = "starting";
     if (initialRoom.status === "playing") status = "playing";
     else if (initialRoom.status === "finished") status = "finished";
     return { room: initialRoom, status, error: null, wrongResult: null };
@@ -50,8 +35,11 @@ export function useMultiplayerGame(
     ? chain[chain.length - 1]
     : null;
 
-  function deriveStatus(room: GameRoom, prev: GameStatus): GameStatus {
-    if (room.status === "finished") return "finished";
+  function deriveStatus(room: GameRoom, prev: MultiplayerGameStatus): MultiplayerGameStatus {
+    if (room.status === "finished") {
+      clearSession();
+      return "finished";
+    }
     if (room.status === "playing") {
       if (prev === "starting" || prev === "finished") return "playing";
       if (prev === "checking" && room.current_turn === playerId) return "playing";
@@ -81,7 +69,6 @@ export function useMultiplayerGame(
     });
   }
 
-  // Subscribe to room updates (DB changes only, no Presence)
   useEffect(() => {
     channelRef.current = subscribeToRoom(state.room.id, applyRoomUpdate);
     return () => {
@@ -89,7 +76,6 @@ export function useMultiplayerGame(
     };
   }, [state.room.id, playerId]);
 
-  // Heartbeat: send our last_seen every 3s
   useEffect(() => {
     if (state.status === "finished") return;
     sendHeartbeat(state.room.id, isHost);
@@ -99,7 +85,6 @@ export function useMultiplayerGame(
     return () => clearInterval(interval);
   }, [state.room.id, isHost, state.status]);
 
-  // Detect opponent disconnect by polling their last_seen directly from DB
   const opponentConnectedRef = useRef(true);
   useEffect(() => {
     if (state.status === "finished") return;
@@ -139,7 +124,6 @@ export function useMultiplayerGame(
     };
   }, [state.room.id, state.status, isHost, playerId]);
 
-  // Poll room as fallback
   useEffect(() => {
     const interval = setInterval(async () => {
       const room = await getRoom(state.room.id);
@@ -153,7 +137,6 @@ export function useMultiplayerGame(
             roomChain.length === prevChain.length &&
             room.winner === s.room.winner
           ) {
-            // Still update heartbeat fields even if game state hasn't changed
             return {
               ...s,
               room: { ...s.room, host_last_seen: room.host_last_seen, guest_last_seen: room.guest_last_seen },
@@ -181,7 +164,6 @@ export function useMultiplayerGame(
     return () => clearInterval(interval);
   }, [state.room.id, playerId]);
 
-  // Timer management
   const stopTimer = useCallback(() => {
     if (timerRef.current) {
       clearInterval(timerRef.current);
@@ -204,7 +186,6 @@ export function useMultiplayerGame(
     }, 1000);
   }, [stopTimer]);
 
-  // Sync timer to turn_started_at — pause when opponent disconnects
   useEffect(() => {
     if (state.room.status !== "playing" || !state.room.turn_started_at || !opponentConnected) {
       stopTimer();
@@ -236,17 +217,14 @@ export function useMultiplayerGame(
     return () => stopTimer();
   }, [state.room.turn_started_at, state.room.status, opponentConnected, stopTimer]);
 
-  // Handle timeout (don't trigger while opponent disconnected)
   useEffect(() => {
     if (timeLeft === 0 && state.room.status === "playing" && isMyTurn && opponentConnected) {
       endGame(state.room.id, opponentId, "timeout");
     }
   }, [timeLeft, state.room.status, state.room.id, isMyTurn, opponentId, opponentConnected]);
 
-  // Cleanup on unmount
   useEffect(() => stopTimer, [stopTimer]);
 
-  // Host starts or rematches
   const handleStart = useCallback(async () => {
     if (!isHost) return;
     setState((s) => ({ ...s, status: "starting", error: null, wrongResult: null }));
@@ -279,7 +257,6 @@ export function useMultiplayerGame(
     }
   }, [isHost, state.room.id, playerId, startTimer]);
 
-  // Submit a player guess
   const handleSubmit = useCallback(async (player: Player) => {
     if (!isMyTurn || !currentPlayer || state.status !== "playing") return;
     if ((state.room.used_player_ids ?? []).includes(player.id)) return;

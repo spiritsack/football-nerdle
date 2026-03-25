@@ -1,7 +1,8 @@
 import { Link } from "react-router-dom";
-import { useMultiplayerGame } from "../hooks/useMultiplayerGame";
-import PlayerSearch from "./PlayerSearch";
-import type { GameRoom } from "../types";
+import { useMultiplayerGame } from "../useMultiplayerGame";
+import { SESSION_KEY } from "../constants";
+import PlayerSearch from "../../../components/PlayerSearch";
+import type { GameRoom } from "../../../types";
 
 interface Props {
   room: GameRoom;
@@ -43,7 +44,6 @@ export default function MultiplayerGame({ room: initialRoom, playerId, isHost }:
       </header>
 
       <main className="flex-1 flex flex-col items-center px-4 py-8 gap-6">
-        {/* Pre-game: host starts */}
         {status === "starting" && (
           <div className="flex flex-col items-center gap-4">
             <p className="text-gray-300 text-lg">Both players connected!</p>
@@ -67,10 +67,8 @@ export default function MultiplayerGame({ room: initialRoom, playerId, isHost }:
           </div>
         )}
 
-        {/* In-game */}
         {(status === "playing" || status === "checking") && (
           <>
-            {/* Turn indicator & timer */}
             <div className="flex gap-6 text-lg items-center">
               <div>
                 Chain: <span className="text-green-400 font-bold">{room.score}</span>
@@ -94,7 +92,6 @@ export default function MultiplayerGame({ room: initialRoom, playerId, isHost }:
               </div>
             )}
 
-            {/* Chain display */}
             {chain.length > 1 && (
               <div className="w-full max-w-2xl overflow-x-auto">
                 <div className="flex gap-2 items-center pb-2">
@@ -111,7 +108,6 @@ export default function MultiplayerGame({ room: initialRoom, playerId, isHost }:
               </div>
             )}
 
-            {/* Current player card */}
             {currentPlayer && (
               <div className="bg-gray-800 border border-gray-600 rounded-xl p-6 text-center max-w-sm w-full">
                 {currentPlayer.thumbnail && (
@@ -131,14 +127,12 @@ export default function MultiplayerGame({ room: initialRoom, playerId, isHost }:
               </div>
             )}
 
-            {/* Error */}
             {error && (
               <div className="bg-orange-900/30 border border-orange-700 rounded-lg px-4 py-3 max-w-md w-full text-center text-orange-300 text-sm">
                 {error}
               </div>
             )}
 
-            {/* Search (only when it's my turn) */}
             {isMyTurn && status === "playing" && (
               <>
                 <p className="text-gray-300">
@@ -161,7 +155,6 @@ export default function MultiplayerGame({ room: initialRoom, playerId, isHost }:
           </>
         )}
 
-        {/* Game Over */}
         {isFinished && (
           <div className={`${iWon ? "bg-green-900/30 border-green-700" : "bg-red-900/30 border-red-700"} border rounded-xl p-6 max-w-md w-full text-center`}>
             <h2 className={`text-2xl font-bold mb-2 ${iWon ? "text-green-400" : "text-red-400"}`}>
@@ -233,7 +226,7 @@ export default function MultiplayerGame({ room: initialRoom, playerId, isHost }:
                 to="/battle/multiplayer"
                 className="px-6 py-3 bg-gray-700 hover:bg-gray-600 rounded-lg font-semibold transition-colors"
                 onClick={() => {
-                  localStorage.removeItem("football-nerdle-mp-session");
+                  localStorage.removeItem(SESSION_KEY);
                   window.location.reload();
                 }}
               >
