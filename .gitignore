@@ -30,3 +30,8 @@ lerna-debug.log*
 
 # OS
 .DS_Store
+
+# Claude Code
+.claude
+.agents
+skills-lock.json
