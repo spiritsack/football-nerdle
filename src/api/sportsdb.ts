@@ -36,11 +36,16 @@ interface SportsDbPlayer {
   idPlayer: string;
   strPlayer: string;
   strThumb: string | null;
+  strCutout: string | null;
   strNationality: string | null;
   strSport: string;
   idTeam: string | null;
   strTeam: string | null;
   dateSigned: string | null;
+  strStatus?: string;
+  strPosition?: string;
+  dateBorn?: string;
+  strGender?: string;
 }
 
 interface SportsDbFormerTeam {
@@ -196,4 +201,30 @@ export function didPlayTogether(
     together: sharedClubs.length > 0,
     clubs: [...new Set(sharedClubs)],
   };
+}
+
+export interface TeamPlayer {
+  id: string;
+  name: string;
+  thumbnail: string;
+  nationality: string;
+  position: string;
+  dateBorn: string;
+  status: string;
+}
+
+export async function getTeamPlayers(teamId: string): Promise<TeamPlayer[]> {
+  const data = await apiFetch(`${BASE_URL}/lookup_all_players.php?id=${encodeURIComponent(teamId)}`) as { player?: SportsDbPlayer[] };
+  if (!data.player) return [];
+  return data.player
+    .filter((p) => p.strSport === "Soccer" && p.strGender === "Male")
+    .map((p) => ({
+      id: p.idPlayer,
+      name: p.strPlayer,
+      thumbnail: p.strThumb ?? p.strCutout ?? "",
+      nationality: p.strNationality ?? "",
+      position: p.strPosition ?? "",
+      dateBorn: p.dateBorn ?? "",
+      status: p.strStatus ?? "",
+    }));
 }
