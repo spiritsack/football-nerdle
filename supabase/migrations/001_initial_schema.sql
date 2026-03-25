@@ -33,6 +33,8 @@ CREATE TABLE game_rooms (
   used_player_ids JSONB NOT NULL DEFAULT '[]',
   last_shared_clubs JSONB NOT NULL DEFAULT '[]',
   turn_started_at TIMESTAMPTZ,
+  host_last_seen TIMESTAMPTZ,
+  guest_last_seen TIMESTAMPTZ,
   winner TEXT,
   lose_reason TEXT,
   score INT NOT NULL DEFAULT 0,
