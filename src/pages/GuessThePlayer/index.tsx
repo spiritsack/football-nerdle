@@ -112,7 +112,7 @@ export default function GuessThePlayer() {
               <span className="text-gray-500"> / {maxAttempts}</span>
             </div>
 
-            <div className="bg-gray-800 border border-gray-600 rounded-xl p-6 max-w-md w-full">
+            <div className="bg-gray-800 border border-gray-600 rounded-xl p-6 max-w-lg w-full">
               <h2 className="text-lg font-semibold mb-4 text-center text-gray-300">Club History</h2>
               {hardMode ? (
                 <div className="flex flex-col md:flex-row items-center justify-center gap-1 flex-wrap">
@@ -144,7 +144,7 @@ export default function GuessThePlayer() {
                           <div className="w-8 h-8 bg-gray-600 rounded flex items-center justify-center text-[0.5rem] text-gray-300 text-center p-0.5 leading-tight">{club.teamName}</div>
                         )}
                         <span className="font-medium">{club.teamName}</span>
-                        <span className="text-gray-400 text-sm ml-auto">
+                        <span className="bg-gray-800 text-gray-300 text-xs px-2.5 py-1 rounded-full ml-auto whitespace-nowrap">
                           {club.yearJoined}{club.yearDeparted ? ` – ${club.yearDeparted}` : " – present"}
                         </span>
                       </div>

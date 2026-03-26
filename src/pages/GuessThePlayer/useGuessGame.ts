@@ -87,7 +87,9 @@ export function useGuessGame() {
     (player: Player) => {
       if (!state.targetPlayer || state.status !== "playing") return;
 
-      if (player.id === state.targetPlayer.id) {
+      const isCorrect = player.id === state.targetPlayer.id ||
+        player.name.toLowerCase() === state.targetPlayer.name.toLowerCase();
+      if (isCorrect) {
         const finalAttempts = state.attempts + 1;
         if (state.isDaily) {
           saveDailyResult("won", finalAttempts);
