@@ -69,6 +69,21 @@ supabase/
 - **Player data caching**: `playerCache.ts` checks Supabase first, falls back to TheSportsDB, and caches the result. `searchPlayers` still hits TheSportsDB directly (free-text search can't be cached).
 - **Multiplayer**: Supabase Realtime (Postgres Changes) syncs game room state between two clients. The `game_rooms` DB row is the single source of truth. Optimistic locking on `current_turn` prevents race conditions.
 
+## Git Workflow
+
+- **Never push directly to main** — all changes go through feature branches and pull requests
+- Branch naming: `feat/description`, `fix/description`, `refactor/description`
+- **Conventional commits**: `feat:`, `fix:`, `refactor:`, `test:`, `docs:`, `chore:`
+- CI runs unit tests (Vitest) and E2E tests (Playwright) before deploy
+- Main branch auto-deploys to GitHub Pages on merge
+
+## Testing
+
+- **Unit tests**: `npm test` — Vitest, files in `src/__tests__/`
+- **E2E tests**: `npm run test:e2e` — Playwright, files in `e2e/`
+- Changes that affect behavior must include test updates
+- E2E tests use real Supabase data with mocked TheSportsDB search API
+
 ## Conventions
 
 - All components are function components with default exports
@@ -76,7 +91,6 @@ supabase/
 - Page-specific hooks live alongside their page (e.g. `pages/Battle/useGame.ts`)
 - Shared types/constants live at `src/types.ts` and `src/constants.ts`
 - API layer wraps TheSportsDB with typed responses and `ApiError` class
-- No test framework configured
 - No state management library; hooks + useState
 - Tailwind utility classes inline, dark theme (gray-900 bg)
 
