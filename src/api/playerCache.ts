@@ -114,18 +114,23 @@ async function saveToCache(player: PlayerWithTeams): Promise<void> {
 export async function getRandomCachedPlayer(): Promise<PlayerWithTeams | null> {
   if (!supabase) return null;
 
-  // Count players that have club history
-  const { count, error: countError } = await supabase
-    .from("players")
-    .select("id", { count: "exact", head: true });
+  // Get IDs of players who play/played for a top club
+  const { data: topPlayerRows, error: topError } = await supabase
+    .from("player_clubs")
+    .select("player_id, clubs!inner(is_top_club)")
+    .eq("clubs.is_top_club", true);
 
-  if (countError || !count || count === 0) return null;
+  if (topError || !topPlayerRows || topPlayerRows.length === 0) return null;
 
-  const offset = Math.floor(Math.random() * count);
+  // Deduplicate player IDs
+  const playerIds = [...new Set(topPlayerRows.map((r) => r.player_id))];
+  const randomId = playerIds[Math.floor(Math.random() * playerIds.length)];
+
+  // Fetch full player with clubs
   const { data, error } = await supabase
     .from("players")
     .select("id, name, thumbnail, nationality_id, countries(name), player_clubs(club_id, year_joined, year_departed, clubs(id, name, badge))")
-    .range(offset, offset)
+    .eq("id", randomId)
     .single();
 
   if (error || !data) return null;
