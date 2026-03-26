@@ -4,9 +4,19 @@ import type { Player, PlayerWithTeams, FormerTeam } from "../types";
 
 function sortAndMergeTeams(teams: FormerTeam[]): FormerTeam[] {
   const sorted = teams.sort((a, b) => {
-    const aYear = parseInt(a.yearJoined, 10) || 9999;
-    const bYear = parseInt(b.yearJoined, 10) || 9999;
-    return aYear - bYear;
+    const aJoin = parseInt(a.yearJoined, 10) || 0;
+    const bJoin = parseInt(b.yearJoined, 10) || 0;
+    const aDep = parseInt(a.yearDeparted, 10) || 0;
+    const bDep = parseInt(b.yearDeparted, 10) || 0;
+    const aYear = aJoin || aDep || 9999;
+    const bYear = bJoin || bDep || 9999;
+    if (aYear !== bYear) return aYear - bYear;
+    // Same year: entry with only departure (ended here) comes before entry with join (started here)
+    if (!aJoin && aDep) return -1;
+    if (!bJoin && bDep) return 1;
+    // Same join year: the one that departed earlier comes first
+    if (aDep !== bDep) return (aDep || 9999) - (bDep || 9999);
+    return 0;
   });
   // Merge consecutive stints at the same club
   const merged: FormerTeam[] = [];
