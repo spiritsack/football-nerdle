@@ -259,7 +259,10 @@ export default function GuessThePlayer() {
       </main>
 
       {targetPlayer && (status === "won" || status === "lost") && (
-        <footer className="py-4 text-center">
+        <footer className="py-4 text-center space-y-1">
+          <p className="text-gray-600 text-xs">
+            Data: {targetPlayer.id.startsWith("tm_") ? "TransferMarkt" : "TheSportsDB"}
+          </p>
           <a
             href={`https://github.com/spiritsack/football-nerdle/issues/new?title=${encodeURIComponent(`Data error: ${targetPlayer.name}`)}&body=${encodeURIComponent(`**Player:** ${targetPlayer.name} (ID: ${targetPlayer.id})\n**Clubs shown:**\n${clubs.map((c) => `- ${c.teamName} ${c.yearJoined}${c.yearDeparted ? ` – ${c.yearDeparted}` : " – present"}`).join("\n")}\n\n**What's wrong:**\n`)}&labels=data-error`}
             target="_blank"

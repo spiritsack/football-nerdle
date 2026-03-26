@@ -41,20 +41,48 @@ interface PlayerRow {
   countries: { name: string } | null;
 }
 
-async function getFromCache(playerId: string): Promise<PlayerWithTeams | null> {
+const PLAYER_SELECT = "id, name, thumbnail, nationality_id, countries(name), player_clubs(club_id, year_joined, year_departed, clubs(id, name, badge))";
+
+async function getFromCache(playerId: string, playerName?: string): Promise<PlayerWithTeams | null> {
   if (!supabase) return null;
 
+  // Try exact ID match first
   const { data, error } = await supabase
     .from("players")
-    .select("id, name, thumbnail, nationality_id, countries(name), player_clubs(club_id, year_joined, year_departed, clubs(id, name, badge))")
+    .select(PLAYER_SELECT)
     .eq("id", playerId)
     .single();
 
-  if (error || !data) return null;
+  if (!error && data) {
+    const row = data as unknown as PlayerRow;
+    if (row.player_clubs && row.player_clubs.length > 0) {
+      return buildPlayerWithTeams(row);
+    }
+  }
 
-  const row = data as unknown as PlayerRow;
-  if (!row.player_clubs || row.player_clubs.length === 0) return null;
+  // If no result or no clubs, try finding a TransferMarkt-sourced player by name
+  // This handles the case where search returns a TheSportsDB ID but we have better TM data
+  if (playerName) {
+    const { data: tmData } = await supabase
+      .from("players")
+      .select(PLAYER_SELECT)
+      .eq("data_source", "transfermarkt")
+      .ilike("name", playerName)
+      .limit(1)
+      .single();
 
+    if (tmData) {
+      const tmRow = tmData as unknown as PlayerRow;
+      if (tmRow.player_clubs && tmRow.player_clubs.length > 0) {
+        return buildPlayerWithTeams(tmRow);
+      }
+    }
+  }
+
+  return null;
+}
+
+function buildPlayerWithTeams(row: PlayerRow): PlayerWithTeams {
   const rawTeams: FormerTeam[] = row.player_clubs
     .filter((pc) => pc.clubs)
     .map((pc) => ({
@@ -111,6 +139,7 @@ async function saveToCache(player: PlayerWithTeams): Promise<void> {
       name: player.name,
       thumbnail: player.thumbnail,
       nationality_id: player.nationality || null,
+      data_source: "sportsdb",
     });
 
     // Upsert player-club relationships
@@ -196,7 +225,7 @@ export async function getRandomCachedPlayer(): Promise<PlayerWithTeams | null> {
 export async function getPlayerWithTeamsCached(player: Player): Promise<PlayerWithTeams> {
   // Try cache first
   try {
-    const cached = await getFromCache(player.id);
+    const cached = await getFromCache(player.id, player.name);
     if (cached) return cached;
   } catch {
     // Cache read failure — fall through to API
