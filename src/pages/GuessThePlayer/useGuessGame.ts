@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect } from "react";
 import { ApiError } from "../../api/sportsdb";
-import { getPlayerWithTeamsCached, getFromCacheById } from "../../api/playerCache";
+import { getPlayerWithTeamsCached } from "../../api/playerCache";
 import { refreshPoolIfNeeded, getRandomPoolPlayer } from "../../api/playerPool";
 import type { Player } from "../../types";
 import { SEED_PLAYERS } from "../../data/seedPlayers";
@@ -134,40 +134,15 @@ export function useGuessGame() {
     return `Football Nerdle ${mode} ${score}${hardIndicator}\n${squares}\n${SHARE_URL}`;
   }
 
-  // Start specific player by ID (debug)
-  const startById = useCallback(async (id: string) => {
-    setState((s) => ({ ...s, status: "loading", error: null }));
-    try {
-      const playerWithTeams = await getFromCacheById(id);
-      if (!playerWithTeams) throw new Error(`Player ${id} not found in cache`);
-      setState({
-        targetPlayer: playerWithTeams,
-        clubs: playerWithTeams.formerTeams,
-        attempts: 0,
-        status: "playing",
-        wrongGuesses: [],
-        error: null,
-        isDaily: false,
-        dailyCompleted: false,
-      });
-    } catch (e) {
-      const message = e instanceof Error ? e.message : "Something went wrong";
-      setState((s) => ({ ...s, status: "idle", error: message }));
-    }
-  }, []);
-
-  // Auto-start on mount — check for ?id=, ?mode=random, or daily
+  // Auto-start on mount — check for ?mode=random
   useEffect(() => {
     const params = new URLSearchParams(window.location.hash.split("?")[1] || "");
-    const id = params.get("id");
-    if (id) {
-      startById(id);
-    } else if (params.get("mode") === "random") {
+    if (params.get("mode") === "random") {
       startRandom();
     } else {
       startDaily();
     }
-  }, [startDaily, startRandom, startById]);
+  }, [startDaily, startRandom]);
 
   return {
     ...state,
