@@ -58,11 +58,16 @@ async function ensureCountry(nationality: string): Promise<void> {
 
 async function ensureClub(teamId: string, teamName: string, badge: string): Promise<void> {
   if (!supabase) return;
-  await supabase.from("clubs").upsert({
-    id: teamId,
-    name: teamName,
-    badge,
-  });
+  if (badge) {
+    // Has badge — upsert fully
+    await supabase.from("clubs").upsert({ id: teamId, name: teamName, badge });
+  } else {
+    // No badge — only insert if club doesn't exist yet (don't overwrite existing badge)
+    const { data } = await supabase.from("clubs").select("id").eq("id", teamId).single();
+    if (!data) {
+      await supabase.from("clubs").insert({ id: teamId, name: teamName, badge: "" });
+    }
+  }
 }
 
 async function saveToCache(player: PlayerWithTeams): Promise<void> {
