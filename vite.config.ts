@@ -5,4 +5,7 @@ import tailwindcss from '@tailwindcss/vite'
 export default defineConfig({
   base: '/football-nerdle/',
   plugins: [react(), tailwindcss()],
+  test: {
+    exclude: ['e2e/**', 'node_modules/**'],
+  },
 })
