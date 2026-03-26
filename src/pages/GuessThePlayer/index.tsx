@@ -257,6 +257,12 @@ export default function GuessThePlayer() {
           </>
         )}
       </main>
+
+      {targetPlayer && !isDaily && (
+        <footer className="py-2 text-center text-gray-600 text-xs">
+          Player ID: {targetPlayer.id}
+        </footer>
+      )}
     </div>
   );
 }
