@@ -2,7 +2,7 @@ import { supabase } from "./supabaseClient";
 import { getPlayerWithTeams } from "./sportsdb";
 import type { Player, PlayerWithTeams, FormerTeam } from "../types";
 
-function sortAndMergeTeams(teams: FormerTeam[]): FormerTeam[] {
+export function sortAndMergeTeams(teams: FormerTeam[]): FormerTeam[] {
   const sorted = teams.sort((a, b) => {
     const aJoin = parseInt(a.yearJoined, 10) || 0;
     const bJoin = parseInt(b.yearJoined, 10) || 0;
@@ -64,7 +64,7 @@ async function getCountryNames(): Promise<Set<string>> {
   return countryNamesCache;
 }
 
-function isNationalTeam(clubName: string, countryNames: Set<string>): boolean {
+export function isNationalTeam(clubName: string, countryNames: Set<string>): boolean {
   const name = clubName.trim();
   // Strip common suffixes: "Argentina U20", "Argentina U23", "France B"
   const baseName = name.replace(/\s+(U\d+|B|Yth\.|Youth|Olympic|Olympique)$/i, "").trim();
