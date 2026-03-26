@@ -51,3 +51,17 @@ npx tsx scripts/seed-players.ts
 ```
 
 This fetches rosters from ~21 top clubs and caches their full club histories. The free TheSportsDB API has rate limits, so the script may need to be run multiple times.
+
+### Running tests
+
+```bash
+npm test          # Unit tests (Vitest)
+npm run test:e2e  # E2E tests (Playwright)
+```
+
+### Contributing
+
+- Create a feature branch from `main` (`feat/description`, `fix/description`)
+- Use [conventional commits](https://www.conventionalcommits.org/) (`feat:`, `fix:`, `refactor:`, etc.)
+- Include tests for new features and bug fixes
+- Open a pull request — CI runs tests before deploy is allowed
