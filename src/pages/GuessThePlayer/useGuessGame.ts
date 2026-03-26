@@ -89,14 +89,18 @@ export function useGuessGame() {
 
       if (player.id === state.targetPlayer.id) {
         const finalAttempts = state.attempts + 1;
-        if (state.isDaily) saveDailyResult("won", finalAttempts);
-        setStats(recordResult(true));
+        if (state.isDaily) {
+          saveDailyResult("won", finalAttempts);
+          setStats(recordResult(true));
+        }
         setState((s) => ({ ...s, status: "won", attempts: finalAttempts, dailyCompleted: s.isDaily }));
       } else {
         const newAttempts = state.attempts + 1;
         if (newAttempts >= MAX_ATTEMPTS) {
-          if (state.isDaily) saveDailyResult("lost", newAttempts);
-          setStats(recordResult(false));
+          if (state.isDaily) {
+            saveDailyResult("lost", newAttempts);
+            setStats(recordResult(false));
+          }
           setState((s) => ({
             ...s,
             attempts: newAttempts,

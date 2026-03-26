@@ -2,6 +2,29 @@ import { supabase } from "./supabaseClient";
 import { getPlayerWithTeams } from "./sportsdb";
 import type { Player, PlayerWithTeams, FormerTeam } from "../types";
 
+function sortAndMergeTeams(teams: FormerTeam[]): FormerTeam[] {
+  const sorted = teams.sort((a, b) => {
+    const aYear = parseInt(a.yearJoined, 10) || 9999;
+    const bYear = parseInt(b.yearJoined, 10) || 9999;
+    return aYear - bYear;
+  });
+  // Merge consecutive stints at the same club
+  const merged: FormerTeam[] = [];
+  for (const team of sorted) {
+    const last = merged[merged.length - 1];
+    if (last && last.teamId === team.teamId) {
+      const lastDep = parseInt(last.yearDeparted, 10) || 0;
+      const currDep = parseInt(team.yearDeparted, 10) || 0;
+      if (!team.yearDeparted || currDep > lastDep) {
+        last.yearDeparted = team.yearDeparted;
+      }
+    } else {
+      merged.push({ ...team });
+    }
+  }
+  return merged;
+}
+
 interface PlayerClubRow {
   club_id: string;
   year_joined: string;
@@ -32,7 +55,7 @@ async function getFromCache(playerId: string): Promise<PlayerWithTeams | null> {
   const row = data as unknown as PlayerRow;
   if (!row.player_clubs || row.player_clubs.length === 0) return null;
 
-  const formerTeams: FormerTeam[] = row.player_clubs
+  const rawTeams: FormerTeam[] = row.player_clubs
     .filter((pc) => pc.clubs)
     .map((pc) => ({
       teamId: pc.clubs!.id,
@@ -47,7 +70,7 @@ async function getFromCache(playerId: string): Promise<PlayerWithTeams | null> {
     name: row.name,
     thumbnail: row.thumbnail,
     nationality: row.countries?.name ?? row.nationality_id ?? "",
-    formerTeams,
+    formerTeams: sortAndMergeTeams(rawTeams),
   };
 }
 
@@ -116,6 +139,8 @@ async function saveToCache(player: PlayerWithTeams): Promise<void> {
   }
 }
 
+const MIN_CLUBS = 3;
+
 export async function getRandomCachedPlayer(): Promise<PlayerWithTeams | null> {
   if (!supabase) return null;
 
@@ -127,28 +152,24 @@ export async function getRandomCachedPlayer(): Promise<PlayerWithTeams | null> {
 
   if (topError || !topPlayerRows || topPlayerRows.length === 0) return null;
 
-  // Deduplicate player IDs
-  const playerIds = [...new Set(topPlayerRows.map((r) => r.player_id))];
-  const randomId = playerIds[Math.floor(Math.random() * playerIds.length)];
+  // Deduplicate and shuffle player IDs
+  const playerIds = [...new Set(topPlayerRows.map((r) => r.player_id))]
+    .sort(() => Math.random() - 0.5);
 
-  // Fetch full player with clubs
-  const { data, error } = await supabase
-    .from("players")
-    .select("id, name, thumbnail, nationality_id, countries(name), player_clubs(club_id, year_joined, year_departed, clubs(id, name, badge))")
-    .eq("id", randomId)
-    .single();
+  // Try players until we find one with enough clubs (after merging)
+  for (const playerId of playerIds.slice(0, 20)) {
+    const { data, error } = await supabase
+      .from("players")
+      .select("id, name, thumbnail, nationality_id, countries(name), player_clubs(club_id, year_joined, year_departed, clubs(id, name, badge))")
+      .eq("id", playerId)
+      .single();
 
-  if (error || !data) return null;
+    if (error || !data) continue;
 
-  const row = data as unknown as PlayerRow;
-  if (!row.player_clubs || row.player_clubs.length === 0) return null;
+    const row = data as unknown as PlayerRow;
+    if (!row.player_clubs || row.player_clubs.length === 0) continue;
 
-  return {
-    id: row.id,
-    name: row.name,
-    thumbnail: row.thumbnail,
-    nationality: row.countries?.name ?? row.nationality_id ?? "",
-    formerTeams: row.player_clubs
+    const formerTeams = sortAndMergeTeams(row.player_clubs
       .filter((pc) => pc.clubs)
       .map((pc) => ({
         teamId: pc.clubs!.id,
@@ -156,8 +177,20 @@ export async function getRandomCachedPlayer(): Promise<PlayerWithTeams | null> {
         yearJoined: pc.year_joined,
         yearDeparted: pc.year_departed,
         badge: pc.clubs!.badge,
-      })),
-  };
+      })));
+
+    if (formerTeams.length < MIN_CLUBS) continue;
+
+    return {
+      id: row.id,
+      name: row.name,
+      thumbnail: row.thumbnail,
+      nationality: row.countries?.name ?? row.nationality_id ?? "",
+      formerTeams,
+    };
+  }
+
+  return null;
 }
 
 export async function getPlayerWithTeamsCached(player: Player): Promise<PlayerWithTeams> {
