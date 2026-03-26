@@ -22,9 +22,19 @@ export default function Home() {
           to="/guess"
           className="w-full bg-gray-800 border border-gray-600 hover:border-green-500 rounded-xl p-6 text-center transition-colors block"
         >
-          <h2 className="text-2xl font-bold mb-2">Guess the Player</h2>
+          <h2 className="text-2xl font-bold mb-2">Daily Guess the Player</h2>
           <p className="text-gray-400">
             See a player's club history and guess who it is. 5 attempts to get it right.
+          </p>
+        </Link>
+
+        <Link
+          to="/guess?mode=random"
+          className="w-full bg-gray-800 border border-gray-600 hover:border-green-500 rounded-xl p-6 text-center transition-colors block"
+        >
+          <h2 className="text-2xl font-bold mb-2">Random Guess the Player</h2>
+          <p className="text-gray-400">
+            Practice with a random player from top European clubs.
           </p>
         </Link>
       </main>
