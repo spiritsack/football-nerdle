@@ -316,6 +316,11 @@ export default function GuessThePlayer() {
             </p>
           )}
           {(status === "won" || status === "lost") && (
+            <p className="text-gray-600 text-xs">
+              Player ID: {targetPlayer.id}
+            </p>
+          )}
+          {(status === "won" || status === "lost") && (
             <a
               href={`https://github.com/spiritsack/football-nerdle/issues/new?title=${encodeURIComponent(`Data error: ${targetPlayer.name}`)}&body=${encodeURIComponent(`**Player:** ${targetPlayer.name} (ID: ${targetPlayer.id})\n**Clubs shown:**\n${clubs.map((c) => `- ${c.teamName} ${c.yearJoined}${c.yearDeparted ? ` – ${c.yearDeparted}` : " – present"}`).join("\n")}\n\n**What's wrong:**\n`)}&labels=data-error`}
               target="_blank"
