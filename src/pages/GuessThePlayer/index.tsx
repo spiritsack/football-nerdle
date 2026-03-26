@@ -315,7 +315,7 @@ export default function GuessThePlayer() {
               Data updated: {new Date(targetPlayer.cachedAt).toLocaleDateString("en-GB")}
             </p>
           )}
-          {(status === "won" || status === "lost") && !isDaily && (
+          {(status === "won" || status === "lost") && (
             <p className="text-gray-600 text-xs">
               Player ID: {targetPlayer.id}
             </p>
