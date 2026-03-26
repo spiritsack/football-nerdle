@@ -24,8 +24,8 @@ See a player's club history and guess who it is in **5 attempts**.
 - React 19 + TypeScript
 - Vite 8
 - Tailwind CSS 4
-- [TheSportsDB](https://www.thesportsdb.com/) API for player data and club histories
-- [Supabase](https://supabase.com/) for player data caching and multiplayer game rooms
+- [Supabase](https://supabase.com/) for player data and multiplayer game rooms
+- Player data sourced from [TransferMarkt](https://github.com/dcaribou/transfermarkt-datasets)
 
 ## Development
 
@@ -34,23 +34,22 @@ npm install
 npm run dev
 ```
 
-Copy `.env.example` to `.env` and fill in your credentials:
+Copy `.env.example` to `.env` and fill in your Supabase credentials:
 
 ```
-VITE_SPORTSDB_API_KEY=3
 VITE_SUPABASE_URL=https://your-project.supabase.co
-VITE_SUPABASE_PUBLISHABLE_DEFAULT_KEY=your-key-here
+VITE_SUPABASE_ANON_KEY=your-anon-key-here
 ```
 
-### Seeding the player database
+### Populating the database
 
-Populate Supabase with players from top European clubs:
+Import player data from TransferMarkt datasets:
 
 ```bash
-npx tsx scripts/seed-players.ts
+npx tsx scripts/import-transfermarkt.ts
 ```
 
-This fetches rosters from ~21 top clubs and caches their full club histories. The free TheSportsDB API has rate limits, so the script may need to be run multiple times.
+This downloads player and transfer CSVs from TransferMarkt and populates the Supabase database with ~17,500 players from top European leagues. Requires the Supabase **service role key** (not the anon key).
 
 ### Running tests
 

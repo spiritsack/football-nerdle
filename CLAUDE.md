@@ -8,17 +8,16 @@ A football (soccer) trivia web app with two game modes, deployed to GitHub Pages
 - **Build**: Vite 8
 - **Styling**: Tailwind CSS 4 (via `@tailwindcss/vite` plugin)
 - **Routing**: React Router DOM 7 (HashRouter for GitHub Pages compatibility)
-- **API**: TheSportsDB (`VITE_SPORTSDB_API_KEY` env var, defaults to free key `"3"`)
-- **Backend**: Supabase (Postgres + Realtime) — player data cache + multiplayer game rooms
+- **Backend**: Supabase (Postgres + Realtime) — player data + multiplayer game rooms
+- **Data Source**: [TransferMarkt datasets](https://github.com/dcaribou/transfermarkt-datasets) — imported via scripts
 - **Deployment**: GitHub Pages at `https://spiritsack.github.io/football-nerdle/`
 
 ## Environment Variables
 
 | Variable | Purpose |
 |----------|---------|
-| `VITE_SPORTSDB_API_KEY` | TheSportsDB API key (defaults to `"3"`) |
 | `VITE_SUPABASE_URL` | Supabase project URL |
-| `VITE_SUPABASE_ANON_KEY` | Supabase anonymous/public key |
+| `VITE_SUPABASE_ANON_KEY` | Supabase anonymous/public key (read-only) |
 
 ## Commands
 
@@ -26,6 +25,8 @@ A football (soccer) trivia web app with two game modes, deployed to GitHub Pages
 - `npm run build` — Type-check (`tsc -b`) then build with Vite
 - `npm run lint` — ESLint
 - `npm run preview` — Preview production build
+- `npm test` — Unit tests (Vitest)
+- `npm run test:e2e` — E2E tests (Playwright)
 
 ## Project Structure
 
@@ -37,12 +38,12 @@ src/
   constants.ts          — Shared constants (TURN_TIME)
   index.css             — Global styles (Tailwind imports)
   api/
-    sportsdb.ts         — TheSportsDB API client (search, former teams, overlap check)
+    sportsdb.ts         — didPlayTogether (pure function, no API calls)
     supabaseClient.ts   — Supabase client singleton
-    playerCache.ts      — Cache-through wrapper: Supabase first, fallback to TheSportsDB
+    playerCache.ts      — Player data queries: search, lookup, random selection
     multiplayerRoom.ts  — Room CRUD: createRoom, joinRoom, updateTurn, subscribeToRoom
   pages/
-    Home/               — Landing page
+    Home/               — Landing page with game mode selection
       index.tsx
     Battle/             — Single-player Battle Mode
       index.tsx, types.ts, constants.ts, helpers.ts, useGame.ts
@@ -54,27 +55,44 @@ src/
       MultiplayerGame/  — In-game component
         index.tsx
   components/
-    PlayerSearch/       — Reusable player autocomplete search
+    PlayerSearch/       — Reusable player autocomplete (searches Supabase)
       index.tsx, types.ts
   data/
-    seedPlayers.ts      — 19 hardcoded seed players
+    seedPlayers.ts      — 19 seed players for daily puzzle (TransferMarkt IDs)
+    topClubs.ts         — 21 top European clubs for random player pool
 scripts/
-  seed-players.ts       — Pre-populate Supabase with seed player data
+  seed-players.ts       — Populate Supabase from TheSportsDB (legacy)
+  import-transfermarkt.ts — Import players/transfers from TransferMarkt CSVs
 supabase/
   migrations/           — SQL migration files for Supabase schema
+e2e/                    — Playwright E2E tests
 ```
 
 ## Architecture
 
-- **Player data caching**: `playerCache.ts` checks Supabase first, falls back to TheSportsDB, and caches the result. `searchPlayers` still hits TheSportsDB directly (free-text search can't be cached).
+- **Player data**: All player data lives in Supabase, imported from TransferMarkt datasets. No runtime API calls to external services. Player search queries the Supabase `players` table directly.
+- **Data tables are read-only**: RLS policies only allow SELECT for the anon key. Writes require the service role key (used by import scripts only).
+- **`didPlayTogether`**: Pure function in `sportsdb.ts` — checks if two players overlapped at the same club. No API calls.
 - **Multiplayer**: Supabase Realtime (Postgres Changes) syncs game room state between two clients. The `game_rooms` DB row is the single source of truth. Optimistic locking on `current_turn` prevents race conditions.
+
+## Supabase Schema
+
+| Table | Purpose | RLS |
+|-------|---------|-----|
+| `countries` | Country names | Read-only |
+| `clubs` | Club data with badges, league, country | Read-only |
+| `players` | Player identity, nationality, thumbnail | Read-only |
+| `player_clubs` | Player club history (joined/departed years) | Read-only |
+| `game_rooms` | Multiplayer game state | Read + Write |
+| `pool_refresh` | Tracks daily pool refresh | Read-only |
 
 ## Git Workflow
 
 - **Never push directly to main** — all changes go through feature branches and pull requests
-- Branch naming: `feat/description`, `fix/description`, `refactor/description`
+- Branch naming: `feat/description`, `fix/description`, `refactor/description`, `docs/description`
 - **Conventional commits**: `feat:`, `fix:`, `refactor:`, `test:`, `docs:`, `chore:`
-- CI runs unit tests (Vitest) and E2E tests (Playwright) before deploy
+- CI runs type check, lint, unit tests (Vitest), and E2E tests (Playwright) on PRs
+- Deploy workflow only triggers for app code changes (skips docs, tests, scripts, config)
 - Main branch auto-deploys to GitHub Pages on merge
 
 ## Testing
@@ -82,7 +100,7 @@ supabase/
 - **Unit tests**: `npm test` — Vitest, files in `src/__tests__/`
 - **E2E tests**: `npm run test:e2e` — Playwright, files in `e2e/`
 - Changes that affect behavior must include test updates
-- E2E tests use real Supabase data with mocked TheSportsDB search API
+- E2E tests use real Supabase data
 
 ## Conventions
 
@@ -90,7 +108,6 @@ supabase/
 - Each page/component gets its own folder with `index.tsx`, `types.ts`, and optionally `helpers.ts`, `constants.ts`
 - Page-specific hooks live alongside their page (e.g. `pages/Battle/useGame.ts`)
 - Shared types/constants live at `src/types.ts` and `src/constants.ts`
-- API layer wraps TheSportsDB with typed responses and `ApiError` class
 - No state management library; hooks + useState
 - Tailwind utility classes inline, dark theme (gray-900 bg)
 
