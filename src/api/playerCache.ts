@@ -43,6 +43,19 @@ interface PlayerRow {
 
 const PLAYER_SELECT = "id, name, thumbnail, nationality_id, countries(name), player_clubs(club_id, year_joined, year_departed, clubs(id, name, badge))";
 
+export async function getFromCacheById(playerId: string): Promise<PlayerWithTeams | null> {
+  if (!supabase) return null;
+  const { data, error } = await supabase
+    .from("players")
+    .select(PLAYER_SELECT)
+    .eq("id", playerId)
+    .single();
+  if (error || !data) return null;
+  const row = data as unknown as PlayerRow;
+  if (!row.player_clubs || row.player_clubs.length === 0) return null;
+  return buildPlayerWithTeams(row);
+}
+
 async function getFromCache(playerId: string, playerName?: string): Promise<PlayerWithTeams | null> {
   if (!supabase) return null;
 
