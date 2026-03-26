@@ -13,27 +13,27 @@
 import { createClient } from "@supabase/supabase-js";
 
 const TOP_CLUBS = [
-  { id: "133604", name: "Arsenal", league: "English Premier League" },
-  { id: "133610", name: "Chelsea", league: "English Premier League" },
-  { id: "133602", name: "Liverpool", league: "English Premier League" },
-  { id: "133613", name: "Manchester City", league: "English Premier League" },
-  { id: "133612", name: "Manchester United", league: "English Premier League" },
-  { id: "133616", name: "Tottenham Hotspur", league: "English Premier League" },
-  { id: "133738", name: "Real Madrid", league: "Spanish La Liga" },
-  { id: "133739", name: "Barcelona", league: "Spanish La Liga" },
-  { id: "133729", name: "Atlético Madrid", league: "Spanish La Liga" },
-  { id: "133676", name: "Juventus", league: "Italian Serie A" },
-  { id: "133667", name: "AC Milan", league: "Italian Serie A" },
-  { id: "133681", name: "Inter Milan", league: "Italian Serie A" },
-  { id: "133670", name: "Napoli", league: "Italian Serie A" },
-  { id: "133664", name: "Bayern Munich", league: "German Bundesliga" },
-  { id: "133650", name: "Borussia Dortmund", league: "German Bundesliga" },
-  { id: "133714", name: "Paris SG", league: "French Ligue 1" },
-  { id: "133707", name: "Marseille", league: "French Ligue 1" },
-  { id: "133713", name: "Lyon", league: "French Ligue 1" },
-  { id: "133772", name: "Ajax", league: "Dutch Eredivisie" },
-  { id: "134114", name: "FC Porto", league: "Portuguese Primeira Liga" },
-  { id: "134108", name: "Benfica", league: "Portuguese Primeira Liga" },
+  { id: "133604", name: "Arsenal", league: "English Premier League", country: "England" },
+  { id: "133610", name: "Chelsea", league: "English Premier League", country: "England" },
+  { id: "133602", name: "Liverpool", league: "English Premier League", country: "England" },
+  { id: "133613", name: "Manchester City", league: "English Premier League", country: "England" },
+  { id: "133612", name: "Manchester United", league: "English Premier League", country: "England" },
+  { id: "133616", name: "Tottenham Hotspur", league: "English Premier League", country: "England" },
+  { id: "133738", name: "Real Madrid", league: "Spanish La Liga", country: "Spain" },
+  { id: "133739", name: "Barcelona", league: "Spanish La Liga", country: "Spain" },
+  { id: "133729", name: "Atlético Madrid", league: "Spanish La Liga", country: "Spain" },
+  { id: "133676", name: "Juventus", league: "Italian Serie A", country: "Italy" },
+  { id: "133667", name: "AC Milan", league: "Italian Serie A", country: "Italy" },
+  { id: "133681", name: "Inter Milan", league: "Italian Serie A", country: "Italy" },
+  { id: "133670", name: "Napoli", league: "Italian Serie A", country: "Italy" },
+  { id: "133664", name: "Bayern Munich", league: "German Bundesliga", country: "Germany" },
+  { id: "133650", name: "Borussia Dortmund", league: "German Bundesliga", country: "Germany" },
+  { id: "133714", name: "Paris SG", league: "French Ligue 1", country: "France" },
+  { id: "133707", name: "Marseille", league: "French Ligue 1", country: "France" },
+  { id: "133713", name: "Lyon", league: "French Ligue 1", country: "France" },
+  { id: "133772", name: "Ajax", league: "Dutch Eredivisie", country: "Netherlands" },
+  { id: "134114", name: "FC Porto", league: "Portuguese Primeira Liga", country: "Portugal" },
+  { id: "134108", name: "Benfica", league: "Portuguese Primeira Liga", country: "Portugal" },
 ];
 
 const supabaseUrl = process.env.VITE_SUPABASE_URL;
@@ -92,9 +92,14 @@ async function ensureCountry(nationality: string) {
   await supabase.from("countries").upsert({ id: nationality, name: nationality });
 }
 
-async function ensureClub(id: string, name: string, badge: string = "", isTopClub: boolean = false) {
+async function ensureClub(id: string, name: string, badge: string = "", opts?: { isTopClub?: boolean; league?: string; country?: string }) {
   const row: Record<string, unknown> = { id, name, badge };
-  if (isTopClub) row.is_top_club = true;
+  if (opts?.isTopClub) row.is_top_club = true;
+  if (opts?.league) row.league_id = opts.league;
+  if (opts?.country) {
+    await ensureCountry(opts.country);
+    row.country_id = opts.country;
+  }
   await supabase.from("clubs").upsert(row);
 }
 
@@ -219,8 +224,8 @@ async function seedPlayer(player: { id: string; name: string; thumbnail: string;
 async function seedTopClub(club: typeof TOP_CLUBS[number]) {
   console.log(`\n=== ${club.name} ===`);
 
-  // Ensure club exists with is_top_club flag
-  await ensureClub(club.id, club.name, "", true);
+  // Ensure club exists with is_top_club flag, league, and country
+  await ensureClub(club.id, club.name, "", { isTopClub: true, league: club.league, country: club.country });
 
   // Fetch roster
   let roster: SportsDbPlayer[];
