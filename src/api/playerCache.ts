@@ -1,5 +1,4 @@
 import { supabase } from "./supabaseClient";
-import { getPlayerWithTeams } from "./sportsdb";
 import type { Player, PlayerWithTeams, FormerTeam } from "../types";
 
 export function sortAndMergeTeams(teams: FormerTeam[]): FormerTeam[] {
@@ -11,14 +10,11 @@ export function sortAndMergeTeams(teams: FormerTeam[]): FormerTeam[] {
     const aYear = aJoin || aDep || 9999;
     const bYear = bJoin || bDep || 9999;
     if (aYear !== bYear) return aYear - bYear;
-    // Same year: entry with only departure (ended here) comes before entry with join (started here)
     if (!aJoin && aDep) return -1;
     if (!bJoin && bDep) return 1;
-    // Same join year: the one that departed earlier comes first
     if (aDep !== bDep) return (aDep || 9999) - (bDep || 9999);
     return 0;
   });
-  // Merge consecutive stints at the same club
   const merged: FormerTeam[] = [];
   for (const team of sorted) {
     const last = merged[merged.length - 1];
@@ -66,61 +62,8 @@ async function getCountryNames(): Promise<Set<string>> {
 
 export function isNationalTeam(clubName: string, countryNames: Set<string>): boolean {
   const name = clubName.trim();
-  // Strip common suffixes: "Argentina U20", "Argentina U23", "France B"
   const baseName = name.replace(/\s+(U\d+|B|Yth\.|Youth|Olympic|Olympique)$/i, "").trim();
   return countryNames.has(baseName.toLowerCase());
-}
-
-export async function getFromCacheById(playerId: string): Promise<PlayerWithTeams | null> {
-  if (!supabase) return null;
-  const { data, error } = await supabase
-    .from("players")
-    .select(PLAYER_SELECT)
-    .eq("id", playerId)
-    .single();
-  if (error || !data) return null;
-  const row = data as unknown as PlayerRow;
-  if (!row.player_clubs || row.player_clubs.length === 0) return null;
-  return await buildPlayerWithTeams(row);
-}
-
-async function getFromCache(playerId: string, playerName?: string): Promise<PlayerWithTeams | null> {
-  if (!supabase) return null;
-
-  // Try exact ID match first
-  const { data, error } = await supabase
-    .from("players")
-    .select(PLAYER_SELECT)
-    .eq("id", playerId)
-    .single();
-
-  if (!error && data) {
-    const row = data as unknown as PlayerRow;
-    if (row.player_clubs && row.player_clubs.length > 0) {
-      return await buildPlayerWithTeams(row);
-    }
-  }
-
-  // If no result or no clubs, try finding a TransferMarkt-sourced player by name
-  // This handles the case where search returns a TheSportsDB ID but we have better TM data
-  if (playerName) {
-    const { data: tmData } = await supabase
-      .from("players")
-      .select(PLAYER_SELECT)
-      .eq("data_source", "transfermarkt")
-      .ilike("name", playerName)
-      .limit(1)
-      .single();
-
-    if (tmData) {
-      const tmRow = tmData as unknown as PlayerRow;
-      if (tmRow.player_clubs && tmRow.player_clubs.length > 0) {
-        return await buildPlayerWithTeams(tmRow);
-      }
-    }
-  }
-
-  return null;
 }
 
 async function buildPlayerWithTeams(row: PlayerRow): Promise<PlayerWithTeams> {
@@ -146,78 +89,88 @@ async function buildPlayerWithTeams(row: PlayerRow): Promise<PlayerWithTeams> {
   };
 }
 
-async function ensureCountry(nationality: string): Promise<void> {
-  if (!supabase || !nationality) return;
-  await supabase.from("countries").upsert({ id: nationality, name: nationality });
+// Search players by name in Supabase
+export async function searchPlayers(query: string): Promise<Player[]> {
+  if (!supabase || query.length < 2) return [];
+
+  const { data, error } = await supabase
+    .from("players")
+    .select("id, name, thumbnail, nationality_id, countries(name)")
+    .ilike("name", `%${query}%`)
+    .limit(10);
+
+  if (error || !data) return [];
+
+  return data.map((p: Record<string, unknown>) => {
+    const countries = p.countries as { name: string }[] | { name: string } | null;
+    const nationality = Array.isArray(countries) ? countries[0]?.name : countries?.name;
+    return {
+      id: p.id as string,
+      name: p.name as string,
+      thumbnail: (p.thumbnail as string) || "",
+      nationality: nationality ?? (p.nationality_id as string) ?? "",
+    };
+  });
 }
 
-async function ensureClub(teamId: string, teamName: string, badge: string): Promise<void> {
-  if (!supabase) return;
-  if (badge) {
-    // Has badge — upsert fully
-    await supabase.from("clubs").upsert({ id: teamId, name: teamName, badge });
-  } else {
-    // No badge — only insert if club doesn't exist yet (don't overwrite existing badge)
-    const { data } = await supabase.from("clubs").select("id").eq("id", teamId).single();
-    if (!data) {
-      await supabase.from("clubs").insert({ id: teamId, name: teamName, badge: "" });
+// Get a specific player by ID
+export async function getFromCacheById(playerId: string): Promise<PlayerWithTeams | null> {
+  if (!supabase) return null;
+  const { data, error } = await supabase
+    .from("players")
+    .select(PLAYER_SELECT)
+    .eq("id", playerId)
+    .single();
+  if (error || !data) return null;
+  const row = data as unknown as PlayerRow;
+  if (!row.player_clubs || row.player_clubs.length === 0) return null;
+  return await buildPlayerWithTeams(row);
+}
+
+// Get player by ID, with name fallback for TransferMarkt matching
+export async function getPlayerWithTeams(player: Player): Promise<PlayerWithTeams> {
+  if (!supabase) throw new Error("Supabase not configured");
+
+  // Try exact ID match
+  const { data, error } = await supabase
+    .from("players")
+    .select(PLAYER_SELECT)
+    .eq("id", player.id)
+    .single();
+
+  if (!error && data) {
+    const row = data as unknown as PlayerRow;
+    if (row.player_clubs && row.player_clubs.length > 0) {
+      return await buildPlayerWithTeams(row);
     }
   }
-}
 
-async function saveToCache(player: PlayerWithTeams): Promise<void> {
-  if (!supabase) return;
+  // Try matching by name (handles TheSportsDB ID → TransferMarkt data)
+  if (player.name) {
+    const { data: tmData } = await supabase
+      .from("players")
+      .select(PLAYER_SELECT)
+      .ilike("name", player.name)
+      .limit(1)
+      .single();
 
-  try {
-    // Ensure country exists
-    await ensureCountry(player.nationality);
-
-    // Ensure all clubs exist
-    for (const t of player.formerTeams) {
-      await ensureClub(t.teamId, t.teamName, t.badge);
+    if (tmData) {
+      const tmRow = tmData as unknown as PlayerRow;
+      if (tmRow.player_clubs && tmRow.player_clubs.length > 0) {
+        return await buildPlayerWithTeams(tmRow);
+      }
     }
-
-    // Upsert player
-    await supabase.from("players").upsert({
-      id: player.id,
-      name: player.name,
-      thumbnail: player.thumbnail,
-      nationality_id: player.nationality || null,
-      data_source: "sportsdb",
-    });
-
-    // Upsert player-club relationships
-    if (player.formerTeams.length > 0) {
-      const seen = new Set<string>();
-      const rows = player.formerTeams
-        .filter((t) => {
-          const key = `${t.teamId}:${t.yearJoined}`;
-          if (seen.has(key)) return false;
-          seen.add(key);
-          return true;
-        })
-        .map((t) => ({
-          player_id: player.id,
-          club_id: t.teamId,
-          year_joined: t.yearJoined,
-          year_departed: t.yearDeparted,
-        }));
-
-      await supabase.from("player_clubs").upsert(rows, {
-        onConflict: "player_id,club_id,year_joined",
-      });
-    }
-  } catch {
-    console.warn("Failed to cache player data:", player.id);
   }
+
+  throw new Error(`Player "${player.name}" not found in database`);
 }
 
+// Get a random player from top clubs with enough club history
 const MIN_CLUBS = 3;
 
 export async function getRandomCachedPlayer(): Promise<PlayerWithTeams | null> {
   if (!supabase) return null;
 
-  // Get IDs of players who play/played for a top club
   const { data: topPlayerRows, error: topError } = await supabase
     .from("player_clubs")
     .select("player_id, clubs!inner(is_top_club)")
@@ -225,11 +178,9 @@ export async function getRandomCachedPlayer(): Promise<PlayerWithTeams | null> {
 
   if (topError || !topPlayerRows || topPlayerRows.length === 0) return null;
 
-  // Deduplicate and shuffle player IDs
   const playerIds = [...new Set(topPlayerRows.map((r) => r.player_id))]
     .sort(() => Math.random() - 0.5);
 
-  // Try players until we find one with enough clubs (after merging)
   for (const playerId of playerIds.slice(0, 20)) {
     const { data, error } = await supabase
       .from("players")
@@ -249,22 +200,4 @@ export async function getRandomCachedPlayer(): Promise<PlayerWithTeams | null> {
   }
 
   return null;
-}
-
-export async function getPlayerWithTeamsCached(player: Player): Promise<PlayerWithTeams> {
-  // Try cache first
-  try {
-    const cached = await getFromCache(player.id, player.name);
-    if (cached) return cached;
-  } catch {
-    // Cache read failure — fall through to API
-  }
-
-  // Fetch from TheSportsDB
-  const result = await getPlayerWithTeams(player);
-
-  // Cache in background (fire-and-forget)
-  saveToCache(result);
-
-  return result;
 }

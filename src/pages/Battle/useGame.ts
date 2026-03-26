@@ -1,6 +1,6 @@
 import { useState, useCallback, useRef, useEffect } from "react";
-import { didPlayTogether, ApiError } from "../../api/sportsdb";
-import { getPlayerWithTeamsCached } from "../../api/playerCache";
+import { didPlayTogether } from "../../api/sportsdb";
+import { getPlayerWithTeams } from "../../api/playerCache";
 import type { Player } from "../../types";
 import { SEED_PLAYERS } from "../../data/seedPlayers";
 import { TURN_TIME } from "../../constants";
@@ -61,7 +61,7 @@ export function useGame() {
     setState((s) => ({ ...s, status: "loading", wrongResult: null, timedOut: false, error: null }));
     try {
       const seed = SEED_PLAYERS[Math.floor(Math.random() * SEED_PLAYERS.length)];
-      const playerWithTeams = await getPlayerWithTeamsCached(seed);
+      const playerWithTeams = await getPlayerWithTeams(seed);
       setState({
         chain: [playerWithTeams],
         currentPlayer: playerWithTeams,
@@ -75,7 +75,7 @@ export function useGame() {
       });
       startTimer();
     } catch (e) {
-      const message = e instanceof ApiError ? e.message : "Something went wrong";
+      const message = e instanceof Error ? e.message : "Something went wrong";
       setState((s) => ({ ...s, status: "gameover", error: message }));
     }
   }, [startTimer, stopTimer]);
@@ -88,7 +88,7 @@ export function useGame() {
       setState((s) => ({ ...s, status: "checking", error: null }));
 
       try {
-        const playerWithTeams = await getPlayerWithTeamsCached(player);
+        const playerWithTeams = await getPlayerWithTeams(player);
         const result = didPlayTogether(state.currentPlayer, playerWithTeams);
 
         if (result.together) {
@@ -123,7 +123,7 @@ export function useGame() {
           });
         }
       } catch (e) {
-        const message = e instanceof ApiError ? e.message : "Something went wrong";
+        const message = e instanceof Error ? e.message : "Something went wrong";
         setState((s) => ({ ...s, status: "playing", error: message }));
         startTimer();
       }

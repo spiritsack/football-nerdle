@@ -1,6 +1,6 @@
 import { useState, useCallback, useRef, useEffect } from "react";
-import { didPlayTogether, ApiError } from "../../api/sportsdb";
-import { getPlayerWithTeamsCached } from "../../api/playerCache";
+import { didPlayTogether } from "../../api/sportsdb";
+import { getPlayerWithTeams } from "../../api/playerCache";
 import { startGame, submitTurn, endGame, subscribeToRoom, getRoom, sendHeartbeat } from "../../api/multiplayerRoom";
 import type { Player, GameRoom } from "../../types";
 import { SEED_PLAYERS } from "../../data/seedPlayers";
@@ -230,7 +230,7 @@ export function useMultiplayerGame(
     setState((s) => ({ ...s, status: "starting", error: null, wrongResult: null }));
     try {
       const seed = SEED_PLAYERS[Math.floor(Math.random() * SEED_PLAYERS.length)];
-      const playerWithTeams = await getPlayerWithTeamsCached(seed);
+      const playerWithTeams = await getPlayerWithTeams(seed);
       await startGame(state.room.id, playerId, playerWithTeams);
       setState((s) => ({
         ...s,
@@ -252,7 +252,7 @@ export function useMultiplayerGame(
       }));
       startTimer();
     } catch (e) {
-      const msg = e instanceof ApiError ? e.message : "Failed to start game";
+      const msg = e instanceof Error ? e.message : "Failed to start game";
       setState((s) => ({ ...s, status: "finished", error: msg }));
     }
   }, [isHost, state.room.id, playerId, startTimer]);
@@ -265,7 +265,7 @@ export function useMultiplayerGame(
     setState((s) => ({ ...s, status: "checking", error: null }));
 
     try {
-      const playerWithTeams = await getPlayerWithTeamsCached(player);
+      const playerWithTeams = await getPlayerWithTeams(player);
       const result = didPlayTogether(currentPlayer, playerWithTeams);
 
       if (result.together) {
@@ -296,7 +296,7 @@ export function useMultiplayerGame(
         await endGame(state.room.id, opponentId, "wrong");
       }
     } catch (e) {
-      const msg = e instanceof ApiError ? e.message : "Something went wrong";
+      const msg = e instanceof Error ? e.message : "Something went wrong";
       setState((s) => ({ ...s, status: "playing", error: msg }));
       startTimer();
     }
