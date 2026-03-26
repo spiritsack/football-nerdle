@@ -134,10 +134,15 @@ export function useGuessGame() {
     return `Football Nerdle ${mode} ${score}${hardIndicator}\n${squares}\n${SHARE_URL}`;
   }
 
-  // Auto-start daily on mount
+  // Auto-start on mount — check for ?mode=random
   useEffect(() => {
-    startDaily();
-  }, [startDaily]);
+    const params = new URLSearchParams(window.location.hash.split("?")[1] || "");
+    if (params.get("mode") === "random") {
+      startRandom();
+    } else {
+      startDaily();
+    }
+  }, [startDaily, startRandom]);
 
   return {
     ...state,
