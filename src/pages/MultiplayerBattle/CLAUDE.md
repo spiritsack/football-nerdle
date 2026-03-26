@@ -29,13 +29,19 @@ Route: `/battle/multiplayer` — Page: `index.tsx` (lobby) + `MultiplayerGame/in
 Uses Supabase Realtime (Postgres Changes) + polling fallback.
 Turn updates use optimistic locking via `current_turn` column.
 
+## Reconnection
+
+- Session stored in localStorage (`football-nerdle-mp-session`)
+- On page load, checks for existing session and attempts to rejoin
+- Stale sessions (> 2 hours) or finished games are cleared
+
 ## Supabase Tables
 
 | Table | Purpose |
 |-------|---------|
 | `game_rooms` | Room state: players, chain, turns, status, winner, heartbeat timestamps |
-| `players` | Cached player identity (shared) |
-| `player_teams` | Cached team history (shared) |
+| `players` | Player identity (read-only, from TransferMarkt import) |
+| `player_clubs` | Club history (read-only, from TransferMarkt import) |
 
 ## localStorage
 
