@@ -7,7 +7,10 @@ on:
       - '**.md'
       - 'e2e/**'
       - 'scripts/**'
-      - '.github/workflows/ci.yml'
+      - '.github/**'
+      - 'eslint.config.js'
+      - 'playwright.config.ts'
+      - 'supabase/**'
 
 permissions:
   contents: read
