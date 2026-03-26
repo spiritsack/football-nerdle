@@ -47,11 +47,29 @@ interface PlayerRow {
   name: string;
   thumbnail: string;
   nationality_id: string;
+  cached_at: string;
   player_clubs: PlayerClubRow[];
   countries: { name: string } | null;
 }
 
-const PLAYER_SELECT = "id, name, thumbnail, nationality_id, countries(name), player_clubs(club_id, year_joined, year_departed, clubs(id, name, badge))";
+const PLAYER_SELECT = "id, name, thumbnail, nationality_id, cached_at, countries(name), player_clubs(club_id, year_joined, year_departed, clubs(id, name, badge))";
+
+let countryNamesCache: Set<string> | null = null;
+
+async function getCountryNames(): Promise<Set<string>> {
+  if (countryNamesCache) return countryNamesCache;
+  if (!supabase) return new Set();
+  const { data } = await supabase.from("countries").select("name");
+  countryNamesCache = new Set((data ?? []).map((c: { name: string }) => c.name.toLowerCase()));
+  return countryNamesCache;
+}
+
+function isNationalTeam(clubName: string, countryNames: Set<string>): boolean {
+  const name = clubName.trim();
+  // Strip common suffixes: "Argentina U20", "Argentina U23", "France B"
+  const baseName = name.replace(/\s+(U\d+|B|Yth\.|Youth|Olympic|Olympique)$/i, "").trim();
+  return countryNames.has(baseName.toLowerCase());
+}
 
 export async function getFromCacheById(playerId: string): Promise<PlayerWithTeams | null> {
   if (!supabase) return null;
@@ -63,7 +81,7 @@ export async function getFromCacheById(playerId: string): Promise<PlayerWithTeam
   if (error || !data) return null;
   const row = data as unknown as PlayerRow;
   if (!row.player_clubs || row.player_clubs.length === 0) return null;
-  return buildPlayerWithTeams(row);
+  return await buildPlayerWithTeams(row);
 }
 
 async function getFromCache(playerId: string, playerName?: string): Promise<PlayerWithTeams | null> {
@@ -79,7 +97,7 @@ async function getFromCache(playerId: string, playerName?: string): Promise<Play
   if (!error && data) {
     const row = data as unknown as PlayerRow;
     if (row.player_clubs && row.player_clubs.length > 0) {
-      return buildPlayerWithTeams(row);
+      return await buildPlayerWithTeams(row);
     }
   }
 
@@ -97,7 +115,7 @@ async function getFromCache(playerId: string, playerName?: string): Promise<Play
     if (tmData) {
       const tmRow = tmData as unknown as PlayerRow;
       if (tmRow.player_clubs && tmRow.player_clubs.length > 0) {
-        return buildPlayerWithTeams(tmRow);
+        return await buildPlayerWithTeams(tmRow);
       }
     }
   }
@@ -105,9 +123,11 @@ async function getFromCache(playerId: string, playerName?: string): Promise<Play
   return null;
 }
 
-function buildPlayerWithTeams(row: PlayerRow): PlayerWithTeams {
+async function buildPlayerWithTeams(row: PlayerRow): Promise<PlayerWithTeams> {
+  const countryNames = await getCountryNames();
   const rawTeams: FormerTeam[] = row.player_clubs
     .filter((pc) => pc.clubs)
+    .filter((pc) => !isNationalTeam(pc.clubs!.name, countryNames))
     .map((pc) => ({
       teamId: pc.clubs!.id,
       teamName: pc.clubs!.name,
@@ -122,6 +142,7 @@ function buildPlayerWithTeams(row: PlayerRow): PlayerWithTeams {
     thumbnail: row.thumbnail,
     nationality: row.countries?.name ?? row.nationality_id ?? "",
     formerTeams: sortAndMergeTeams(rawTeams),
+    cachedAt: row.cached_at,
   };
 }
 
@@ -212,7 +233,7 @@ export async function getRandomCachedPlayer(): Promise<PlayerWithTeams | null> {
   for (const playerId of playerIds.slice(0, 20)) {
     const { data, error } = await supabase
       .from("players")
-      .select("id, name, thumbnail, nationality_id, countries(name), player_clubs(club_id, year_joined, year_departed, clubs(id, name, badge))")
+      .select(PLAYER_SELECT)
       .eq("id", playerId)
       .single();
 
@@ -221,25 +242,10 @@ export async function getRandomCachedPlayer(): Promise<PlayerWithTeams | null> {
     const row = data as unknown as PlayerRow;
     if (!row.player_clubs || row.player_clubs.length === 0) continue;
 
-    const formerTeams = sortAndMergeTeams(row.player_clubs
-      .filter((pc) => pc.clubs)
-      .map((pc) => ({
-        teamId: pc.clubs!.id,
-        teamName: pc.clubs!.name,
-        yearJoined: pc.year_joined,
-        yearDeparted: pc.year_departed,
-        badge: pc.clubs!.badge,
-      })));
+    const player = await buildPlayerWithTeams(row);
+    if (player.formerTeams.length < MIN_CLUBS) continue;
 
-    if (formerTeams.length < MIN_CLUBS) continue;
-
-    return {
-      id: row.id,
-      name: row.name,
-      thumbnail: row.thumbnail,
-      nationality: row.countries?.name ?? row.nationality_id ?? "",
-      formerTeams,
-    };
+    return player;
   }
 
   return null;

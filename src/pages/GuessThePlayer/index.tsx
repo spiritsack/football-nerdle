@@ -1,8 +1,57 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Link } from "react-router-dom";
 import { useGuessGame } from "./useGuessGame";
 import { HARD_MODE_KEY } from "./constants";
 import PlayerSearch from "../../components/PlayerSearch";
+import type { FormerTeam } from "../../types";
+
+interface MergedClub {
+  teamId: string;
+  teamName: string;
+  yearJoined: string;
+  yearDeparted: string;
+  badge: string;
+  stints: FormerTeam[];
+}
+
+function getBaseClubName(name: string): string {
+  return name.replace(/\s+(B|II|Reserves|Youth|Yth\.|U\d+|Atlético|Castilla)$/i, "").trim();
+}
+
+function mergeConsecutiveClubs(clubs: FormerTeam[]): MergedClub[] {
+  const merged: MergedClub[] = [];
+  for (const club of clubs) {
+    const baseName = getBaseClubName(club.teamName);
+    const last = merged[merged.length - 1];
+    if (last && getBaseClubName(last.teamName) === baseName) {
+      // Extend the merged entry
+      last.stints.push(club);
+      if (!last.yearJoined || (club.yearJoined && club.yearJoined < last.yearJoined)) {
+        last.yearJoined = club.yearJoined;
+      }
+      if (!club.yearDeparted || (club.yearDeparted && (!last.yearDeparted || club.yearDeparted > last.yearDeparted))) {
+        last.yearDeparted = club.yearDeparted;
+      }
+      if (!last.badge && club.badge) last.badge = club.badge;
+    } else {
+      merged.push({
+        teamId: club.teamId,
+        teamName: club.teamName,
+        yearJoined: club.yearJoined,
+        yearDeparted: club.yearDeparted,
+        badge: club.badge,
+        stints: [club],
+      });
+    }
+  }
+  // Use the base name for merged entries with multiple stints
+  for (const m of merged) {
+    if (m.stints.length > 1) {
+      m.teamName = getBaseClubName(m.stints[0].teamName);
+    }
+  }
+  return merged;
+}
 
 export default function GuessThePlayer() {
   const {
@@ -54,6 +103,7 @@ export default function GuessThePlayer() {
     });
   }
 
+  const mergedClubs = useMemo(() => mergeConsecutiveClubs(clubs), [clubs]);
   const resultScreen = (status === "won" || status === "lost") && targetPlayer;
 
   return (
@@ -116,7 +166,7 @@ export default function GuessThePlayer() {
               <h2 className="text-lg font-semibold mb-4 text-center text-gray-300">Club History</h2>
               {hardMode ? (
                 <div className="flex flex-col md:flex-row items-center justify-center gap-1 flex-wrap">
-                  {clubs.map((club, i) => (
+                  {mergedClubs.map((club, i) => (
                     <div key={`${club.teamId}-${i}`} className="flex flex-col md:flex-row items-center">
                       {i > 0 && (
                         <>
@@ -134,7 +184,7 @@ export default function GuessThePlayer() {
                 </div>
               ) : (
                 <div className="space-y-1">
-                  {clubs.map((club, i) => (
+                  {mergedClubs.map((club, i) => (
                     <div key={`${club.teamId}-${i}`}>
                       {i > 0 && <div className="text-gray-500 text-center text-sm">↓</div>}
                       <div className="flex items-center gap-3 bg-gray-700 rounded-lg px-4 py-2">
@@ -258,19 +308,23 @@ export default function GuessThePlayer() {
         )}
       </main>
 
-      {targetPlayer && (status === "won" || status === "lost") && (
+      {targetPlayer && (
         <footer className="py-4 text-center space-y-1">
-          <p className="text-gray-600 text-xs">
-            Data: {targetPlayer.id.startsWith("tm_") ? "TransferMarkt" : "TheSportsDB"}
-          </p>
-          <a
-            href={`https://github.com/spiritsack/football-nerdle/issues/new?title=${encodeURIComponent(`Data error: ${targetPlayer.name}`)}&body=${encodeURIComponent(`**Player:** ${targetPlayer.name} (ID: ${targetPlayer.id})\n**Clubs shown:**\n${clubs.map((c) => `- ${c.teamName} ${c.yearJoined}${c.yearDeparted ? ` – ${c.yearDeparted}` : " – present"}`).join("\n")}\n\n**What's wrong:**\n`)}&labels=data-error`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-gray-500 hover:text-gray-300 text-xs underline"
-          >
-            Report data error
-          </a>
+          {targetPlayer.cachedAt && (
+            <p className="text-gray-600 text-xs">
+              Data updated: {new Date(targetPlayer.cachedAt).toLocaleDateString("en-GB")}
+            </p>
+          )}
+          {(status === "won" || status === "lost") && (
+            <a
+              href={`https://github.com/spiritsack/football-nerdle/issues/new?title=${encodeURIComponent(`Data error: ${targetPlayer.name}`)}&body=${encodeURIComponent(`**Player:** ${targetPlayer.name} (ID: ${targetPlayer.id})\n**Clubs shown:**\n${clubs.map((c) => `- ${c.teamName} ${c.yearJoined}${c.yearDeparted ? ` – ${c.yearDeparted}` : " – present"}`).join("\n")}\n\n**What's wrong:**\n`)}&labels=data-error`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-gray-500 hover:text-gray-300 text-xs underline"
+            >
+              Report data error
+            </a>
+          )}
         </footer>
       )}
     </div>
