@@ -13,15 +13,14 @@ Route: `/guess` — Page: `index.tsx` — Hook: `useGuessGame.ts`
 
 ## Backwards Compatibility
 
-The daily game must remain backwards compatible. Changing the daily player selection algorithm, day numbering, or share text format would invalidate existing players' streaks and shared results. Any changes to the daily mode must preserve:
-- `getDailyPlayerIndex` hash function
+The daily game must remain backwards compatible. Changing day numbering, share text format, or localStorage keys would invalidate existing players' streaks and shared results. Any changes must preserve:
 - `getDayNumber` calculation (start date: 2026-03-24)
 - Share text format and emoji grid layout
 - localStorage key formats for daily results and stats
 
 ## Modes
 
-- **Daily**: deterministic player based on date hash from `seedPlayers.ts` (19 players, TransferMarkt IDs). Day numbering starts from 2026-03-24.
+- **Daily**: random player from `seedPlayers.ts` (107 players, TransferMarkt IDs), selected once per day via `daily_schedule` Supabase table. First user of the day picks randomly from unused seeds; all subsequent users see the same player. Never repeats until all 107 are used. Falls back to sequential day-number algorithm if Supabase is unavailable.
 - **Random**: picks a random player from Supabase with at least 3 clubs, filtered to top club players. No stats tracking.
 - **Hard mode**: ON by default. Shows only club badges (no names/years). One-way disable per day.
 - **Debug**: `?id=tm_349066` loads a specific player by ID.
@@ -29,8 +28,9 @@ The daily game must remain backwards compatible. Changing the daily player selec
 ## Data Flow
 
 - All player data comes from Supabase (no runtime API calls)
+- Daily player selection via `daily_schedule` table (api/dailySchedule.ts)
 - Player search queries `players` table via `ilike`
-- Guess matching compares by player ID or name (handles TheSportsDB/TransferMarkt ID differences)
+- Guess matching compares by player ID or name (handles TransferMarkt ID differences)
 
 ## File Structure
 
@@ -39,6 +39,12 @@ The daily game must remain backwards compatible. Changing the daily player selec
 - `types.ts` — GuessStatus, GuessGameState, DailyResult, GuessStats
 - `constants.ts` — MAX_ATTEMPTS, localStorage keys, DAY_ONE_DATE, SHARE_URL, STATS_KEY
 - `helpers.ts` — Date helpers, daily result persistence, stats recording
+
+## Supabase Tables
+
+| Table | Purpose |
+|-------|---------|
+| `daily_schedule` | `{ date, player_id }` — one record per day, immutable |
 
 ## localStorage
 

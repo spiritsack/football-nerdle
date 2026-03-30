@@ -84,7 +84,7 @@ e2e/                    — Playwright E2E tests
 | `players` | Player identity, nationality, thumbnail | Read-only |
 | `player_clubs` | Player club history (joined/departed years) | Read-only |
 | `game_rooms` | Multiplayer game state | Read + Write |
-| `pool_refresh` | Tracks daily pool refresh | Read-only |
+| `pool_refresh` | Tracks daily pool refresh | Read-only |\n| `daily_schedule` | Daily player selection (one per day) | Read + Insert |
 
 ## Git Workflow
 
