@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { useGuessGame } from "./useGuessGame";
 import { HARD_MODE_KEY } from "./constants";
 import PlayerSearch from "../../components/PlayerSearch";
@@ -54,6 +54,7 @@ function mergeConsecutiveClubs(clubs: FormerTeam[]): MergedClub[] {
 }
 
 export default function GuessThePlayer() {
+  const navigate = useNavigate();
   const {
     targetPlayer,
     clubs,
@@ -63,10 +64,13 @@ export default function GuessThePlayer() {
     wrongGuesses,
     error,
     isDaily,
+    isArchive,
     dayNumber,
+    today,
     stats,
     startDaily,
     startRandom,
+    loadArchiveDay,
     submitGuess,
     getShareText,
   } = useGuessGame();
@@ -106,16 +110,39 @@ export default function GuessThePlayer() {
   const mergedClubs = useMemo(() => mergeConsecutiveClubs(clubs), [clubs]);
   const resultScreen = (status === "won" || status === "lost") && targetPlayer;
 
+  const todayDayNum = Math.floor((new Date(today).getTime() - new Date("2026-03-24").getTime()) / 86400000) + 1;
+
+  const dayNavigation = (isDaily || isArchive) && dayNumber ? (
+    <div className="flex items-center gap-6 text-sm text-gray-500">
+      {dayNumber > 1 && (
+        <button onClick={() => loadArchiveDay(dayNumber - 1)} className="hover:text-gray-300 transition-colors">
+          ‹ Previous day
+        </button>
+      )}
+      {isArchive && (
+        <button
+          onClick={() => dayNumber < todayDayNum ? loadArchiveDay(dayNumber + 1) : navigate("/guess")}
+          className="hover:text-gray-300 transition-colors"
+        >
+          Next day ›
+        </button>
+      )}
+    </div>
+  ) : null;
+
   return (
     <div className="min-h-screen bg-gray-900 text-white flex flex-col">
       <header className="py-6 border-b border-gray-700">
         <h1 className="text-3xl font-bold text-center">Football Nerdle</h1>
         <p className="text-gray-400 text-center mt-1">
-          Guess the Player {isDaily && `— Daily #${dayNumber}`}
+          {isArchive ? `Archive — Daily #${dayNumber}` : isDaily ? `Guess the Player — Daily #${dayNumber}` : "Guess the Player"}
         </p>
-        <div className="text-center mt-2">
+        <div className="flex items-center justify-center gap-4 mt-2">
           <Link to="/" className="text-green-400 hover:text-green-300 text-sm">
             ← Back to Home
+          </Link>
+          <Link to="/guess/archive" className="text-gray-500 hover:text-gray-300 text-sm">
+            Archive
           </Link>
         </div>
       </header>
@@ -238,6 +265,8 @@ export default function GuessThePlayer() {
             <p className="text-gray-300">Who is this player?</p>
 
             <PlayerSearch onSelect={submitGuess} />
+
+            {dayNavigation}
           </>
         )}
 
@@ -292,6 +321,8 @@ export default function GuessThePlayer() {
                 Random Game
               </button>
             </div>
+
+            {dayNavigation}
 
             <div className="bg-gray-800 border border-gray-600 rounded-xl p-6 max-w-md w-full">
               <h3 className="text-lg font-semibold text-center text-gray-300 mb-4">Your Stats</h3>

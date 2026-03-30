@@ -14,7 +14,6 @@ export async function getOrCreateDailyPlayer(date: string): Promise<Player> {
   if (!supabase) return fallbackDailyPlayer(date);
 
   try {
-    // Check if today's player is already scheduled
     const { data: existing } = await supabase
       .from("daily_schedule")
       .select("player_id")
@@ -26,7 +25,6 @@ export async function getOrCreateDailyPlayer(date: string): Promise<Player> {
       if (player) return player;
     }
 
-    // Pick a random unused seed player
     const { data: usedRows } = await supabase
       .from("daily_schedule")
       .select("player_id");
@@ -56,5 +54,38 @@ export async function getOrCreateDailyPlayer(date: string): Promise<Player> {
     return picked;
   } catch {
     return fallbackDailyPlayer(date);
+  }
+}
+
+export async function getScheduledPlayerForDate(date: string): Promise<Player | null> {
+  if (!supabase) return null;
+  try {
+    const { data } = await supabase
+      .from("daily_schedule")
+      .select("player_id")
+      .eq("date", date)
+      .single();
+    if (!data) return null;
+    return SEED_PLAYERS.find((p) => p.id === data.player_id) ?? null;
+  } catch {
+    return null;
+  }
+}
+
+export interface ScheduleRow {
+  date: string;
+  player_id: string;
+}
+
+export async function getAllScheduledDays(): Promise<ScheduleRow[]> {
+  if (!supabase) return [];
+  try {
+    const { data } = await supabase
+      .from("daily_schedule")
+      .select("date, player_id")
+      .order("date", { ascending: false });
+    return data ?? [];
+  } catch {
+    return [];
   }
 }
