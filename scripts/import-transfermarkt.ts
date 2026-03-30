@@ -135,6 +135,7 @@ async function main() {
       name: club.name,
       transfermarkt_id: club.club_id,
       league_id: club.domestic_competition_id,
+      badge: `https://tmssl.akamaized.net/images/wappen/normquad/${club.club_id}.png`,
     });
   }
   console.log(`  Found ${clubMap.size} clubs in target competitions`);
@@ -257,6 +258,7 @@ async function main() {
           id: `tm_${club.clubId}`,
           name: club.clubName,
           transfermarkt_id: club.clubId,
+          badge: `https://tmssl.akamaized.net/images/wappen/normquad/${club.clubId}.png`,
         });
       }
     }
