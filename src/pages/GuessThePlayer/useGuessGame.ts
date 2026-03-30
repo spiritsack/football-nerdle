@@ -1,12 +1,10 @@
 import { useState, useCallback, useEffect } from "react";
-import { ApiError } from "../../api/sportsdb";
-import { getPlayerWithTeamsCached, getFromCacheById } from "../../api/playerCache";
-import { refreshPoolIfNeeded, getRandomPoolPlayer } from "../../api/playerPool";
+import { getPlayerWithTeamsCached, getFromCacheById, getRandomCachedPlayer } from "../../api/playerCache";
+import { getOrCreateDailyPlayer } from "../../api/dailySchedule";
 import type { Player } from "../../types";
-import { SEED_PLAYERS } from "../../data/seedPlayers";
 import { MAX_ATTEMPTS, SHARE_URL } from "./constants";
 import type { GuessGameState, GuessStats } from "./types";
-import { getTodayString, getDailyPlayerIndex, getDayNumber, getDailyResult, saveDailyResult, loadStats, recordResult } from "./helpers";
+import { getTodayString, getDayNumber, getDailyResult, saveDailyResult, loadStats, recordResult } from "./helpers";
 
 export function useGuessGame() {
   const [today] = useState(getTodayString);
@@ -28,8 +26,7 @@ export function useGuessGame() {
   const startDaily = useCallback(async () => {
     setState((s) => ({ ...s, status: "loading", error: null }));
     try {
-      const index = getDailyPlayerIndex(today);
-      const seed = SEED_PLAYERS[index];
+      const seed = await getOrCreateDailyPlayer(today);
       const playerWithTeams = await getPlayerWithTeamsCached(seed);
       const stored = getDailyResult();
       const completed = stored?.date === today;
@@ -56,17 +53,16 @@ export function useGuessGame() {
         });
       }
     } catch (e) {
-      const message = e instanceof ApiError ? e.message : "Something went wrong — check your API key";
+      const message = e instanceof Error ? e.message : "Something went wrong — check your API key";
       setState((s) => ({ ...s, status: "idle", error: message }));
     }
   }, [today]);
 
   const startRandom = useCallback(async () => {
     setState((s) => ({ ...s, status: "loading", error: null }));
-    // Trigger daily pool refresh in background (fire-and-forget)
-    refreshPoolIfNeeded();
     try {
-      const playerWithTeams = await getRandomPoolPlayer();
+      const playerWithTeams = await getRandomCachedPlayer();
+      if (!playerWithTeams) throw new Error("No players available");
       setState({
         targetPlayer: playerWithTeams,
         clubs: playerWithTeams.formerTeams,
@@ -78,7 +74,7 @@ export function useGuessGame() {
         dailyCompleted: false,
       });
     } catch (e) {
-      const message = e instanceof ApiError ? e.message : "Something went wrong";
+      const message = e instanceof Error ? e.message : "Something went wrong";
       setState((s) => ({ ...s, status: "idle", error: message }));
     }
   }, []);

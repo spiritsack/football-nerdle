@@ -7,12 +7,12 @@ export function getTodayString(): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
+// Fallback daily player selection used when Supabase is unavailable.
+// Sequential day-number indexing: day 1 = index 0, day 2 = index 1, etc.
+// Wraps around after all seed players are exhausted.
 export function getDailyPlayerIndex(dateStr: string): number {
-  let hash = 0;
-  for (let i = 0; i < dateStr.length; i++) {
-    hash = (hash * 31 + dateStr.charCodeAt(i)) | 0;
-  }
-  return Math.abs(hash) % SEED_PLAYERS.length;
+  const dayNum = getDayNumber(dateStr);
+  return (dayNum - 1) % SEED_PLAYERS.length;
 }
 
 export function getDayNumber(dateStr: string): number {

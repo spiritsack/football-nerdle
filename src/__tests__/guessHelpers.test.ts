@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { getDailyPlayerIndex, getDayNumber } from "../pages/GuessThePlayer/helpers";
+import { SEED_PLAYERS } from "../data/seedPlayers";
 
 describe("getDailyPlayerIndex", () => {
   it("returns a consistent index for the same date", () => {
@@ -8,25 +9,46 @@ describe("getDailyPlayerIndex", () => {
     expect(idx1).toBe(idx2);
   });
 
-  it("returns different indices for different dates", () => {
+  it("returns different indices for consecutive dates", () => {
     const idx1 = getDailyPlayerIndex("2026-03-26");
     const idx2 = getDailyPlayerIndex("2026-03-27");
     expect(idx1).not.toBe(idx2);
   });
 
   it("returns an index within seed player bounds", () => {
-    // 19 seed players
-    for (let day = 1; day <= 365; day++) {
-      const date = `2026-${String(Math.ceil(day / 30)).padStart(2, "0")}-${String((day % 30) + 1).padStart(2, "0")}`;
-      const idx = getDailyPlayerIndex(date);
+    for (let day = 0; day < 365; day++) {
+      const date = new Date("2026-03-24T12:00:00Z");
+      date.setUTCDate(date.getUTCDate() + day);
+      const dateStr = date.toISOString().split("T")[0];
+      const idx = getDailyPlayerIndex(dateStr);
       expect(idx).toBeGreaterThanOrEqual(0);
-      expect(idx).toBeLessThan(19);
+      expect(idx).toBeLessThan(SEED_PLAYERS.length);
     }
   });
 
-  it("returns 0 for 2026-03-26 (Messi)", () => {
-    // Known value from our testing
-    expect(getDailyPlayerIndex("2026-03-26")).toBe(0);
+  it("day 1 (2026-03-24) returns index 0 (Messi)", () => {
+    expect(getDailyPlayerIndex("2026-03-24")).toBe(0);
+  });
+
+  it("day 2 (2026-03-25) returns index 1 (Ronaldo)", () => {
+    expect(getDailyPlayerIndex("2026-03-25")).toBe(1);
+  });
+
+  it("day 3 (2026-03-26) returns index 2 (Neymar)", () => {
+    expect(getDailyPlayerIndex("2026-03-26")).toBe(2);
+  });
+
+  it("never repeats within the seed player list length", () => {
+    const seen = new Set<number>();
+    for (let day = 0; day < SEED_PLAYERS.length; day++) {
+      // Use UTC date arithmetic to avoid DST issues
+      const date = new Date("2026-03-24T12:00:00Z");
+      date.setUTCDate(date.getUTCDate() + day);
+      const dateStr = date.toISOString().split("T")[0];
+      const idx = getDailyPlayerIndex(dateStr);
+      expect(seen.has(idx)).toBe(false);
+      seen.add(idx);
+    }
   });
 });
 

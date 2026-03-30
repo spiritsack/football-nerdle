@@ -58,7 +58,7 @@ src/
     PlayerSearch/       — Reusable player autocomplete (searches Supabase)
       index.tsx, types.ts
   data/
-    seedPlayers.ts      — 19 seed players for daily puzzle (TransferMarkt IDs)
+    seedPlayers.ts      — 107 seed players for daily puzzle (TransferMarkt IDs)
     topClubs.ts         — 21 top European clubs for random player pool
 scripts/
   seed-players.ts       — Populate Supabase from TheSportsDB (legacy)
@@ -85,6 +85,7 @@ e2e/                    — Playwright E2E tests
 | `player_clubs` | Player club history (joined/departed years) | Read-only |
 | `game_rooms` | Multiplayer game state | Read + Write |
 | `pool_refresh` | Tracks daily pool refresh | Read-only |
+| `daily_schedule` | Daily player selection (one per day) | Read + Insert |
 
 ## Git Workflow
 
