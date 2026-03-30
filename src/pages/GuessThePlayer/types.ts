@@ -10,7 +10,16 @@ export interface GuessGameState {
   wrongGuesses: Player[];
   error: string | null;
   isDaily: boolean;
+  isArchive: boolean;
+  dayNumber: number | null;
   dailyCompleted: boolean;
+}
+
+export interface ArchiveEntry {
+  date: string;
+  dayNumber: number;
+  playerId: string;
+  result: DailyResult | null;
 }
 
 export interface DailyResult {

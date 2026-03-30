@@ -1,10 +1,14 @@
 import { useState, useCallback, useEffect } from "react";
 import { getPlayerWithTeamsCached, getFromCacheById, getRandomCachedPlayer } from "../../api/playerCache";
-import { getOrCreateDailyPlayer } from "../../api/dailySchedule";
+import { getOrCreateDailyPlayer, getScheduledPlayerForDate } from "../../api/dailySchedule";
 import type { Player } from "../../types";
 import { MAX_ATTEMPTS, SHARE_URL } from "./constants";
 import type { GuessGameState, GuessStats } from "./types";
-import { getTodayString, getDayNumber, getDailyResult, saveDailyResult, loadStats, recordResult } from "./helpers";
+import {
+  getTodayString, getDailyPlayerIndex, getDayNumber, getDateForDay,
+  getDailyResult, getDailyResultForDate, saveDailyResult, saveDailyResultForDate,
+  loadStats, recordResult
+} from "./helpers";
 
 export function useGuessGame() {
   const [today] = useState(getTodayString);
@@ -20,6 +24,8 @@ export function useGuessGame() {
     wrongGuesses: [],
     error: null,
     isDaily: true,
+    isArchive: false,
+    dayNumber: null,
     dailyCompleted: !!alreadyPlayedToday,
   }));
 
@@ -30,6 +36,7 @@ export function useGuessGame() {
       const playerWithTeams = await getPlayerWithTeamsCached(seed);
       const stored = getDailyResult();
       const completed = stored?.date === today;
+      const dayNum = getDayNumber(today);
       if (completed) {
         setState((s) => ({
           ...s,
@@ -38,6 +45,8 @@ export function useGuessGame() {
           status: stored.status,
           attempts: stored.attempts,
           isDaily: true,
+          isArchive: false,
+          dayNumber: dayNum,
           dailyCompleted: true,
         }));
       } else {
@@ -49,14 +58,61 @@ export function useGuessGame() {
           wrongGuesses: [],
           error: null,
           isDaily: true,
+          isArchive: false,
+          dayNumber: dayNum,
           dailyCompleted: false,
         });
       }
     } catch (e) {
-      const message = e instanceof Error ? e.message : "Something went wrong — check your API key";
+      const message = e instanceof Error ? e.message : "Something went wrong";
       setState((s) => ({ ...s, status: "idle", error: message }));
     }
   }, [today]);
+
+  const loadArchiveDay = useCallback(async (dayNum: number) => {
+    setState((s) => ({ ...s, status: "loading", error: null }));
+    try {
+      const date = getDateForDay(dayNum);
+      const seed = await getScheduledPlayerForDate(date);
+      if (!seed) {
+        // Fallback to sequential if not in schedule
+        const { SEED_PLAYERS } = await import("../../data/seedPlayers");
+        const fallbackSeed = SEED_PLAYERS[getDailyPlayerIndex(date)];
+        const playerWithTeams = await getPlayerWithTeamsCached(fallbackSeed);
+        const stored = getDailyResultForDate(date);
+        setState({
+          targetPlayer: playerWithTeams,
+          clubs: playerWithTeams.formerTeams,
+          attempts: stored?.attempts ?? 0,
+          status: stored?.status ?? "playing",
+          wrongGuesses: [],
+          error: null,
+          isDaily: false,
+          isArchive: true,
+          dayNumber: dayNum,
+          dailyCompleted: !!stored,
+        });
+        return;
+      }
+      const playerWithTeams = await getPlayerWithTeamsCached(seed);
+      const stored = getDailyResultForDate(date);
+      setState({
+        targetPlayer: playerWithTeams,
+        clubs: playerWithTeams.formerTeams,
+        attempts: stored?.attempts ?? 0,
+        status: stored?.status ?? "playing",
+        wrongGuesses: [],
+        error: null,
+        isDaily: false,
+        isArchive: true,
+        dayNumber: dayNum,
+        dailyCompleted: !!stored,
+      });
+    } catch (e) {
+      const message = e instanceof Error ? e.message : "Something went wrong";
+      setState((s) => ({ ...s, status: "idle", error: message }));
+    }
+  }, []);
 
   const startRandom = useCallback(async () => {
     setState((s) => ({ ...s, status: "loading", error: null }));
@@ -71,6 +127,8 @@ export function useGuessGame() {
         wrongGuesses: [],
         error: null,
         isDaily: false,
+        isArchive: false,
+        dayNumber: null,
         dailyCompleted: false,
       });
     } catch (e) {
@@ -85,11 +143,15 @@ export function useGuessGame() {
 
       const isCorrect = player.id === state.targetPlayer.id ||
         player.name.toLowerCase() === state.targetPlayer.name.toLowerCase();
+
       if (isCorrect) {
         const finalAttempts = state.attempts + 1;
         if (state.isDaily) {
           saveDailyResult("won", finalAttempts);
           setStats(recordResult(true));
+        } else if (state.isArchive && state.dayNumber) {
+          // Save archive result per-date but don't affect stats/streak
+          saveDailyResultForDate(getDateForDay(state.dayNumber), "won", finalAttempts);
         }
         setState((s) => ({ ...s, status: "won", attempts: finalAttempts, dailyCompleted: s.isDaily }));
       } else {
@@ -98,6 +160,8 @@ export function useGuessGame() {
           if (state.isDaily) {
             saveDailyResult("lost", newAttempts);
             setStats(recordResult(false));
+          } else if (state.isArchive && state.dayNumber) {
+            saveDailyResultForDate(getDateForDay(state.dayNumber), "lost", newAttempts);
           }
           setState((s) => ({
             ...s,
@@ -115,11 +179,11 @@ export function useGuessGame() {
         }
       }
     },
-    [state.targetPlayer, state.status, state.attempts, state.isDaily]
+    [state.targetPlayer, state.status, state.attempts, state.isDaily, state.isArchive, state.dayNumber]
   );
 
   function getShareText(hardMode?: boolean): string {
-    const dayNum = getDayNumber(today);
+    const dayNum = state.dayNumber ?? getDayNumber(today);
     const won = state.status === "won";
     const score = won ? `${state.attempts}/${MAX_ATTEMPTS}` : `X/${MAX_ATTEMPTS}`;
     const wrongCount = won ? state.attempts - 1 : state.attempts;
@@ -127,12 +191,12 @@ export function useGuessGame() {
       if (i < wrongCount) return "🔴";
       return won ? "🟢" : "⬛";
     }).join("");
-    const mode = state.isDaily ? `#${dayNum}` : "Random";
+    const mode = state.isArchive ? `#${dayNum} (Archive)` : state.isDaily ? `#${dayNum}` : "Random";
     const hardIndicator = hardMode ? "*" : "";
     return `Football Nerdle ${mode} ${score}${hardIndicator}\n${squares}\n${SHARE_URL}`;
   }
 
-  // Start specific player by ID (debug)
+  // Debug: start specific player by ID
   const startById = useCallback(async (id: string) => {
     setState((s) => ({ ...s, status: "loading", error: null }));
     try {
@@ -146,6 +210,8 @@ export function useGuessGame() {
         wrongGuesses: [],
         error: null,
         isDaily: false,
+        isArchive: false,
+        dayNumber: null,
         dailyCompleted: false,
       });
     } catch (e) {
@@ -154,24 +220,28 @@ export function useGuessGame() {
     }
   }, []);
 
-  // Auto-start on mount — check for ?id=, ?mode=random, or daily
+  // Auto-start on mount
   useEffect(() => {
     const params = new URLSearchParams(window.location.hash.split("?")[1] || "");
     const id = params.get("id");
-    if (id) {
+    const day = params.get("day");
+    if (day) {
+      loadArchiveDay(parseInt(day, 10));
+    } else if (id) {
       startById(id);
     } else if (params.get("mode") === "random") {
       startRandom();
     } else {
       startDaily();
     }
-  }, [startDaily, startRandom, startById]);
+  }, [startDaily, startRandom, startById, loadArchiveDay]);
 
   return {
     ...state,
     stats,
     maxAttempts: MAX_ATTEMPTS,
-    dayNumber: getDayNumber(today),
+    today,
+    loadArchiveDay,
     startDaily,
     startRandom,
     submitGuess,

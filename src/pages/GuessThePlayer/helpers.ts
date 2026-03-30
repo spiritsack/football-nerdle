@@ -1,5 +1,5 @@
 import { SEED_PLAYERS } from "../../data/seedPlayers";
-import { DAILY_GUESS_KEY, DAY_ONE_DATE, STATS_KEY } from "./constants";
+import { DAILY_GUESS_KEY, DAILY_RESULT_PREFIX, DAY_ONE_DATE, STATS_KEY } from "./constants";
 import type { DailyResult, GuessStats } from "./types";
 
 export function getTodayString(): string {
@@ -21,21 +21,48 @@ export function getDayNumber(dateStr: string): number {
   return Math.floor((current.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1;
 }
 
-export function getDailyResult(): DailyResult | null {
-  const stored = localStorage.getItem(DAILY_GUESS_KEY);
-  if (!stored) return null;
+export function getDateForDay(dayNum: number): string {
+  const start = new Date(DAY_ONE_DATE + "T12:00:00Z");
+  start.setUTCDate(start.getUTCDate() + (dayNum - 1));
+  return start.toISOString().split("T")[0];
+}
+
+// Per-date result storage (replaces single DAILY_GUESS_KEY)
+export function getDailyResultForDate(date: string): DailyResult | null {
   try {
-    return JSON.parse(stored);
+    const stored = localStorage.getItem(DAILY_RESULT_PREFIX + date);
+    if (stored) return JSON.parse(stored);
+
+    // Migrate old single-key format if it matches today
+    const legacy = localStorage.getItem(DAILY_GUESS_KEY);
+    if (legacy) {
+      const parsed = JSON.parse(legacy);
+      if (parsed.date === date) {
+        localStorage.setItem(DAILY_RESULT_PREFIX + date, legacy);
+        return parsed;
+      }
+    }
+    return null;
   } catch {
     return null;
   }
 }
 
+export function getDailyResult(): DailyResult | null {
+  return getDailyResultForDate(getTodayString());
+}
+
+export function saveDailyResultForDate(date: string, status: "won" | "lost", attempts: number) {
+  const result = { date, status, attempts };
+  localStorage.setItem(DAILY_RESULT_PREFIX + date, JSON.stringify(result));
+  // Keep legacy key in sync for today (backwards compat)
+  if (date === getTodayString()) {
+    localStorage.setItem(DAILY_GUESS_KEY, JSON.stringify(result));
+  }
+}
+
 export function saveDailyResult(status: "won" | "lost", attempts: number) {
-  localStorage.setItem(
-    DAILY_GUESS_KEY,
-    JSON.stringify({ date: getTodayString(), status, attempts })
-  );
+  saveDailyResultForDate(getTodayString(), status, attempts);
 }
 
 const DEFAULT_STATS: GuessStats = { played: 0, won: 0, lost: 0, streak: 0, longestStreak: 0 };
