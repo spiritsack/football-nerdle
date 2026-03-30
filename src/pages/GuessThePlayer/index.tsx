@@ -122,17 +122,36 @@ export default function GuessThePlayer() {
 
       <main className="flex-1 flex flex-col items-center px-4 py-8 gap-6">
         {status === "playing" && (
-          <button
-            onClick={toggleHardMode}
-            disabled={!hardMode}
-            className={`px-4 py-1.5 rounded-full text-sm font-medium transition-colors ${
-              hardMode
-                ? "bg-red-600 hover:bg-red-500 text-white"
-                : "bg-gray-700 text-gray-500 cursor-not-allowed"
-            }`}
-          >
-            Hard Mode: {hardMode ? "ON" : "OFF"}
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={toggleHardMode}
+              disabled={!hardMode}
+              className={`px-4 py-1.5 rounded-full text-sm font-medium transition-colors ${
+                hardMode
+                  ? "bg-red-600 hover:bg-red-500 text-white"
+                  : "bg-gray-700 text-gray-500 cursor-not-allowed"
+              }`}
+            >
+              Hard Mode: {hardMode ? "ON" : "OFF"}
+            </button>
+            <div className="relative group">
+              <button
+                type="button"
+                aria-label={hardMode
+                ? "Hard mode info: only club badges shown, no names or years. Can only be turned off once per day."
+                : "Hard mode info: hard mode is off for today. Resets tomorrow."}
+                className="text-gray-500 hover:text-gray-300 focus:text-gray-300 text-sm select-none focus:outline-none"
+              >
+                ⓘ
+              </button>
+              <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-56 px-3 py-2 bg-gray-700 text-gray-200 text-xs rounded-lg shadow-lg pointer-events-none opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity text-center z-10">
+                {hardMode
+                  ? "Only club badges shown — no names or years. Can only be turned off once per day."
+                  : "Hard mode is off for today. Resets tomorrow."}
+                <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-gray-700" />
+              </div>
+            </div>
+          </div>
         )}
 
         {status === "loading" && (
