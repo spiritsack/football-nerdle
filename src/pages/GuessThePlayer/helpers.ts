@@ -8,11 +8,11 @@ export function getTodayString(): string {
 }
 
 export function getDailyPlayerIndex(dateStr: string): number {
-  let hash = 0;
-  for (let i = 0; i < dateStr.length; i++) {
-    hash = (hash * 31 + dateStr.charCodeAt(i)) | 0;
-  }
-  return Math.abs(hash) % SEED_PLAYERS.length;
+  // Use sequential day number so players never repeat.
+  // Day 1 (2026-03-24) = index 0, day 2 = index 1, etc.
+  // Wraps around only after all seed players are exhausted.
+  const dayNum = getDayNumber(dateStr);
+  return (dayNum - 1) % SEED_PLAYERS.length;
 }
 
 export function getDayNumber(dateStr: string): number {
