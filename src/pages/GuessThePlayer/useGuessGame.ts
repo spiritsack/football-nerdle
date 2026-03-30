@@ -193,7 +193,8 @@ export function useGuessGame() {
     }).join("");
     const mode = state.isArchive ? `#${dayNum} (Archive)` : state.isDaily ? `#${dayNum}` : "Random";
     const hardIndicator = hardMode ? "*" : "";
-    return `Football Nerdle ${mode} ${score}${hardIndicator}\n${squares}\n${SHARE_URL}`;
+    const shareUrl = state.isArchive ? `${SHARE_URL}?day=${dayNum}` : SHARE_URL;
+    return `Football Nerdle ${mode} ${score}${hardIndicator}\n${squares}\n${shareUrl}`;
   }
 
   // Debug: start specific player by ID
