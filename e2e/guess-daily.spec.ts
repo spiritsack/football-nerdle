@@ -23,6 +23,13 @@ test.describe("Daily Guess the Player", () => {
     await expect(page.getByRole("button", { name: /Hard Mode: ON/ })).toBeVisible();
   });
 
+  test("shows hard mode info button with accessible label", async ({ page }) => {
+    await expect(page.getByText("Club History")).toBeVisible({ timeout: 10_000 });
+    const infoBtn = page.getByRole("button", { name: /Hard mode info/ });
+    await expect(infoBtn).toBeVisible();
+    await expect(infoBtn).toHaveAttribute("aria-label", /only be turned off once per day/i);
+  });
+
   test("shows attempts counter", async ({ page }) => {
     await expect(page.getByText("Club History")).toBeVisible({ timeout: 10_000 });
     await expect(page.getByText(/Attempts:.*0.*\/.*5/)).toBeVisible();
