@@ -1,0 +1,60 @@
+import { supabase } from "./supabaseClient";
+import { SEED_PLAYERS } from "../data/seedPlayers";
+import type { Player } from "../types";
+
+// Fallback: sequential day-number indexing when Supabase is unavailable
+function fallbackDailyPlayer(date: string): Player {
+  const start = new Date("2026-03-24");
+  const current = new Date(date);
+  const dayNum = Math.floor((current.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+  return SEED_PLAYERS[(dayNum - 1) % SEED_PLAYERS.length];
+}
+
+export async function getOrCreateDailyPlayer(date: string): Promise<Player> {
+  if (!supabase) return fallbackDailyPlayer(date);
+
+  try {
+    // Check if today's player is already scheduled
+    const { data: existing } = await supabase
+      .from("daily_schedule")
+      .select("player_id")
+      .eq("date", date)
+      .single();
+
+    if (existing) {
+      const player = SEED_PLAYERS.find((p) => p.id === existing.player_id);
+      if (player) return player;
+    }
+
+    // Pick a random unused seed player
+    const { data: usedRows } = await supabase
+      .from("daily_schedule")
+      .select("player_id");
+
+    const usedIds = new Set((usedRows || []).map((r: { player_id: string }) => r.player_id));
+    const unused = SEED_PLAYERS.filter((p) => !usedIds.has(p.id));
+    const pool = unused.length > 0 ? unused : SEED_PLAYERS;
+    const picked = pool[Math.floor(Math.random() * pool.length)];
+
+    // Insert — if another user beat us to it (race condition), this fails silently
+    await supabase
+      .from("daily_schedule")
+      .insert({ date, player_id: picked.id });
+
+    // Read back the actual winner (might differ if race condition)
+    const { data: final } = await supabase
+      .from("daily_schedule")
+      .select("player_id")
+      .eq("date", date)
+      .single();
+
+    if (final) {
+      const player = SEED_PLAYERS.find((p) => p.id === final.player_id);
+      if (player) return player;
+    }
+
+    return picked;
+  } catch {
+    return fallbackDailyPlayer(date);
+  }
+}
