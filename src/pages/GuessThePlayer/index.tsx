@@ -222,10 +222,14 @@ export default function GuessThePlayer() {
                         </>
                       )}
                       {club.badge ? (
-                        <img src={club.badge} alt="" className="w-16 h-16 object-contain" />
-                      ) : (
-                        <div className="w-16 h-16 bg-gray-600 rounded flex items-center justify-center text-xs text-gray-300 text-center p-1 leading-tight">{club.teamName}</div>
-                      )}
+                        <img
+                          src={club.badge}
+                          alt=""
+                          className="w-16 h-16 object-contain"
+                          onError={(e) => { e.currentTarget.style.display = "none"; e.currentTarget.nextElementSibling?.classList.remove("hidden"); }}
+                        />
+                      ) : null}
+                      <div className={`w-16 h-16 bg-gray-600 rounded flex items-center justify-center text-xs text-gray-300 text-center p-1 leading-tight ${club.badge ? "hidden" : ""}`}>{club.teamName}</div>
                     </div>
                   ))}
                 </div>
@@ -236,10 +240,14 @@ export default function GuessThePlayer() {
                       {i > 0 && <div className="text-gray-500 text-center text-sm">↓</div>}
                       <div className="flex items-center gap-3 bg-gray-700 rounded-lg px-4 py-2">
                         {club.badge ? (
-                          <img src={club.badge} alt="" className="w-8 h-8 object-contain" />
-                        ) : (
-                          <div className="w-8 h-8 bg-gray-600 rounded flex items-center justify-center text-[0.5rem] text-gray-300 text-center p-0.5 leading-tight">{club.teamName}</div>
-                        )}
+                          <img
+                            src={club.badge}
+                            alt=""
+                            className="w-8 h-8 object-contain"
+                            onError={(e) => { e.currentTarget.style.display = "none"; e.currentTarget.nextElementSibling?.classList.remove("hidden"); }}
+                          />
+                        ) : null}
+                        <div className={`w-8 h-8 bg-gray-600 rounded flex items-center justify-center text-[0.5rem] text-gray-300 text-center p-0.5 leading-tight ${club.badge ? "hidden" : ""}`}>{club.teamName}</div>
                         <span className="font-medium">{club.teamName}</span>
                         <span className="bg-gray-800 text-gray-300 text-xs px-2.5 py-1 rounded-full ml-auto whitespace-nowrap">
                           {club.yearJoined}{club.yearDeparted ? ` – ${club.yearDeparted}` : " – present"}
