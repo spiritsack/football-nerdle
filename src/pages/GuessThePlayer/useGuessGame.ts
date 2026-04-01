@@ -3,12 +3,23 @@ import { getPlayerWithTeamsCached, getFromCacheById, getRandomCachedPlayer } fro
 import { getOrCreateDailyPlayer, getScheduledPlayerForDate } from "../../api/dailySchedule";
 import type { Player } from "../../types";
 import { MAX_ATTEMPTS, SHARE_URL } from "./constants";
-import type { GuessGameState, GuessStats } from "./types";
+import type { GuessGameState, GuessStats, RevealedHints } from "./types";
 import {
   getTodayString, getDailyPlayerIndex, getDayNumber, getDateForDay,
   getDailyResult, getDailyResultForDate, saveDailyResult, saveDailyResultForDate,
   loadStats, recordResult
 } from "./helpers";
+
+const NO_HINTS: RevealedHints = { nationality: false, age: false, position: false, nameLetters: false };
+
+function hintsForWrongCount(wrongCount: number): RevealedHints {
+  return {
+    nationality: wrongCount >= 1,
+    age: wrongCount >= 2,
+    position: wrongCount >= 3,
+    nameLetters: wrongCount >= 4,
+  };
+}
 
 export function useGuessGame() {
   const [today] = useState(getTodayString);
@@ -27,6 +38,7 @@ export function useGuessGame() {
     isArchive: false,
     dayNumber: null,
     dailyCompleted: !!alreadyPlayedToday,
+    hints: NO_HINTS,
   }));
 
   const startDaily = useCallback(async () => {
@@ -61,6 +73,7 @@ export function useGuessGame() {
           isArchive: false,
           dayNumber: dayNum,
           dailyCompleted: false,
+          hints: NO_HINTS,
         });
       }
     } catch (e) {
@@ -91,6 +104,7 @@ export function useGuessGame() {
           isArchive: true,
           dayNumber: dayNum,
           dailyCompleted: !!stored,
+          hints: NO_HINTS,
         });
         return;
       }
@@ -107,6 +121,7 @@ export function useGuessGame() {
         isArchive: true,
         dayNumber: dayNum,
         dailyCompleted: !!stored,
+        hints: NO_HINTS,
       });
     } catch (e) {
       const message = e instanceof Error ? e.message : "Something went wrong";
@@ -130,6 +145,7 @@ export function useGuessGame() {
         isArchive: false,
         dayNumber: null,
         dailyCompleted: false,
+        hints: NO_HINTS,
       });
     } catch (e) {
       const message = e instanceof Error ? e.message : "Something went wrong";
@@ -156,6 +172,7 @@ export function useGuessGame() {
         setState((s) => ({ ...s, status: "won", attempts: finalAttempts, dailyCompleted: s.isDaily }));
       } else {
         const newAttempts = state.attempts + 1;
+        const newHints = hintsForWrongCount(newAttempts);
         if (newAttempts >= MAX_ATTEMPTS) {
           if (state.isDaily) {
             saveDailyResult("lost", newAttempts);
@@ -169,12 +186,14 @@ export function useGuessGame() {
             wrongGuesses: [...s.wrongGuesses, player],
             status: "lost",
             dailyCompleted: s.isDaily,
+            hints: newHints,
           }));
         } else {
           setState((s) => ({
             ...s,
             attempts: newAttempts,
             wrongGuesses: [...s.wrongGuesses, player],
+            hints: newHints,
           }));
         }
       }
@@ -193,7 +212,10 @@ export function useGuessGame() {
     }).join("");
     const mode = state.isArchive ? `#${dayNum} (Archive)` : state.isDaily ? `#${dayNum}` : "Random";
     const hardIndicator = hardMode ? "*" : "";
-    return `Football Nerdle ${mode} ${score}${hardIndicator}\n${squares}\n${SHARE_URL}`;
+    const hintCount = wrongCount;
+    const hintIndicator = hintCount > 0 ? ` (${hintCount} hint${hintCount > 1 ? "s" : ""})` : "";
+    const shareUrl = state.isArchive ? `${SHARE_URL}?day=${dayNum}` : SHARE_URL;
+    return `Football Nerdle ${mode} ${score}${hardIndicator}${hintIndicator}\n${squares}\n${shareUrl}`;
   }
 
   // Debug: start specific player by ID
@@ -213,6 +235,7 @@ export function useGuessGame() {
         isArchive: false,
         dayNumber: null,
         dailyCompleted: false,
+        hints: NO_HINTS,
       });
     } catch (e) {
       const message = e instanceof Error ? e.message : "Something went wrong";

@@ -68,6 +68,7 @@ export default function GuessThePlayer() {
     dayNumber,
     today,
     stats,
+    hints,
     startDaily,
     startRandom,
     loadArchiveDay,
@@ -249,6 +250,39 @@ export default function GuessThePlayer() {
                 </div>
               )}
             </div>
+
+            {(hints.nationality || hints.age || hints.position || hints.nameLetters) && targetPlayer && (
+              <div className="flex flex-wrap justify-center gap-3 max-w-lg w-full">
+                {hints.nationality && (
+                  <div className="bg-gray-800 border border-gray-600 rounded-lg px-4 py-2 text-sm">
+                    <span className="text-gray-400">Nationality: </span>
+                    <span className="font-semibold">{targetPlayer.nationality || "Unknown"}</span>
+                  </div>
+                )}
+                {hints.age && targetPlayer.dateBorn && (
+                  <div className="bg-gray-800 border border-gray-600 rounded-lg px-4 py-2 text-sm">
+                    <span className="text-gray-400">Age: </span>
+                    <span className="font-semibold">{new Date().getFullYear() - parseInt(targetPlayer.dateBorn, 10)}</span>
+                  </div>
+                )}
+                {hints.position && targetPlayer.position && (
+                  <div className="bg-gray-800 border border-gray-600 rounded-lg px-4 py-2 text-sm">
+                    <span className="text-gray-400">Position: </span>
+                    <span className="font-semibold">{targetPlayer.position}</span>
+                  </div>
+                )}
+                {hints.nameLetters && (
+                  <div className="bg-gray-800 border border-gray-600 rounded-lg px-4 py-2 text-sm">
+                    <span className="text-gray-400">Name: </span>
+                    <span className="font-semibold">
+                      {targetPlayer.name.split(" ").map((part) =>
+                        part.charAt(0) + ".".repeat(part.length - 1)
+                      ).join(" ")}
+                    </span>
+                  </div>
+                )}
+              </div>
+            )}
 
             {wrongGuesses.length > 0 && (
               <div className="text-sm text-gray-400">
