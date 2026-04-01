@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import PlayerSearch from "../PlayerSearch";
 import type { PlayerCardProps } from "./types";
 
@@ -15,10 +16,22 @@ function BadgeImg({ src, alt, size }: { src: string; alt: string; size: "sm" | "
           alt=""
           className={imgClass}
           onError={(e) => { e.currentTarget.style.display = "none"; e.currentTarget.nextElementSibling?.classList.remove("hidden"); }}
+          onLoad={(e) => { if (e.currentTarget.naturalWidth === 0) { e.currentTarget.style.display = "none"; e.currentTarget.nextElementSibling?.classList.remove("hidden"); } }}
         />
       ) : null}
       <div className={`${fallbackClass} ${src ? "hidden" : ""}`}>{alt}</div>
     </>
+  );
+}
+
+function FlagImg({ isoCode }: { isoCode: string }) {
+  return (
+    <img
+      src={`https://flagcdn.com/w40/${isoCode}.png`}
+      alt=""
+      className="w-5 h-4 inline-block object-cover rounded-sm"
+      onError={(e) => { e.currentTarget.style.display = "none"; }}
+    />
   );
 }
 
@@ -31,17 +44,30 @@ function HiddenField({ label }: { label: string }) {
   );
 }
 
-function RevealedField({ label, value }: { label: string; value: string }) {
+function RevealedField({ label, children }: { label: string; children: ReactNode }) {
   return (
     <div className="flex items-center justify-between py-2 border-b border-gray-700/50 last:border-0 animate-[fadeIn_0.4s_ease-in]">
       <span className="text-gray-400 text-sm">{label}</span>
-      <span className="text-white font-semibold text-sm">{value}</span>
+      <span className="text-white font-semibold text-sm flex items-center gap-1.5">{children}</span>
     </div>
   );
 }
 
+function computeAge(dateOfBirth?: string, dateBorn?: string): number | null {
+  if (dateOfBirth) {
+    const birth = new Date(dateOfBirth);
+    if (!isNaN(birth.getTime())) {
+      return Math.floor((Date.now() - birth.getTime()) / 31557600000);
+    }
+  }
+  if (dateBorn) {
+    return new Date().getFullYear() - parseInt(dateBorn, 10);
+  }
+  return null;
+}
+
 export default function PlayerCard({ player, clubs, hints, revealed, hardMode, result, onGuess }: PlayerCardProps) {
-  const age = player.dateBorn ? new Date().getFullYear() - parseInt(player.dateBorn, 10) : null;
+  const age = computeAge(player.dateOfBirth, player.dateBorn);
 
   const borderColor = result === "won" ? "border-green-600" : result === "lost" ? "border-red-600" : "border-gray-600";
 
@@ -76,18 +102,38 @@ export default function PlayerCard({ player, clubs, hints, revealed, hardMode, r
 
       {/* Stats fields */}
       <div className="px-6 py-3">
-        {hints.nationality || revealed
-          ? <RevealedField label="Nationality" value={player.nationality || "Unknown"} />
-          : <HiddenField label="Nationality" />
-        }
-        {hints.age || revealed
-          ? <RevealedField label="Age" value={age ? String(age) : "Unknown"} />
-          : <HiddenField label="Age" />
-        }
-        {hints.position || revealed
-          ? <RevealedField label="Position" value={player.position || "Unknown"} />
-          : <HiddenField label="Position" />
-        }
+        {hints.nationality || revealed ? (
+          <RevealedField label="Nationality">
+            {player.nationalityIsoCode && <FlagImg isoCode={player.nationalityIsoCode} />}
+            {player.nationality || "Unknown"}
+          </RevealedField>
+        ) : (
+          <HiddenField label="Nationality" />
+        )}
+        {hints.age || revealed ? (
+          <RevealedField label="Age">{age != null ? String(age) : "Unknown"}</RevealedField>
+        ) : (
+          <HiddenField label="Age" />
+        )}
+        {hints.position || revealed ? (
+          <RevealedField label="Position">{player.position || "Unknown"}</RevealedField>
+        ) : (
+          <HiddenField label="Position" />
+        )}
+        {hints.stats || revealed ? (
+          <RevealedField label="Height">{player.heightInCm ? `${player.heightInCm} cm` : "Unknown"}</RevealedField>
+        ) : (
+          <HiddenField label="Height" />
+        )}
+        {hints.stats || revealed ? (
+          <RevealedField label="Intl. Caps">
+            {player.internationalCaps != null && player.internationalCaps > 0
+              ? <>{player.internationalCaps}{player.internationalGoals ? ` (${player.internationalGoals} goals)` : ""}</>
+              : "Unknown"}
+          </RevealedField>
+        ) : (
+          <HiddenField label="Intl. Caps" />
+        )}
       </div>
 
       {/* Club history */}

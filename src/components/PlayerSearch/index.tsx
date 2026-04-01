@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { searchPlayers } from "../../api/sportsdb";
+import { searchPlayers } from "../../api/playerSearch";
 import type { Player } from "../../types";
 import type { PlayerSearchProps } from "./types";
 

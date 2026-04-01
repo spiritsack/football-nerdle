@@ -18,6 +18,12 @@ export interface PlayerWithTeams extends Player {
   cachedAt?: string;
   position?: string;
   dateBorn?: string;
+  foot?: string;
+  heightInCm?: number;
+  dateOfBirth?: string;
+  internationalCaps?: number;
+  internationalGoals?: number;
+  nationalityIsoCode?: string;
 }
 
 export type RoomStatus = "waiting" | "playing" | "finished";

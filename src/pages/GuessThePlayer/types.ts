@@ -6,6 +6,7 @@ export interface RevealedHints {
   nationality: boolean;
   age: boolean;
   position: boolean;
+  stats: boolean;
   photo: boolean;
 }
 

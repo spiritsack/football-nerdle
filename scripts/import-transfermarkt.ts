@@ -14,6 +14,7 @@ import { createClient } from "@supabase/supabase-js";
 import { createGunzip } from "zlib";
 import { Readable } from "stream";
 import { createInterface } from "readline";
+import { COUNTRY_ISO_CODES } from "../src/data/countryIsoCodes";
 
 const supabaseUrl = process.env.VITE_SUPABASE_URL;
 const supabaseKey = process.env.VITE_SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_PUBLISHABLE_DEFAULT_KEY;
@@ -39,11 +40,15 @@ interface CsvPlayer {
   date_of_birth: string;
   position: string;
   sub_position: string;
+  foot: string;
+  height_in_cm: string;
   image_url: string;
   current_club_id: string;
   current_club_name: string;
   current_club_domestic_competition_id: string;
   market_value_in_eur: string;
+  international_caps: string;
+  international_goals: string;
 }
 
 interface CsvTransfer {
@@ -135,7 +140,7 @@ async function main() {
       name: club.name,
       transfermarkt_id: club.club_id,
       league_id: club.domestic_competition_id,
-      badge: `https://tmssl.akamaized.net/images/wappen/normquad/${club.club_id}.png`,
+      badge: `https://tmssl.akamaized.net/images/wappen/medium/${club.club_id}.png`,
     });
   }
   console.log(`  Found ${clubMap.size} clubs in target competitions`);
@@ -168,6 +173,11 @@ async function main() {
       nationality_id: nationality || null,
       position: player.sub_position || player.position || "",
       date_born: extractYear(player.date_of_birth),
+      date_of_birth: player.date_of_birth || "",
+      foot: player.foot || "",
+      height_in_cm: player.height_in_cm ? parseInt(player.height_in_cm, 10) : null,
+      international_caps: player.international_caps ? parseInt(player.international_caps, 10) : 0,
+      international_goals: player.international_goals ? parseInt(player.international_goals, 10) : 0,
       status: "Active",
       current_club_id: clubMap.has(player.current_club_id) ? `tm_${player.current_club_id}` : null,
       transfermarkt_id: player.player_id,
@@ -182,6 +192,17 @@ async function main() {
     await upsertBatch("countries", countryRows.slice(i, i + 500));
   }
   console.log(`  Upserted ${countrySet.size} countries`);
+
+  // Update country ISO codes
+  let isoUpdated = 0;
+  for (const name of countrySet) {
+    const iso = COUNTRY_ISO_CODES[name];
+    if (iso) {
+      await supabase.from("countries").update({ iso_code: iso }).eq("id", name);
+      isoUpdated++;
+    }
+  }
+  console.log(`  Updated ${isoUpdated} country ISO codes (${countrySet.size - isoUpdated} unmapped)`);
 
   // Batch upsert players
   for (let i = 0; i < playerRows.length; i += 500) {
@@ -258,7 +279,7 @@ async function main() {
           id: `tm_${club.clubId}`,
           name: club.clubName,
           transfermarkt_id: club.clubId,
-          badge: `https://tmssl.akamaized.net/images/wappen/normquad/${club.clubId}.png`,
+          badge: `https://tmssl.akamaized.net/images/wappen/medium/${club.clubId}.png`,
         });
       }
     }
