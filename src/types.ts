@@ -16,6 +16,8 @@ export interface FormerTeam {
 export interface PlayerWithTeams extends Player {
   formerTeams: FormerTeam[];
   cachedAt?: string;
+  position?: string;
+  dateBorn?: string;
 }
 
 export type RoomStatus = "waiting" | "playing" | "finished";

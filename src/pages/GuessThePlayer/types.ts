@@ -2,6 +2,13 @@ import type { Player, PlayerWithTeams, FormerTeam } from "../../types";
 
 export type GuessStatus = "idle" | "loading" | "playing" | "won" | "lost";
 
+export interface RevealedHints {
+  nationality: boolean;
+  age: boolean;
+  position: boolean;
+  nameLetters: boolean;
+}
+
 export interface GuessGameState {
   targetPlayer: PlayerWithTeams | null;
   clubs: FormerTeam[];
@@ -13,6 +20,7 @@ export interface GuessGameState {
   isArchive: boolean;
   dayNumber: number | null;
   dailyCompleted: boolean;
+  hints: RevealedHints;
 }
 
 export interface ArchiveEntry {
