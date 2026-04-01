@@ -10,14 +10,14 @@ import {
   loadStats, recordResult
 } from "./helpers";
 
-const NO_HINTS: RevealedHints = { nationality: false, age: false, position: false, nameLetters: false };
+const NO_HINTS: RevealedHints = { nationality: false, age: false, position: false, photo: false };
 
 function hintsForWrongCount(wrongCount: number): RevealedHints {
   return {
     nationality: wrongCount >= 1,
     age: wrongCount >= 2,
     position: wrongCount >= 3,
-    nameLetters: wrongCount >= 4,
+    photo: wrongCount >= 4,
   };
 }
 

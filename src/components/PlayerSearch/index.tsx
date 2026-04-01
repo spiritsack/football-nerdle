@@ -3,7 +3,7 @@ import { searchPlayers } from "../../api/sportsdb";
 import type { Player } from "../../types";
 import type { PlayerSearchProps } from "./types";
 
-export default function PlayerSearch({ onSelect, disabled, usedPlayerIds }: PlayerSearchProps) {
+export default function PlayerSearch({ onSelect, disabled, usedPlayerIds, placeholder }: PlayerSearchProps) {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<Player[]>([]);
   const [isOpen, setIsOpen] = useState(false);
@@ -101,7 +101,7 @@ export default function PlayerSearch({ onSelect, disabled, usedPlayerIds }: Play
         onChange={(e) => handleChange(e.target.value)}
         onKeyDown={handleKeyDown}
         disabled={disabled}
-        placeholder="Search for a player..."
+        placeholder={placeholder ?? "Search for a player..."}
         className="w-full px-4 py-3 bg-gray-800 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:border-green-500 disabled:opacity-50"
         role="combobox"
         aria-expanded={isOpen}
