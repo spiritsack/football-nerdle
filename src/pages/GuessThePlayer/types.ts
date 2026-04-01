@@ -6,7 +6,7 @@ export interface RevealedHints {
   nationality: boolean;
   age: boolean;
   position: boolean;
-  nameLetters: boolean;
+  photo: boolean;
 }
 
 export interface GuessGameState {
