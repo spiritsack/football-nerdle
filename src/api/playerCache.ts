@@ -1,6 +1,14 @@
 import { supabase } from "./supabaseClient";
 import type { Player, PlayerWithTeams, FormerTeam } from "../types";
 
+interface PlayerSearchRow {
+  id: string;
+  name: string;
+  thumbnail: string;
+  nationality_id: string;
+  countries: { name: string } | null;
+}
+
 export async function searchPlayers(query: string): Promise<Player[]> {
   if (!supabase) return [];
   const { data, error } = await supabase
@@ -9,15 +17,13 @@ export async function searchPlayers(query: string): Promise<Player[]> {
     .ilike("name", `%${query}%`)
     .limit(10);
   if (error || !data) return [];
-  return data.map((row) => {
-    const countries = row.countries as unknown as { name: string } | null;
-    return {
-      id: row.id as string,
-      name: row.name as string,
-      thumbnail: (row.thumbnail as string) || "",
-      nationality: countries?.name ?? (row.nationality_id as string) ?? "",
-    };
-  });
+  const rows = data as unknown as PlayerSearchRow[];
+  return rows.map((row) => ({
+    id: row.id,
+    name: row.name,
+    thumbnail: row.thumbnail || "",
+    nationality: row.countries?.name ?? row.nationality_id ?? "",
+  }));
 }
 
 export function sortAndMergeTeams(teams: FormerTeam[]): FormerTeam[] {
