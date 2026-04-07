@@ -2,7 +2,7 @@ import { useState, useMemo } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useGuessGame } from "./useGuessGame";
 import { HARD_MODE_KEY } from "./constants";
-import { mergeConsecutiveClubs } from "./helpers";
+import { mergeConsecutiveClubs, getTodayString } from "./helpers";
 import PlayerCard from "../../components/PlayerCard";
 
 export default function GuessThePlayer() {
@@ -33,9 +33,7 @@ export default function GuessThePlayer() {
       const stored = localStorage.getItem(HARD_MODE_KEY);
       if (!stored) return false;
       const parsed = JSON.parse(stored);
-      const d = new Date();
-      const today = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-      return parsed.date === today;
+      return parsed.date === getTodayString();
     } catch {
       return false;
     }
@@ -45,9 +43,7 @@ export default function GuessThePlayer() {
 
   function toggleHardMode() {
     if (hardMode) {
-      const d = new Date();
-      const today = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-      localStorage.setItem(HARD_MODE_KEY, JSON.stringify({ date: today }));
+      localStorage.setItem(HARD_MODE_KEY, JSON.stringify({ date: getTodayString() }));
       setHardMode(false);
     }
   }
