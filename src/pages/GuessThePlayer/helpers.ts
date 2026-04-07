@@ -4,10 +4,8 @@ import type { DailyResult, GuessStats } from "./types";
 import type { FormerTeam } from "../../types";
 import type { MergedClub } from "../../components/PlayerCard/types";
 
-export function getTodayString(): string {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-}
+import { getTodayString } from "../../utils/dates";
+export { getTodayString };
 
 // Fallback daily player selection used when Supabase is unavailable.
 // Sequential day-number indexing: day 1 = index 0, day 2 = index 1, etc.
