@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { didPlayTogether } from "../api/sportsdb";
+import { didPlayTogether } from "../utils/gameLogic";
 import type { PlayerWithTeams } from "../types";
 
 function makePlayer(name: string, teams: { id: string; name: string; joined: string; departed: string }[]): PlayerWithTeams {

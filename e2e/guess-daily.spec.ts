@@ -43,14 +43,14 @@ test.describe("Daily Guess the Player", () => {
 
   test("shows search input", async ({ page }) => {
     await expect(page.getByText("Club History")).toBeVisible({ timeout: 10_000 });
-    await expect(page.getByPlaceholder("Search for a player...")).toBeVisible();
+    await expect(page.getByPlaceholder("Player name")).toBeVisible();
   });
 
   test("making a wrong guess increments attempts", async ({ page }) => {
     await expect(page.getByText("Club History")).toBeVisible({ timeout: 10_000 });
 
     // Search and select a wrong player
-    const searchInput = page.getByPlaceholder("Search for a player...");
+    const searchInput = page.getByPlaceholder("Player name");
     await searchInput.fill("lewandowski");
     await page.getByRole("button", { name: /Lewandowski/ }).first().click();
 
