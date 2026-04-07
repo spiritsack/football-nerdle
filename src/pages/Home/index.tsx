@@ -1,15 +1,14 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { DAILY_GUESS_KEY } from "../GuessThePlayer/constants";
+import { getTodayString } from "../../utils/dates";
 
 function isDailyCompleted(): boolean {
   try {
     const stored = localStorage.getItem(DAILY_GUESS_KEY);
     if (!stored) return false;
     const parsed = JSON.parse(stored);
-    const d = new Date();
-    const today = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-    return parsed.date === today;
+    return parsed.date === getTodayString();
   } catch {
     return false;
   }
