@@ -48,6 +48,11 @@ export default function GuessThePlayer() {
     }
   }
 
+  function handlePlayToday() {
+    window.location.hash = "#/guess";
+    startDaily();
+  }
+
   function handleShare() {
     const text = getShareText(hardMode);
     navigator.clipboard.writeText(text).then(() => {
@@ -97,6 +102,20 @@ export default function GuessThePlayer() {
       </header>
 
       <main className="flex-1 flex flex-col items-center px-4 py-8 gap-6">
+        {isArchive && (
+          <div className="w-full max-w-md bg-amber-900/40 border border-amber-600 rounded-lg px-4 py-3 text-center">
+            <p className="text-amber-300 text-sm font-medium">
+              This is an archived puzzle (Daily #{dayNumber})
+            </p>
+            <button
+              onClick={handlePlayToday}
+              className="mt-2 px-4 py-1.5 bg-green-600 hover:bg-green-500 rounded-lg text-sm font-semibold text-white transition-colors"
+            >
+              Play Today's Daily
+            </button>
+          </div>
+        )}
+
         {status === "playing" && (
           <div className="flex items-center gap-2">
             <button
@@ -207,19 +226,28 @@ export default function GuessThePlayer() {
               )}
             </p>
 
-            <div className="flex gap-3">
+            <div className="flex gap-3 flex-wrap justify-center">
               <button
                 onClick={handleShare}
                 className="px-6 py-3 bg-blue-600 hover:bg-blue-500 rounded-lg font-semibold transition-colors"
               >
                 {copied ? "Copied!" : "Share Result"}
               </button>
-              <button
-                onClick={startRandom}
-                className="px-6 py-3 bg-green-600 hover:bg-green-500 rounded-lg font-semibold transition-colors"
-              >
-                Random Game
-              </button>
+              {isArchive ? (
+                <button
+                  onClick={handlePlayToday}
+                  className="px-6 py-3 bg-green-600 hover:bg-green-500 rounded-lg font-semibold transition-colors"
+                >
+                  Play Today's Daily
+                </button>
+              ) : (
+                <button
+                  onClick={startRandom}
+                  className="px-6 py-3 bg-green-600 hover:bg-green-500 rounded-lg font-semibold transition-colors"
+                >
+                  Random Game
+                </button>
+              )}
             </div>
 
             {dayNavigation}
