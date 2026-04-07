@@ -1,6 +1,6 @@
 # Football Nerdle
 
-A football (soccer) trivia web app with two game modes, deployed to GitHub Pages.
+A football (soccer) trivia web app with multiple game modes, deployed to GitHub Pages.
 
 ## Tech Stack
 
@@ -33,14 +33,14 @@ A football (soccer) trivia web app with two game modes, deployed to GitHub Pages
 ```
 src/
   main.tsx              — Entry point
-  App.tsx               — Routes: /, /battle, /guess, /battle/multiplayer
+  App.tsx               — Routes: /, /battle, /guess, /guess/archive, /battle/multiplayer
   types.ts              — Shared types: Player, FormerTeam, PlayerWithTeams, GameRoom
   constants.ts          — Shared constants (TURN_TIME)
   index.css             — Global styles (Tailwind imports)
   api/
-    sportsdb.ts         — didPlayTogether (pure function, no API calls)
     supabaseClient.ts   — Supabase client singleton
     playerCache.ts      — Player data queries: search, lookup, random selection
+    dailySchedule.ts    — Daily player selection (Supabase daily_schedule table)
     multiplayerRoom.ts  — Room CRUD: createRoom, joinRoom, updateTurn, subscribeToRoom
   pages/
     Home/               — Landing page with game mode selection
@@ -49,6 +49,7 @@ src/
       index.tsx, types.ts, constants.ts, helpers.ts, useGame.ts
     GuessThePlayer/     — Guess the Player game
       index.tsx, types.ts, constants.ts, helpers.ts, useGuessGame.ts
+      Archive/          — Archive page (past daily puzzles)
     MultiplayerBattle/  — Online multiplayer Battle Mode
       index.tsx, types.ts, constants.ts, helpers.ts
       useMultiplayerRoom.ts, useMultiplayerGame.ts
@@ -57,11 +58,14 @@ src/
   components/
     PlayerSearch/       — Reusable player autocomplete (searches Supabase)
       index.tsx, types.ts
+    PlayerCard/         — Player card with club history, hints, and guess input
+      index.tsx, types.ts
+  utils/
+    gameLogic.ts        — didPlayTogether (pure function), ApiError
+    dates.ts            — Shared date formatting (getTodayString)
   data/
     seedPlayers.ts      — 107 seed players for daily puzzle (TransferMarkt IDs)
-    topClubs.ts         — 21 top European clubs for random player pool
 scripts/
-  seed-players.ts       — Populate Supabase from TheSportsDB (legacy)
   import-transfermarkt.ts — Import players/transfers from TransferMarkt CSVs
 supabase/
   migrations/           — SQL migration files for Supabase schema
@@ -72,7 +76,7 @@ e2e/                    — Playwright E2E tests
 
 - **Player data**: All player data lives in Supabase, imported from TransferMarkt datasets. No runtime API calls to external services. Player search queries the Supabase `players` table directly.
 - **Data tables are read-only**: RLS policies only allow SELECT for the anon key. Writes require the service role key (used by import scripts only).
-- **`didPlayTogether`**: Pure function in `sportsdb.ts` — checks if two players overlapped at the same club. No API calls.
+- **`didPlayTogether`**: Pure function in `utils/gameLogic.ts` — checks if two players overlapped at the same club. No API calls.
 - **Multiplayer**: Supabase Realtime (Postgres Changes) syncs game room state between two clients. The `game_rooms` DB row is the single source of truth. Optimistic locking on `current_turn` prevents race conditions.
 
 ## Supabase Schema
