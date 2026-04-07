@@ -75,7 +75,11 @@ export default function Battle() {
               <div>
                 Best: <span className="text-yellow-400 font-bold">{bestStreak}</span>
               </div>
-              <div className={`font-mono font-bold text-2xl ${timeLeft <= 5 ? "text-red-400" : "text-white"}`}>
+              <div
+                className={`font-mono font-bold text-2xl ${timeLeft <= 5 ? "text-red-400" : "text-white"}`}
+                aria-label={`${timeLeft} seconds remaining`}
+                aria-live={timeLeft <= 5 ? "assertive" : "off"}
+              >
                 {timeLeft}s
               </div>
             </div>
@@ -119,7 +123,7 @@ export default function Battle() {
 
             {/* Error */}
             {error && (
-              <div className="bg-orange-900/30 border border-orange-700 rounded-lg px-4 py-3 max-w-md w-full text-center text-orange-300 text-sm">
+              <div role="alert" className="bg-orange-900/30 border border-orange-700 rounded-lg px-4 py-3 max-w-md w-full text-center text-orange-300 text-sm">
                 {error}
               </div>
             )}

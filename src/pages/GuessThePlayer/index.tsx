@@ -137,7 +137,7 @@ export default function GuessThePlayer() {
         {status === "idle" && (
           <div className="flex-1 flex flex-col items-center justify-center gap-4">
             {error && (
-              <div className="bg-orange-900/30 border border-orange-700 rounded-lg px-4 py-3 max-w-md w-full text-center text-orange-300 text-sm">
+              <div role="alert" className="bg-orange-900/30 border border-orange-700 rounded-lg px-4 py-3 max-w-md w-full text-center text-orange-300 text-sm">
                 {error}
               </div>
             )}
@@ -175,7 +175,7 @@ export default function GuessThePlayer() {
             )}
 
             {error && (
-              <div className="bg-orange-900/30 border border-orange-700 rounded-lg px-4 py-3 max-w-md w-full text-center text-orange-300 text-sm">
+              <div role="alert" className="bg-orange-900/30 border border-orange-700 rounded-lg px-4 py-3 max-w-md w-full text-center text-orange-300 text-sm">
                 {error}
               </div>
             )}
