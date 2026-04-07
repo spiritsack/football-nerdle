@@ -16,8 +16,10 @@ Name footballers who played together to build the longest chain. You have **15 s
 See a player's club history and guess who it is in **5 attempts**.
 
 - **Daily** — Same player for everyone each day, with a shareable result
+- **Archive** — Play past daily puzzles you missed
 - **Random** — Practice with random players from top European clubs
 - **Hard Mode** — Only club badges shown (no names or years)
+- **Hints** — Wrong guesses progressively reveal nationality, age, position, and photo
 
 ## Tech Stack
 
