@@ -3,6 +3,7 @@ import { DAILY_GUESS_KEY, DAILY_RESULT_PREFIX, DAY_ONE_DATE, STATS_KEY } from ".
 import type { DailyResult, GuessStats } from "./types";
 import type { FormerTeam } from "../../types";
 import type { MergedClub } from "../../components/PlayerCard/types";
+import { getBaseClubName } from "../../utils/clubNames";
 
 import { getTodayString } from "../../utils/dates";
 export { getTodayString };
@@ -63,10 +64,6 @@ export function saveDailyResultForDate(date: string, status: "won" | "lost", att
 
 export function saveDailyResult(status: "won" | "lost", attempts: number) {
   saveDailyResultForDate(getTodayString(), status, attempts);
-}
-
-function getBaseClubName(name: string): string {
-  return name.replace(/\s+(B|II|Reserves|Youth|Yth\.|U\d+|Atlético|Castilla)$/i, "").trim();
 }
 
 export function mergeConsecutiveClubs(clubs: FormerTeam[]): MergedClub[] {

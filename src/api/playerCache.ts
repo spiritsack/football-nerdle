@@ -1,4 +1,5 @@
 import { supabase } from "./supabaseClient";
+import { getBaseClubName } from "../utils/clubNames";
 import type { Player, PlayerWithTeams, FormerTeam } from "../types";
 
 interface PlayerSearchRow {
@@ -91,9 +92,7 @@ async function getCountryNames(): Promise<Set<string>> {
 }
 
 export function isNationalTeam(clubName: string, countryNames: Set<string>): boolean {
-  const name = clubName.trim();
-  // Strip common suffixes: "Argentina U20", "Argentina U23", "France B"
-  const baseName = name.replace(/\s+(U\d+|B|Yth\.|Youth|Olympic|Olympique)$/i, "").trim();
+  const baseName = getBaseClubName(clubName);
   return countryNames.has(baseName.toLowerCase());
 }
 
