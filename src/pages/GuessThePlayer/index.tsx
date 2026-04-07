@@ -2,56 +2,8 @@ import { useState, useMemo } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useGuessGame } from "./useGuessGame";
 import { HARD_MODE_KEY } from "./constants";
-import PlayerSearch from "../../components/PlayerSearch";
-import type { FormerTeam } from "../../types";
-
-interface MergedClub {
-  teamId: string;
-  teamName: string;
-  yearJoined: string;
-  yearDeparted: string;
-  badge: string;
-  stints: FormerTeam[];
-}
-
-function getBaseClubName(name: string): string {
-  return name.replace(/\s+(B|II|Reserves|Youth|Yth\.|U\d+|Atlético|Castilla)$/i, "").trim();
-}
-
-function mergeConsecutiveClubs(clubs: FormerTeam[]): MergedClub[] {
-  const merged: MergedClub[] = [];
-  for (const club of clubs) {
-    const baseName = getBaseClubName(club.teamName);
-    const last = merged[merged.length - 1];
-    if (last && getBaseClubName(last.teamName) === baseName) {
-      // Extend the merged entry
-      last.stints.push(club);
-      if (!last.yearJoined || (club.yearJoined && club.yearJoined < last.yearJoined)) {
-        last.yearJoined = club.yearJoined;
-      }
-      if (!club.yearDeparted || (club.yearDeparted && (!last.yearDeparted || club.yearDeparted > last.yearDeparted))) {
-        last.yearDeparted = club.yearDeparted;
-      }
-      if (!last.badge && club.badge) last.badge = club.badge;
-    } else {
-      merged.push({
-        teamId: club.teamId,
-        teamName: club.teamName,
-        yearJoined: club.yearJoined,
-        yearDeparted: club.yearDeparted,
-        badge: club.badge,
-        stints: [club],
-      });
-    }
-  }
-  // Use the base name for merged entries with multiple stints
-  for (const m of merged) {
-    if (m.stints.length > 1) {
-      m.teamName = getBaseClubName(m.stints[0].teamName);
-    }
-  }
-  return merged;
-}
+import { mergeConsecutiveClubs } from "./helpers";
+import PlayerCard from "../../components/PlayerCard";
 
 export default function GuessThePlayer() {
   const navigate = useNavigate();
@@ -202,95 +154,23 @@ export default function GuessThePlayer() {
           </div>
         )}
 
-        {status === "playing" && (
+        {status === "playing" && targetPlayer && (
           <>
             <div className="text-lg">
               Attempts: <span className={`font-bold ${attempts >= maxAttempts - 1 ? "text-red-400" : "text-green-400"}`}>{attempts}</span>
               <span className="text-gray-500"> / {maxAttempts}</span>
             </div>
 
-            <div className="bg-gray-800 border border-gray-600 rounded-xl p-6 max-w-lg w-full">
-              <h2 className="text-lg font-semibold mb-4 text-center text-gray-300">Club History</h2>
-              {hardMode ? (
-                <div className="flex flex-col md:flex-row items-center justify-center gap-1 flex-wrap">
-                  {mergedClubs.map((club, i) => (
-                    <div key={`${club.teamId}-${i}`} className="flex flex-col md:flex-row items-center">
-                      {i > 0 && (
-                        <>
-                          <span className="text-gray-500 text-lg md:hidden">↓</span>
-                          <span className="text-gray-500 text-lg hidden md:block mx-1">→</span>
-                        </>
-                      )}
-                      {club.badge ? (
-                        <img
-                          src={club.badge}
-                          alt=""
-                          className="w-16 h-16 object-contain"
-                          onError={(e) => { e.currentTarget.style.display = "none"; e.currentTarget.nextElementSibling?.classList.remove("hidden"); }}
-                        />
-                      ) : null}
-                      <div className={`w-16 h-16 bg-gray-600 rounded flex items-center justify-center text-xs text-gray-300 text-center p-1 leading-tight ${club.badge ? "hidden" : ""}`}>{club.teamName}</div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="space-y-1">
-                  {mergedClubs.map((club, i) => (
-                    <div key={`${club.teamId}-${i}`}>
-                      {i > 0 && <div className="text-gray-500 text-center text-sm">↓</div>}
-                      <div className="flex items-center gap-3 bg-gray-700 rounded-lg px-4 py-2">
-                        {club.badge ? (
-                          <img
-                            src={club.badge}
-                            alt=""
-                            className="w-8 h-8 object-contain"
-                            onError={(e) => { e.currentTarget.style.display = "none"; e.currentTarget.nextElementSibling?.classList.remove("hidden"); }}
-                          />
-                        ) : null}
-                        <div className={`w-8 h-8 bg-gray-600 rounded flex items-center justify-center text-[0.5rem] text-gray-300 text-center p-0.5 leading-tight ${club.badge ? "hidden" : ""}`}>{club.teamName}</div>
-                        <span className="font-medium">{club.teamName}</span>
-                        <span className="bg-gray-800 text-gray-300 text-xs px-2.5 py-1 rounded-full ml-auto whitespace-nowrap">
-                          {club.yearJoined}{club.yearDeparted ? ` – ${club.yearDeparted}` : " – present"}
-                        </span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
+            <p className="text-gray-300">Which player is this?</p>
 
-            {(hints.nationality || hints.age || hints.position || hints.nameLetters) && targetPlayer && (
-              <div className="flex flex-wrap justify-center gap-3 max-w-lg w-full">
-                {hints.nationality && (
-                  <div className="bg-gray-800 border border-gray-600 rounded-lg px-4 py-2 text-sm">
-                    <span className="text-gray-400">Nationality: </span>
-                    <span className="font-semibold">{targetPlayer.nationality || "Unknown"}</span>
-                  </div>
-                )}
-                {hints.age && targetPlayer.dateBorn && (
-                  <div className="bg-gray-800 border border-gray-600 rounded-lg px-4 py-2 text-sm">
-                    <span className="text-gray-400">Age: </span>
-                    <span className="font-semibold">{new Date().getFullYear() - parseInt(targetPlayer.dateBorn, 10)}</span>
-                  </div>
-                )}
-                {hints.position && targetPlayer.position && (
-                  <div className="bg-gray-800 border border-gray-600 rounded-lg px-4 py-2 text-sm">
-                    <span className="text-gray-400">Position: </span>
-                    <span className="font-semibold">{targetPlayer.position}</span>
-                  </div>
-                )}
-                {hints.nameLetters && (
-                  <div className="bg-gray-800 border border-gray-600 rounded-lg px-4 py-2 text-sm">
-                    <span className="text-gray-400">Name: </span>
-                    <span className="font-semibold">
-                      {targetPlayer.name.split(" ").map((part) =>
-                        part.charAt(0) + ".".repeat(part.length - 1)
-                      ).join(" ")}
-                    </span>
-                  </div>
-                )}
-              </div>
-            )}
+            <PlayerCard
+              player={targetPlayer}
+              clubs={mergedClubs}
+              hints={hints}
+              revealed={false}
+              hardMode={hardMode}
+              onGuess={submitGuess}
+            />
 
             {wrongGuesses.length > 0 && (
               <div className="text-sm text-gray-400">
@@ -304,51 +184,33 @@ export default function GuessThePlayer() {
               </div>
             )}
 
-            <p className="text-gray-300">Who is this player?</p>
-
-            <PlayerSearch onSelect={submitGuess} />
-
             {dayNavigation}
           </>
         )}
 
-        {status === "won" && targetPlayer && (
-          <div className="bg-green-900/30 border border-green-700 rounded-xl p-6 max-w-md w-full text-center">
-            <h2 className="text-2xl font-bold text-green-400 mb-4">Correct!</h2>
-            {targetPlayer.thumbnail && (
-              <img
-                src={targetPlayer.thumbnail}
-                alt={targetPlayer.name}
-                className="w-24 h-24 rounded-full mx-auto mb-4 object-cover bg-gray-700"
-              />
-            )}
-            <p className="text-xl font-bold mb-1">{targetPlayer.name}</p>
-            <p className="text-gray-400 mb-4">{targetPlayer.nationality}</p>
-            <p className="text-gray-300 mb-4">
-              Guessed in <span className="text-green-400 font-bold">{attempts}</span> {attempts === 1 ? "attempt" : "attempts"}
-              {hardMode && <span className="text-red-400 ml-1">(Hard)</span>}
-            </p>
-          </div>
-        )}
-
-        {status === "lost" && targetPlayer && (
-          <div className="bg-red-900/30 border border-red-700 rounded-xl p-6 max-w-md w-full text-center">
-            <h2 className="text-2xl font-bold text-red-400 mb-4">Game Over!</h2>
-            <p className="text-gray-300 mb-4">The player was:</p>
-            {targetPlayer.thumbnail && (
-              <img
-                src={targetPlayer.thumbnail}
-                alt={targetPlayer.name}
-                className="w-24 h-24 rounded-full mx-auto mb-4 object-cover bg-gray-700"
-              />
-            )}
-            <p className="text-xl font-bold mb-1">{targetPlayer.name}</p>
-            <p className="text-gray-400 mb-6">{targetPlayer.nationality}</p>
-          </div>
-        )}
-
-        {resultScreen && (
+        {resultScreen && targetPlayer && (
           <>
+            <h2 className={`text-2xl font-bold ${status === "won" ? "text-green-400" : "text-red-400"}`}>
+              {status === "won" ? "Correct!" : "Game Over!"}
+            </h2>
+
+            <PlayerCard
+              player={targetPlayer}
+              clubs={mergedClubs}
+              hints={hints}
+              revealed={true}
+              hardMode={false}
+              result={status === "won" ? "won" : "lost"}
+            />
+
+            <p className="text-gray-300">
+              {status === "won" ? (
+                <>Guessed in <span className="text-green-400 font-bold">{attempts}</span> {attempts === 1 ? "attempt" : "attempts"}</>
+              ) : (
+                <span className="text-red-400">Not guessed</span>
+              )}
+            </p>
+
             <div className="flex gap-3">
               <button
                 onClick={handleShare}

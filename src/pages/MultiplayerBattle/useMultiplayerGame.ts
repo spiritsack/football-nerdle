@@ -1,5 +1,5 @@
 import { useState, useCallback, useRef, useEffect } from "react";
-import { didPlayTogether, ApiError } from "../../api/sportsdb";
+import { didPlayTogether, ApiError } from "../../utils/gameLogic";
 import { getPlayerWithTeamsCached } from "../../api/playerCache";
 import { startGame, submitTurn, endGame, subscribeToRoom, getRoom, sendHeartbeat } from "../../api/multiplayerRoom";
 import type { Player, GameRoom } from "../../types";

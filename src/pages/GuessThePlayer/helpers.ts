@@ -1,6 +1,8 @@
 import { SEED_PLAYERS } from "../../data/seedPlayers";
 import { DAILY_GUESS_KEY, DAILY_RESULT_PREFIX, DAY_ONE_DATE, STATS_KEY } from "./constants";
 import type { DailyResult, GuessStats } from "./types";
+import type { FormerTeam } from "../../types";
+import type { MergedClub } from "../../components/PlayerCard/types";
 
 export function getTodayString(): string {
   const d = new Date();
@@ -63,6 +65,43 @@ export function saveDailyResultForDate(date: string, status: "won" | "lost", att
 
 export function saveDailyResult(status: "won" | "lost", attempts: number) {
   saveDailyResultForDate(getTodayString(), status, attempts);
+}
+
+function getBaseClubName(name: string): string {
+  return name.replace(/\s+(B|II|Reserves|Youth|Yth\.|U\d+|Atlético|Castilla)$/i, "").trim();
+}
+
+export function mergeConsecutiveClubs(clubs: FormerTeam[]): MergedClub[] {
+  const merged: MergedClub[] = [];
+  for (const club of clubs) {
+    const baseName = getBaseClubName(club.teamName);
+    const last = merged[merged.length - 1];
+    if (last && getBaseClubName(last.teamName) === baseName) {
+      last.stints.push(club);
+      if (!last.yearJoined || (club.yearJoined && club.yearJoined < last.yearJoined)) {
+        last.yearJoined = club.yearJoined;
+      }
+      if (!club.yearDeparted || (club.yearDeparted && (!last.yearDeparted || club.yearDeparted > last.yearDeparted))) {
+        last.yearDeparted = club.yearDeparted;
+      }
+      if (!last.badge && club.badge) last.badge = club.badge;
+    } else {
+      merged.push({
+        teamId: club.teamId,
+        teamName: club.teamName,
+        yearJoined: club.yearJoined,
+        yearDeparted: club.yearDeparted,
+        badge: club.badge,
+        stints: [club],
+      });
+    }
+  }
+  for (const m of merged) {
+    if (m.stints.length > 1) {
+      m.teamName = getBaseClubName(m.stints[0].teamName);
+    }
+  }
+  return merged;
 }
 
 const DEFAULT_STATS: GuessStats = { played: 0, won: 0, lost: 0, streak: 0, longestStreak: 0 };
