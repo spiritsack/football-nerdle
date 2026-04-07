@@ -105,6 +105,8 @@ export default function PlayerSearch({ onSelect, disabled, usedPlayerIds, placeh
         className="w-full px-4 py-3 bg-gray-800 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:border-green-500 disabled:opacity-50"
         role="combobox"
         aria-expanded={isOpen}
+        aria-controls="player-search-listbox"
+        aria-autocomplete="list"
         aria-activedescendant={highlightIndex >= 0 ? `player-option-${highlightIndex}` : undefined}
       />
       {loading && (
@@ -112,6 +114,7 @@ export default function PlayerSearch({ onSelect, disabled, usedPlayerIds, placeh
       )}
       {isOpen && results.length > 0 && (
         <ul
+          id="player-search-listbox"
           ref={listRef}
           role="listbox"
           className={`absolute z-10 w-full bg-gray-800 border border-gray-600 rounded-lg overflow-hidden shadow-lg max-h-80 overflow-y-auto ${
