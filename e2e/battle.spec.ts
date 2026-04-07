@@ -29,7 +29,9 @@ test.describe("Battle Mode", () => {
 
   test("game shows timer counting down from 15", async ({ page }) => {
     await page.getByRole("button", { name: "Practice" }).click();
-    await expect(page.getByText("15s")).toBeVisible({ timeout: 10_000 });
+    // Wait for game to load before checking timer
+    await expect(page.getByPlaceholder("Search for a player...")).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByText("15s")).toBeVisible();
 
     // Wait a bit and check timer decreased
     await page.waitForTimeout(2000);
