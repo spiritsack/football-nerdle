@@ -125,7 +125,7 @@ export function useGuessGame() {
       });
     } catch (e) {
       const message = e instanceof Error ? e.message : "Something went wrong";
-      setState((s) => ({ ...s, status: "idle", error: message }));
+      setState((s) => ({ ...s, status: "idle", error: message, dayNumber: dayNum, isArchive: true }));
     }
   }, []);
 

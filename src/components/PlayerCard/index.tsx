@@ -46,7 +46,7 @@ export default function PlayerCard({ player, clubs, hints, revealed, hardMode, r
   const borderColor = result === "won" ? "border-green-600" : result === "lost" ? "border-red-600" : "border-gray-600";
 
   return (
-    <div className={`bg-gray-800 border-2 ${borderColor} rounded-2xl overflow-hidden max-w-md w-full transition-colors duration-500`}>
+    <div className={`bg-gray-800 border-2 ${borderColor} rounded-2xl overflow-visible max-w-md w-full transition-colors duration-500`}>
       {/* Player identity header */}
       <div className="px-6 pt-5 pb-4 flex items-center gap-4 border-b border-gray-700">
         {(revealed || hints.photo) && player.thumbnail ? (
