@@ -17,7 +17,7 @@ CREATE POLICY "Only admins can read admin_users"
   );
 
 -- Seed admin user
-INSERT INTO admin_users (email) VALUES ('martinm@pm.me');
+INSERT INTO admin_users (email) VALUES ('martinsadu@pm.me');
 
 -- 2. Helper function to check if the current user is an admin
 CREATE OR REPLACE FUNCTION is_admin()
