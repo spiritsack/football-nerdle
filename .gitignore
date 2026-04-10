@@ -39,3 +39,6 @@ skills-lock.json
 # Playwright
 test-results/
 playwright-report/
+
+# Supabase
+supabase/.temp/

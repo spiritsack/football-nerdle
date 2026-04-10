@@ -1,22 +1,29 @@
-import { supabase } from "./supabaseClient";
+import { supabase, supabaseAdmin } from "./supabaseClient";
 import type { AdminClubRow } from "../pages/Admin/types";
+
+// Write operations use the admin client (service role key, bypasses RLS).
+// Read operations use the regular client (anon/publishable key).
 
 // --- Schedule operations ---
 
 export async function upsertSchedule(date: string, playerId: string): Promise<boolean> {
-  if (!supabase) return false;
-  const { error } = await supabase
+  const client = supabaseAdmin ?? supabase;
+  if (!client) return false;
+  const { error } = await client
     .from("daily_schedule")
     .upsert({ date, player_id: playerId }, { onConflict: "date" });
+  if (error) console.error("upsertSchedule failed:", error);
   return !error;
 }
 
 export async function deleteSchedule(date: string): Promise<boolean> {
-  if (!supabase) return false;
-  const { error } = await supabase
+  const client = supabaseAdmin ?? supabase;
+  if (!client) return false;
+  const { error } = await client
     .from("daily_schedule")
     .delete()
     .eq("date", date);
+  if (error) console.error("deleteSchedule failed:", error);
   return !error;
 }
 
@@ -69,11 +76,13 @@ export async function updatePlayerClubHidden(
   playerClubId: number,
   isHidden: boolean,
 ): Promise<boolean> {
-  if (!supabase) return false;
-  const { error } = await supabase
+  const client = supabaseAdmin ?? supabase;
+  if (!client) return false;
+  const { error } = await client
     .from("player_clubs")
     .update({ is_hidden: isHidden })
     .eq("id", playerClubId);
+  if (error) console.error("updatePlayerClubHidden failed:", error);
   return !error;
 }
 
@@ -82,13 +91,17 @@ export async function updatePlayerClubHidden(
 export async function updateClubSortOrders(
   updates: { id: number; sort_order: number }[],
 ): Promise<boolean> {
-  if (!supabase) return false;
+  const client = supabaseAdmin ?? supabase;
+  if (!client) return false;
   for (const { id, sort_order } of updates) {
-    const { error } = await supabase
+    const { error } = await client
       .from("player_clubs")
       .update({ sort_order })
       .eq("id", id);
-    if (error) return false;
+    if (error) {
+      console.error("updateClubSortOrders failed:", error);
+      return false;
+    }
   }
   return true;
 }
@@ -96,11 +109,13 @@ export async function updateClubSortOrders(
 // --- Club name operations ---
 
 export async function updateClubName(clubId: string, name: string): Promise<boolean> {
-  if (!supabase) return false;
-  const { error } = await supabase
+  const client = supabaseAdmin ?? supabase;
+  if (!client) return false;
+  const { error } = await client
     .from("clubs")
     .update({ name })
     .eq("id", clubId);
+  if (error) console.error("updateClubName failed:", error);
   return !error;
 }
 
@@ -117,35 +132,42 @@ export async function searchClubs(query: string): Promise<{ id: string; name: st
 }
 
 export async function uploadClubCrest(clubId: string, file: File): Promise<string | null> {
-  if (!supabase) return null;
+  const client = supabaseAdmin ?? supabase;
+  if (!client) return null;
   const ext = file.name.split(".").pop() ?? "png";
   const path = `${clubId}.${ext}`;
 
-  const { error: uploadError } = await supabase.storage
+  const { error: uploadError } = await client.storage
     .from("club-crests")
     .upload(path, file, { upsert: true });
-  if (uploadError) return null;
+  if (uploadError) {
+    console.error("uploadClubCrest upload failed:", uploadError);
+    return null;
+  }
 
-  const { data: urlData } = supabase.storage
+  const { data: urlData } = client.storage
     .from("club-crests")
     .getPublicUrl(path);
 
   const publicUrl = urlData.publicUrl;
 
   // Update the club record with the new badge URL
-  await supabase
+  const { error: updateError } = await client
     .from("clubs")
     .update({ badge: publicUrl })
     .eq("id", clubId);
+  if (updateError) console.error("uploadClubCrest update failed:", updateError);
 
   return publicUrl;
 }
 
 export async function updateClubBadge(clubId: string, badgeUrl: string): Promise<boolean> {
-  if (!supabase) return false;
-  const { error } = await supabase
+  const client = supabaseAdmin ?? supabase;
+  if (!client) return false;
+  const { error } = await client
     .from("clubs")
     .update({ badge: badgeUrl })
     .eq("id", clubId);
+  if (error) console.error("updateClubBadge failed:", error);
   return !error;
 }
