@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { SEED_PLAYERS } from "../../data/seedPlayers";
 import { getAllScheduledDays } from "../../api/dailySchedule";
-import { upsertSchedule, deleteSchedule, getScheduleRange } from "../../api/adminApi";
+import { upsertSchedule, deleteSchedule, getScheduleRange, getPlayerThumbnails } from "../../api/adminApi";
 import { SCHEDULE_DAYS_AHEAD } from "./constants";
 import type { Player } from "../../types";
 import PlayerClubList from "./PlayerClubList";
@@ -65,10 +65,15 @@ export default function ScheduleManager() {
     // Track IDs used by suggestions so we don't suggest the same player twice
     const suggestionUsed = new Set(allUsedIds);
 
+    // Fetch fresh thumbnails from the database (seed data may have stale URLs)
+    const thumbnails = await getPlayerThumbnails(SEED_PLAYERS.map((p) => p.id));
+    const withFreshThumbs = (p: Player): Player =>
+      thumbnails.has(p.id) ? { ...p, thumbnail: thumbnails.get(p.id)! } : p;
+
     const dayStates: DayState[] = dates.map((date) => {
       const assignedId = scheduleMap.get(date);
       const assignedPlayer = assignedId
-        ? SEED_PLAYERS.find((p) => p.id === assignedId) ?? null
+        ? (SEED_PLAYERS.find((p) => p.id === assignedId) ?? null)
         : null;
 
       let suggestion: Player | null = null;
@@ -82,7 +87,11 @@ export default function ScheduleManager() {
         })();
       }
 
-      return { date, assignedPlayer, suggestion };
+      return {
+        date,
+        assignedPlayer: assignedPlayer ? withFreshThumbs(assignedPlayer) : null,
+        suggestion: suggestion ? withFreshThumbs(suggestion) : null,
+      };
     });
 
     setDays(dayStates);
@@ -94,33 +103,72 @@ export default function ScheduleManager() {
     loadSchedule(); // eslint-disable-line react-hooks/set-state-in-effect
   }, [loadSchedule]);
 
-  const handleApprove = useCallback(async (date: string, player: Player) => {
-    const ok = await upsertSchedule(date, player.id);
-    if (ok) {
-      setDays((prev) =>
-        prev.map((d) =>
-          d.date === date ? { ...d, assignedPlayer: player, suggestion: null } : d,
-        ),
-      );
-      setUsedPlayerIds((prev) => new Set([...prev, player.id]));
-    }
-  }, []);
+  const handleApprove = useCallback(async (_date: string, player: Player) => {
+    // Find the earliest unassigned future date
+    const firstOpen = days.find((d) => d.date >= today && !d.assignedPlayer);
+    if (!firstOpen) return;
+
+    const ok = await upsertSchedule(firstOpen.date, player.id);
+    if (!ok) return;
+
+    setDays((prev) => {
+      // Collect suggestions excluding the approved player
+      const remainingSuggestions = prev
+        .filter((d) => d.date >= today && !d.assignedPlayer && d.suggestion && d.suggestion.id !== player.id)
+        .map((d) => d.suggestion!);
+
+      let suggestionIdx = 0;
+      return prev.map((d) => {
+        if (d.date < today || d.assignedPlayer) return d;
+        // First open slot gets the approved player
+        if (d.date === firstOpen.date) {
+          return { ...d, assignedPlayer: player, suggestion: null };
+        }
+        // Remaining slots get shifted suggestions
+        const next = remainingSuggestions[suggestionIdx] ?? null;
+        suggestionIdx++;
+        return { ...d, suggestion: next };
+      });
+    });
+    setUsedPlayerIds((prev) => new Set([...prev, player.id]));
+    setExpandedDate(null);
+  }, [days, today]);
 
   const handleReject = useCallback(
     (date: string) => {
-      setDays((prev) =>
-        prev.map((d) => {
-          if (d.date !== date || d.assignedPlayer) return d;
-          // Pick a new suggestion, excluding already-used and current suggestions for other days
-          const allSuggested = new Set(
-            prev.filter((x) => x.suggestion && x.date !== date).map((x) => x.suggestion!.id),
-          );
-          const exclude = new Set([...usedPlayerIds, ...allSuggested]);
-          if (d.suggestion) exclude.add(d.suggestion.id);
-          const newSuggestion = getRandomUnused(exclude);
-          return { ...d, suggestion: newSuggestion };
-        }),
-      );
+      setDays((prev) => {
+        const skippedDay = prev.find((d) => d.date === date);
+        const skippedId = skippedDay?.suggestion?.id;
+
+        // Collect suggestions after the skipped date (shift up)
+        const suggestionsAfter = prev
+          .filter((d) => d.date > date && !d.assignedPlayer && d.suggestion)
+          .map((d) => d.suggestion!);
+
+        // Pick a new suggestion for the last open slot
+        const allSuggested = new Set(
+          suggestionsAfter.map((s) => s.id),
+        );
+        const exclude = new Set([...usedPlayerIds, ...allSuggested]);
+        if (skippedId) exclude.add(skippedId);
+        // Also exclude suggestions before the skipped date
+        prev.filter((d) => d.date < date && d.suggestion).forEach((d) => {
+          exclude.add(d.suggestion!.id);
+        });
+        const newTail = getRandomUnused(exclude);
+        const shifted = [...suggestionsAfter, newTail];
+
+        let shiftIdx = 0;
+        return prev.map((d) => {
+          if (d.assignedPlayer || d.date < date) return d;
+          if (d.date >= date && !d.assignedPlayer) {
+            const next = shifted[shiftIdx] ?? null;
+            shiftIdx++;
+            return { ...d, suggestion: next };
+          }
+          return d;
+        });
+      });
     },
     [usedPlayerIds, getRandomUnused],
   );
@@ -196,6 +244,7 @@ export default function ScheduleManager() {
                     <img
                       src={player.thumbnail}
                       alt=""
+                      referrerPolicy="no-referrer"
                       className="w-8 h-8 rounded-full object-cover bg-gray-700"
                     />
                   )}
@@ -203,6 +252,18 @@ export default function ScheduleManager() {
                     <span className={`font-medium ${isSuggestion ? "text-yellow-300" : "text-white"}`}>
                       {player.name}
                     </span>
+                    <a
+                      href={`https://duckduckgo.com/?q=${encodeURIComponent(player.name + " wiki")}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      onClick={(e) => e.stopPropagation()}
+                      className="text-gray-500 hover:text-blue-400 ml-1.5 inline-block transition-colors"
+                      title="Look up on Wikipedia"
+                    >
+                      <svg className="w-3.5 h-3.5 inline" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                      </svg>
+                    </a>
                     {isSuggestion && (
                       <span className="text-yellow-500/70 text-xs ml-2">suggestion</span>
                     )}

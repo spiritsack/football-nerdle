@@ -1,6 +1,19 @@
 import { supabase } from "./supabaseClient";
 import type { AdminClubRow } from "../pages/Admin/types";
 
+// --- Player thumbnail lookup ---
+
+export async function getPlayerThumbnails(
+  playerIds: string[],
+): Promise<Map<string, string>> {
+  if (!supabase || playerIds.length === 0) return new Map();
+  const { data } = await supabase
+    .from("players")
+    .select("id, thumbnail")
+    .in("id", playerIds);
+  return new Map((data ?? []).map((r: { id: string; thumbnail: string }) => [r.id, r.thumbnail]));
+}
+
 // --- Schedule operations ---
 
 export async function upsertSchedule(date: string, playerId: string): Promise<boolean> {
