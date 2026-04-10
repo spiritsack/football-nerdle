@@ -64,6 +64,8 @@ interface PlayerClubRow {
   club_id: string;
   year_joined: string;
   year_departed: string;
+  is_hidden?: boolean;
+  sort_order?: number | null;
   clubs: { id: string; name: string; badge: string } | null;
 }
 
@@ -79,7 +81,7 @@ interface PlayerRow {
   countries: { name: string } | null;
 }
 
-const PLAYER_SELECT = "id, name, thumbnail, nationality_id, position, date_born, cached_at, countries(name), player_clubs(club_id, year_joined, year_departed, clubs(id, name, badge))";
+const PLAYER_SELECT = "id, name, thumbnail, nationality_id, position, date_born, cached_at, countries(name), player_clubs(club_id, year_joined, year_departed, is_hidden, sort_order, clubs(id, name, badge))";
 
 let countryNamesCache: Set<string> | null = null;
 
@@ -150,23 +152,36 @@ async function getFromCache(playerId: string, playerName?: string): Promise<Play
 
 async function buildPlayerWithTeams(row: PlayerRow): Promise<PlayerWithTeams> {
   const countryNames = await getCountryNames();
-  const rawTeams: FormerTeam[] = row.player_clubs
+  const filtered = row.player_clubs
     .filter((pc) => pc.clubs)
-    .filter((pc) => !isNationalTeam(pc.clubs!.name, countryNames))
-    .map((pc) => ({
-      teamId: pc.clubs!.id,
-      teamName: pc.clubs!.name,
-      yearJoined: pc.year_joined,
-      yearDeparted: pc.year_departed,
-      badge: pc.clubs!.badge,
-    }));
+    .filter((pc) => !pc.is_hidden)
+    .filter((pc) => !isNationalTeam(pc.clubs!.name, countryNames));
+
+  // Use explicit sort_order if any club has one set, otherwise fall back to year-based sort
+  const hasCustomOrder = filtered.some((pc) => pc.sort_order != null);
+
+  if (hasCustomOrder) {
+    filtered.sort((a, b) => (a.sort_order ?? 9999) - (b.sort_order ?? 9999));
+  }
+
+  const rawTeams: FormerTeam[] = filtered.map((pc) => ({
+    teamId: pc.clubs!.id,
+    teamName: pc.clubs!.name,
+    yearJoined: pc.year_joined,
+    yearDeparted: pc.year_departed,
+    badge: pc.clubs!.badge,
+  }));
+
+  const orderedTeams = hasCustomOrder
+    ? rawTeams
+    : sortAndMergeTeams(rawTeams);
 
   return {
     id: row.id,
     name: row.name,
     thumbnail: row.thumbnail,
     nationality: row.countries?.name ?? row.nationality_id ?? "",
-    formerTeams: sortAndMergeTeams(rawTeams),
+    formerTeams: orderedTeams,
     cachedAt: row.cached_at,
     position: row.position || undefined,
     dateBorn: row.date_born || undefined,
