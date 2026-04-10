@@ -83,6 +83,11 @@ export function useGuessGame() {
   }, [today]);
 
   const loadArchiveDay = useCallback(async (dayNum: number) => {
+    const todayNum = getDayNumber(today);
+    if (dayNum > todayNum || dayNum < 1) {
+      setState((s) => ({ ...s, status: "idle", error: "This day hasn't happened yet.", isArchive: true, dayNumber: dayNum }));
+      return;
+    }
     setState((s) => ({ ...s, status: "loading", error: null }));
     try {
       const date = getDateForDay(dayNum);
