@@ -37,7 +37,10 @@ const TOP_CLUBS = [
 ];
 
 const supabaseUrl = process.env.VITE_SUPABASE_URL;
-const supabaseKey = process.env.VITE_SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_PUBLISHABLE_DEFAULT_KEY;
+const supabaseKey =
+  process.env.SUPABASE_SERVICE_ROLE_KEY ||
+  process.env.VITE_SUPABASE_ANON_KEY ||
+  process.env.VITE_SUPABASE_PUBLISHABLE_DEFAULT_KEY;
 const sportsdbKey = process.env.VITE_SPORTSDB_API_KEY || "3";
 
 if (!supabaseUrl || !supabaseKey) {
