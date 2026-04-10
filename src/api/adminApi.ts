@@ -88,9 +88,8 @@ export async function updatePlayerClubYouthTeam(
   playerClubId: number,
   isYouthTeam: boolean,
 ): Promise<boolean> {
-  const client = supabaseAdmin ?? supabase;
-  if (!client) return false;
-  const { error } = await client
+  if (!supabase) return false;
+  const { error } = await supabase
     .from("player_clubs")
     .update({ is_youth_team: isYouthTeam })
     .eq("id", playerClubId);
@@ -102,9 +101,8 @@ export async function updatePlayerClubLoan(
   playerClubId: number,
   isLoan: boolean,
 ): Promise<boolean> {
-  const client = supabaseAdmin ?? supabase;
-  if (!client) return false;
-  const { error } = await client
+  if (!supabase) return false;
+  const { error } = await supabase
     .from("player_clubs")
     .update({ is_loan: isLoan })
     .eq("id", playerClubId);
