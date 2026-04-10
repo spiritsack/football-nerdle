@@ -87,6 +87,7 @@ export function mergeConsecutiveClubs(clubs: FormerTeam[]): MergedClub[] {
         yearJoined: club.yearJoined,
         yearDeparted: club.yearDeparted,
         badge: club.badge,
+        isLoan: club.isLoan,
         stints: [club],
       });
     }

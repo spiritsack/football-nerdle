@@ -14,5 +14,7 @@ export interface AdminClubRow {
   year_joined: string;
   year_departed: string;
   is_hidden: boolean;
+  is_youth_team: boolean;
+  is_loan: boolean;
   sort_order: number | null;
 }
