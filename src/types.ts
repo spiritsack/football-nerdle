@@ -11,6 +11,7 @@ export interface FormerTeam {
   yearJoined: string;
   yearDeparted: string;
   badge: string;
+  isLoan?: boolean;
 }
 
 export interface PlayerWithTeams extends Player {

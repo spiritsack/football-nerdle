@@ -65,6 +65,8 @@ interface PlayerClubRow {
   year_joined: string;
   year_departed: string;
   is_hidden?: boolean;
+  is_youth_team?: boolean;
+  is_loan?: boolean;
   sort_order?: number | null;
   clubs: { id: string; name: string; badge: string } | null;
 }
@@ -81,7 +83,7 @@ interface PlayerRow {
   countries: { name: string } | null;
 }
 
-const PLAYER_SELECT = "id, name, thumbnail, nationality_id, position, date_born, cached_at, countries(name), player_clubs(club_id, year_joined, year_departed, is_hidden, sort_order, clubs(id, name, badge))";
+const PLAYER_SELECT = "id, name, thumbnail, nationality_id, position, date_born, cached_at, countries(name), player_clubs(club_id, year_joined, year_departed, is_hidden, is_youth_team, is_loan, sort_order, clubs(id, name, badge))";
 
 let countryNamesCache: Set<string> | null = null;
 
@@ -155,6 +157,7 @@ async function buildPlayerWithTeams(row: PlayerRow): Promise<PlayerWithTeams> {
   const filtered = row.player_clubs
     .filter((pc) => pc.clubs)
     .filter((pc) => !pc.is_hidden)
+    .filter((pc) => !pc.is_youth_team)
     .filter((pc) => !isNationalTeam(pc.clubs!.name, countryNames));
 
   // Use explicit sort_order if any club has one set, otherwise fall back to year-based sort
@@ -170,6 +173,7 @@ async function buildPlayerWithTeams(row: PlayerRow): Promise<PlayerWithTeams> {
     yearJoined: pc.year_joined,
     yearDeparted: pc.year_departed,
     badge: pc.clubs!.badge,
+    isLoan: pc.is_loan || undefined,
   }));
 
   const orderedTeams = hasCustomOrder

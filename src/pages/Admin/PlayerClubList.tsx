@@ -2,6 +2,8 @@ import { useState, useEffect, useCallback } from "react";
 import {
   getPlayerClubsAdmin,
   updatePlayerClubHidden,
+  updatePlayerClubYouthTeam,
+  updatePlayerClubLoan,
   updateClubSortOrders,
   updateClubName,
 } from "../../api/adminApi";
@@ -35,6 +37,26 @@ export default function PlayerClubList({ playerId }: Props) {
     if (ok) {
       setClubs((prev) =>
         prev.map((c) => (c.id === club.id ? { ...c, is_hidden: newHidden } : c)),
+      );
+    }
+  }
+
+  async function toggleYouthTeam(club: AdminClubRow) {
+    const newValue = !club.is_youth_team;
+    const ok = await updatePlayerClubYouthTeam(club.id, newValue);
+    if (ok) {
+      setClubs((prev) =>
+        prev.map((c) => (c.id === club.id ? { ...c, is_youth_team: newValue } : c)),
+      );
+    }
+  }
+
+  async function toggleLoan(club: AdminClubRow) {
+    const newValue = !club.is_loan;
+    const ok = await updatePlayerClubLoan(club.id, newValue);
+    if (ok) {
+      setClubs((prev) =>
+        prev.map((c) => (c.id === club.id ? { ...c, is_loan: newValue } : c)),
       );
     }
   }
@@ -106,7 +128,7 @@ export default function PlayerClubList({ playerId }: Props) {
         <div
           key={club.id}
           className={`flex items-center gap-3 px-3 py-2 rounded-lg transition-opacity ${
-            club.is_hidden ? "opacity-40" : ""
+            club.is_hidden || club.is_youth_team ? "opacity-40" : ""
           }`}
         >
           {/* Reorder buttons */}
@@ -167,6 +189,28 @@ export default function PlayerClubList({ playerId }: Props) {
             <div className="text-xs text-gray-500">
               {club.year_joined || "?"} – {club.year_departed || "present"}
             </div>
+          </div>
+
+          {/* Flags */}
+          <div className="flex items-center gap-3 shrink-0">
+            <label className="flex items-center gap-1 cursor-pointer" title="Youth team (hidden in game)">
+              <input
+                type="checkbox"
+                checked={club.is_youth_team}
+                onChange={() => toggleYouthTeam(club)}
+                className="accent-yellow-500 w-3.5 h-3.5"
+              />
+              <span className={`text-xs ${club.is_youth_team ? "text-yellow-400" : "text-gray-500"}`}>Youth</span>
+            </label>
+            <label className="flex items-center gap-1 cursor-pointer" title="Loan spell">
+              <input
+                type="checkbox"
+                checked={club.is_loan}
+                onChange={() => toggleLoan(club)}
+                className="accent-blue-500 w-3.5 h-3.5"
+              />
+              <span className={`text-xs ${club.is_loan ? "text-blue-400" : "text-gray-500"}`}>Loan</span>
+            </label>
           </div>
 
           {/* Hide/show toggle */}

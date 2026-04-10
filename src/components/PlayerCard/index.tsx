@@ -98,7 +98,9 @@ export default function PlayerCard({ player, clubs, hints, revealed, hardMode, r
             {clubs.map((club, i) => (
               <div key={`${club.teamId}-${i}`} className="flex items-center">
                 {i > 0 && <span className="text-gray-500 text-lg mx-1">→</span>}
-                <BadgeImg src={club.badge} alt={club.teamName} size="lg" />
+                <div className={`rounded-lg p-1 border ${club.isLoan ? "border-dashed border-gray-500" : "border-transparent"}`}>
+                  <BadgeImg src={club.badge} alt={club.teamName} size="lg" />
+                </div>
               </div>
             ))}
           </div>
@@ -107,9 +109,12 @@ export default function PlayerCard({ player, clubs, hints, revealed, hardMode, r
             {clubs.map((club, i) => (
               <div key={`${club.teamId}-${i}`}>
                 {i > 0 && <div className="text-gray-500 text-center text-sm">↓</div>}
-                <div className="flex items-center gap-3 bg-gray-700 rounded-lg px-4 py-2">
+                <div className={`flex items-center gap-3 rounded-lg px-4 py-2 border ${club.isLoan ? "bg-gray-700/60 border-dashed border-gray-500" : "bg-gray-700 border-transparent"}`}>
                   <BadgeImg src={club.badge} alt={club.teamName} size="sm" />
                   <span className="font-medium text-sm">{club.teamName}</span>
+                  {club.isLoan && (
+                    <span className="text-gray-400 text-xs px-1.5 py-0.5 rounded-full bg-gray-600/50">loan</span>
+                  )}
                   <span className="bg-gray-800 text-gray-300 text-xs px-2.5 py-1 rounded-full ml-auto whitespace-nowrap">
                     {club.yearJoined}{club.yearDeparted ? ` – ${club.yearDeparted}` : " – present"}
                   </span>

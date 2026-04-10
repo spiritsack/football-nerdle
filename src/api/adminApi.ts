@@ -47,7 +47,7 @@ export async function getPlayerClubsAdmin(playerId: string): Promise<AdminClubRo
   if (!supabase) return [];
   const { data } = await supabase
     .from("player_clubs")
-    .select("id, club_id, year_joined, year_departed, is_hidden, sort_order, clubs(name, badge)")
+    .select("id, club_id, year_joined, year_departed, is_hidden, is_youth_team, is_loan, sort_order, clubs(name, badge)")
     .eq("player_id", playerId)
     .order("sort_order", { ascending: true, nullsFirst: false })
     .order("year_joined", { ascending: true });
@@ -58,6 +58,8 @@ export async function getPlayerClubsAdmin(playerId: string): Promise<AdminClubRo
     year_joined: string;
     year_departed: string;
     is_hidden: boolean;
+    is_youth_team: boolean;
+    is_loan: boolean;
     sort_order: number | null;
     clubs: { name: string; badge: string } | null;
   }>).map((row) => ({
@@ -68,6 +70,8 @@ export async function getPlayerClubsAdmin(playerId: string): Promise<AdminClubRo
     year_joined: row.year_joined,
     year_departed: row.year_departed,
     is_hidden: row.is_hidden,
+    is_youth_team: row.is_youth_team,
+    is_loan: row.is_loan,
     sort_order: row.sort_order,
   }));
 }
@@ -83,6 +87,34 @@ export async function updatePlayerClubHidden(
     .update({ is_hidden: isHidden })
     .eq("id", playerClubId);
   if (error) console.error("updatePlayerClubHidden failed:", error);
+  return !error;
+}
+
+export async function updatePlayerClubYouthTeam(
+  playerClubId: number,
+  isYouthTeam: boolean,
+): Promise<boolean> {
+  const client = supabaseAdmin ?? supabase;
+  if (!client) return false;
+  const { error } = await client
+    .from("player_clubs")
+    .update({ is_youth_team: isYouthTeam })
+    .eq("id", playerClubId);
+  if (error) console.error("updatePlayerClubYouthTeam failed:", error);
+  return !error;
+}
+
+export async function updatePlayerClubLoan(
+  playerClubId: number,
+  isLoan: boolean,
+): Promise<boolean> {
+  const client = supabaseAdmin ?? supabase;
+  if (!client) return false;
+  const { error } = await client
+    .from("player_clubs")
+    .update({ is_loan: isLoan })
+    .eq("id", playerClubId);
+  if (error) console.error("updatePlayerClubLoan failed:", error);
   return !error;
 }
 

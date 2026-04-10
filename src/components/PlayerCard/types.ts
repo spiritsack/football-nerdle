@@ -7,6 +7,7 @@ export interface MergedClub {
   yearJoined: string;
   yearDeparted: string;
   badge: string;
+  isLoan?: boolean;
   stints: FormerTeam[];
 }
 
