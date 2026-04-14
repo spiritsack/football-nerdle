@@ -7,7 +7,7 @@ const variantClasses: Record<Variant, string> = {
   primary: "bg-primary hover:bg-primary-hover text-white",
   secondary: "bg-secondary hover:bg-secondary-hover text-white",
   ghost: "bg-surface-input hover:bg-gray-600 text-text-secondary",
-  danger: "bg-red-600 hover:bg-red-500 text-white",
+  danger: "bg-danger hover:bg-danger-hover text-white",
 };
 
 const sizeClasses: Record<Size, string> = {

@@ -134,7 +134,7 @@ export default function GuessThePlayer() {
               disabled={!hardMode}
               className={`px-4 py-1.5 rounded-full text-sm font-medium transition-colors ${
                 hardMode
-                  ? "bg-red-600 hover:bg-red-500 text-white"
+                  ? "bg-danger hover:bg-danger-hover text-white"
                   : "bg-surface-input text-text-subtle cursor-not-allowed"
               }`}
             >

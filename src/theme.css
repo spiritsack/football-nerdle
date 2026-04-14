@@ -20,6 +20,8 @@
   --color-primary-hover: #22c55e;
   --color-secondary: #2563eb;
   --color-secondary-hover: #3b82f6;
+  --color-danger: #dc2626;
+  --color-danger-hover: #ef4444;
 
   /* Status */
   --color-success: #4ade80;
