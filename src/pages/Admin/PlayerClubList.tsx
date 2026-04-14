@@ -1,9 +1,11 @@
 import { useState, useEffect, useCallback } from "react";
 import {
   getPlayerClubsAdmin,
+  getPlayerLegacyStatus,
   updatePlayerClubHidden,
   updatePlayerClubYouthTeam,
   updatePlayerClubLoan,
+  updatePlayerLegacy,
   updateClubSortOrders,
   updateClubName,
 } from "../../api/adminApi";
@@ -19,17 +21,29 @@ export default function PlayerClubList({ playerId }: Props) {
   const [loading, setLoading] = useState(true);
   const [editingNameId, setEditingNameId] = useState<number | null>(null);
   const [editNameValue, setEditNameValue] = useState("");
+  const [legacyOverride, setLegacyOverride] = useState<boolean | null>(null);
 
   useEffect(() => {
     let cancelled = false;
-    getPlayerClubsAdmin(playerId).then((data) => {
+    Promise.all([
+      getPlayerClubsAdmin(playerId),
+      getPlayerLegacyStatus(playerId),
+    ]).then(([data, legacy]) => {
       if (!cancelled) {
         setClubs(data);
+        setLegacyOverride(legacy);
         setLoading(false);
       }
     });
     return () => { cancelled = true; };
   }, [playerId]);
+
+  async function cycleLegacy() {
+    // Cycle: null (auto) → true (force legacy) → false (force not legacy) → null
+    const next = legacyOverride === null ? true : legacyOverride === true ? false : null;
+    const ok = await updatePlayerLegacy(playerId, next);
+    if (ok) setLegacyOverride(next);
+  }
 
   async function toggleHidden(club: AdminClubRow) {
     const newHidden = !club.is_hidden;
@@ -119,11 +133,28 @@ export default function PlayerClubList({ playerId }: Props) {
     return <p className="text-gray-500 text-sm py-2">No club history found.</p>;
   }
 
+  const autoLegacy = clubs.length > 0 && clubs.every((c) => c.year_departed);
+  const effectiveLegacy = legacyOverride != null ? legacyOverride : autoLegacy;
+
   return (
     <div className="space-y-1.5">
-      <p className="text-xs text-gray-500 mb-2">
-        Drag badge to upload crest. Click name to edit. Arrows to reorder.
-      </p>
+      <div className="flex items-center justify-between mb-2">
+        <p className="text-xs text-gray-500">
+          Drag badge to upload crest. Click name to edit. Arrows to reorder.
+        </p>
+        <button
+          onClick={cycleLegacy}
+          className={`text-xs px-2.5 py-1 rounded-full border transition-colors ${
+            effectiveLegacy
+              ? "bg-amber-900/50 border-amber-700/60 text-amber-300"
+              : "bg-gray-700 border-gray-600 text-gray-400"
+          }`}
+          title={`Legacy status: ${legacyOverride === null ? "auto" : legacyOverride ? "forced on" : "forced off"} (click to cycle)`}
+        >
+          {legacyOverride === null ? "Legacy: Auto" : legacyOverride ? "Legacy: On" : "Legacy: Off"}
+          {legacyOverride === null && (effectiveLegacy ? " (yes)" : " (no)")}
+        </button>
+      </div>
       {clubs.map((club, index) => (
         <div
           key={club.id}

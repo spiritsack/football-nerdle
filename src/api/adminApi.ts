@@ -70,6 +70,31 @@ export async function getScheduleRange(
   return data ?? [];
 }
 
+// --- Player field operations ---
+
+export async function getPlayerLegacyStatus(playerId: string): Promise<boolean | null> {
+  if (!supabase) return null;
+  const { data } = await supabase
+    .from("players")
+    .select("is_legacy")
+    .eq("id", playerId)
+    .single();
+  return data?.is_legacy ?? null;
+}
+
+export async function updatePlayerLegacy(
+  playerId: string,
+  isLegacy: boolean | null,
+): Promise<boolean> {
+  if (!supabase) return false;
+  const { error } = await supabase
+    .from("players")
+    .update({ is_legacy: isLegacy })
+    .eq("id", playerId);
+  if (error) console.error("updatePlayerLegacy failed:", error);
+  return !error;
+}
+
 // --- Club history operations ---
 
 export async function getPlayerClubsAdmin(playerId: string): Promise<AdminClubRow[]> {
