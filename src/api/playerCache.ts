@@ -236,3 +236,14 @@ export async function getPlayerWithTeamsCached(player: Player): Promise<PlayerWi
   if (cached) return cached;
   throw new Error(`Player "${player.name}" not found in database`);
 }
+
+export async function getLastRefresh(): Promise<string | null> {
+  if (!supabase) return null;
+  const { data, error } = await supabase
+    .from("pool_refresh")
+    .select("last_refresh")
+    .eq("id", "singleton")
+    .single();
+  if (error || !data) return null;
+  return data.last_refresh;
+}
