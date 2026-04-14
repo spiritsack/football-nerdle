@@ -1,9 +1,10 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useGuessGame } from "./useGuessGame";
 import { HARD_MODE_KEY } from "./constants";
 import { mergeConsecutiveClubs, getTodayString } from "./helpers";
 import PlayerCard from "../../components/PlayerCard";
+import { getLastRefresh } from "../../api/playerCache";
 
 export default function GuessThePlayer() {
   const navigate = useNavigate();
@@ -40,6 +41,11 @@ export default function GuessThePlayer() {
   });
   const [hardMode, setHardMode] = useState(!hardModeDisabled);
   const [copied, setCopied] = useState(false);
+  const [lastRefresh, setLastRefresh] = useState<string | null>(null);
+
+  useEffect(() => {
+    getLastRefresh().then(setLastRefresh);
+  }, []);
 
   function toggleHardMode() {
     if (hardMode) {
@@ -288,9 +294,9 @@ export default function GuessThePlayer() {
 
       {targetPlayer && (
         <footer className="py-4 text-center space-y-1">
-          {targetPlayer.cachedAt && (
+          {lastRefresh && (
             <p className="text-gray-600 text-xs">
-              Data updated: {new Date(targetPlayer.cachedAt).toLocaleDateString("en-GB")}
+              Data updated: {new Date(lastRefresh).toLocaleDateString("en-GB")}
             </p>
           )}
           {(status === "won" || status === "lost") && (
