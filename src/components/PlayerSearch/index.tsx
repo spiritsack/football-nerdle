@@ -55,7 +55,7 @@ export default function PlayerSearch({ onSelect, disabled, usedPlayerIds, placeh
           const spaceBelow = window.innerHeight - rect.bottom;
           setDropUp(spaceBelow < 320);
         }
-        setIsOpen(filtered.length > 0);
+        setIsOpen(true);
       } catch {
         setResults([]);
         setIsOpen(false);
@@ -111,6 +111,11 @@ export default function PlayerSearch({ onSelect, disabled, usedPlayerIds, placeh
       />
       {loading && (
         <div className="absolute right-3 top-3.5 text-gray-400 text-sm">...</div>
+      )}
+      {isOpen && !loading && results.length === 0 && (
+        <div className={`absolute z-10 w-full bg-gray-800 border border-gray-600 rounded-lg p-4 text-gray-400 text-sm ${dropUp ? "bottom-full mb-1" : "mt-1"}`}>
+          No players found
+        </div>
       )}
       {isOpen && results.length > 0 && (
         <ul

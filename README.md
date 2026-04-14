@@ -20,14 +20,15 @@ See a player's club history and guess who it is in **5 attempts**.
 - **Random** — Practice with random players from top European clubs
 - **Hard Mode** — Only club badges shown (no names or years)
 - **Hints** — Wrong guesses progressively reveal nationality, age, position, and photo
+- **Loan indicators** — Loan spells shown with dashed borders
 
 ## Tech Stack
 
 - React 19 + TypeScript
 - Vite 8
 - Tailwind CSS 4
-- [Supabase](https://supabase.com/) for player data and multiplayer game rooms
-- Player data sourced from [TransferMarkt](https://github.com/dcaribou/transfermarkt-datasets)
+- [Supabase](https://supabase.com/) for player data, multiplayer game rooms, and admin auth
+- Player data sourced from [TransferMarkt](https://github.com/dcaribou/transfermarkt-datasets) (~47,000 players)
 
 ## Development
 
@@ -48,10 +49,24 @@ VITE_SUPABASE_ANON_KEY=your-anon-key-here
 Import player data from TransferMarkt datasets:
 
 ```bash
-npx tsx scripts/import-transfermarkt.ts
+# Import players from top 7 European leagues
+SUPABASE_SERVICE_ROLE_KEY=your-key npx tsx scripts/import-transfermarkt.ts
+
+# Import all players from the dataset (~47k players)
+SUPABASE_SERVICE_ROLE_KEY=your-key npx tsx scripts/import-transfermarkt.ts --all
 ```
 
-This downloads player and transfer CSVs from TransferMarkt and populates the Supabase database with ~17,500 players from top European leagues. Requires the Supabase **service role key** (not the anon key).
+Requires the Supabase **service role key** (RLS restricts writes to admin users).
+
+### Admin interface
+
+The admin panel at `/#/admin` is protected by Supabase Auth (email/password). Admin users are managed via the `admin_users` database table.
+
+Features:
+- Curate the daily puzzle schedule (approve, skip, search any player)
+- Edit player club history (reorder, hide, mark as loan/youth team)
+- Upload club crests
+- Wiki lookup links for quick player reference
 
 ### Running tests
 

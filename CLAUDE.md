@@ -8,8 +8,8 @@ A football (soccer) trivia web app with multiple game modes, deployed to GitHub 
 - **Build**: Vite 8
 - **Styling**: Tailwind CSS 4 (via `@tailwindcss/vite` plugin)
 - **Routing**: React Router DOM 7 (HashRouter for GitHub Pages compatibility)
-- **Backend**: Supabase (Postgres + Realtime) — player data + multiplayer game rooms
-- **Data Source**: [TransferMarkt datasets](https://github.com/dcaribou/transfermarkt-datasets) — imported via scripts
+- **Backend**: Supabase (Postgres + Realtime + Auth) — player data, multiplayer rooms, admin auth
+- **Data Source**: [TransferMarkt datasets](https://github.com/dcaribou/transfermarkt-datasets) — ~47k players imported via scripts
 - **Deployment**: GitHub Pages at `https://spiritsack.github.io/football-nerdle/`
 
 ## Environment Variables
@@ -17,7 +17,8 @@ A football (soccer) trivia web app with multiple game modes, deployed to GitHub 
 | Variable | Purpose |
 |----------|---------|
 | `VITE_SUPABASE_URL` | Supabase project URL |
-| `VITE_SUPABASE_ANON_KEY` | Supabase anonymous/public key (read-only) |
+| `VITE_SUPABASE_ANON_KEY` | Supabase anonymous/public key (or `VITE_SUPABASE_PUBLISHABLE_DEFAULT_KEY`) |
+| `SUPABASE_SERVICE_ROLE_KEY` | Service role key for import scripts only (never in browser) |
 
 ## Commands
 
@@ -27,13 +28,15 @@ A football (soccer) trivia web app with multiple game modes, deployed to GitHub 
 - `npm run preview` — Preview production build
 - `npm test` — Unit tests (Vitest)
 - `npm run test:e2e` — E2E tests (Playwright)
+- `npx tsx scripts/import-transfermarkt.ts` — Import target league players
+- `npx tsx scripts/import-transfermarkt.ts --all` — Import all players from dataset
 
 ## Project Structure
 
 ```
 src/
   main.tsx              — Entry point
-  App.tsx               — Routes: /, /battle, /guess, /guess/archive, /battle/multiplayer
+  App.tsx               — Routes: /, /battle, /guess, /guess/archive, /battle/multiplayer, /admin
   types.ts              — Shared types: Player, FormerTeam, PlayerWithTeams, GameRoom
   constants.ts          — Shared constants (TURN_TIME)
   index.css             — Global styles (Tailwind imports)
@@ -42,6 +45,8 @@ src/
     playerCache.ts      — Player data queries: search, lookup, random selection
     dailySchedule.ts    — Daily player selection (Supabase daily_schedule table)
     multiplayerRoom.ts  — Room CRUD: createRoom, joinRoom, updateTurn, subscribeToRoom
+    adminApi.ts         — Admin write operations: schedule, clubs, crests, player lookup
+    useAdminAuth.ts     — Supabase Auth hook for admin sign-in/sign-out
   pages/
     Home/               — Landing page with game mode selection
       index.tsx
@@ -55,6 +60,11 @@ src/
       useMultiplayerRoom.ts, useMultiplayerGame.ts
       MultiplayerGame/  — In-game component
         index.tsx
+    Admin/              — Admin interface (auth-protected)
+      index.tsx, types.ts, constants.ts
+      ScheduleManager.tsx — Daily schedule curation with search
+      PlayerClubList.tsx  — Club history editor (reorder, hide, loan/youth flags, crests)
+      CrestDropZone.tsx   — Drag-and-drop crest upload
   components/
     PlayerSearch/       — Reusable player autocomplete (searches Supabase)
       index.tsx, types.ts
@@ -63,10 +73,12 @@ src/
   utils/
     gameLogic.ts        — didPlayTogether (pure function), ApiError
     dates.ts            — Shared date formatting (getTodayString)
+    clubNames.ts        — Club name normalization
   data/
     seedPlayers.ts      — 107 seed players for daily puzzle (TransferMarkt IDs)
 scripts/
-  import-transfermarkt.ts — Import players/transfers from TransferMarkt CSVs
+  import-transfermarkt.ts — Import players/transfers from TransferMarkt CSVs (--all for full dataset)
+  seed-players.ts         — Pre-populate players from top clubs
 supabase/
   migrations/           — SQL migration files for Supabase schema
 e2e/                    — Playwright E2E tests
@@ -74,8 +86,9 @@ e2e/                    — Playwright E2E tests
 
 ## Architecture
 
-- **Player data**: All player data lives in Supabase, imported from TransferMarkt datasets. No runtime API calls to external services. Player search queries the Supabase `players` table directly.
-- **Data tables are read-only**: RLS policies only allow SELECT for the anon key. Writes require the service role key (used by import scripts only).
+- **Player data**: All player data lives in Supabase, imported from TransferMarkt datasets (~47k players). No runtime API calls to external services. Player search queries the Supabase `players` table directly.
+- **Admin authentication**: Supabase Auth (email/password) protects the admin interface. An `admin_users` table stores allowed emails. The `is_admin()` SQL function checks the JWT against this table. No service role key in client code.
+- **RLS policies**: Data tables allow SELECT for anyone, INSERT/UPDATE restricted to admin users. `daily_schedule` allows anon INSERT (game auto-creates daily entries). `game_rooms` allows full anon access (multiplayer).
 - **`didPlayTogether`**: Pure function in `utils/gameLogic.ts` — checks if two players overlapped at the same club. No API calls.
 - **Multiplayer**: Supabase Realtime (Postgres Changes) syncs game room state between two clients. The `game_rooms` DB row is the single source of truth. Optimistic locking on `current_turn` prevents race conditions.
 
@@ -83,13 +96,14 @@ e2e/                    — Playwright E2E tests
 
 | Table | Purpose | RLS |
 |-------|---------|-----|
-| `countries` | Country names | Read-only |
-| `clubs` | Club data with badges, league, country | Read-only |
-| `players` | Player identity, nationality, thumbnail | Read-only |
-| `player_clubs` | Player club history (joined/departed years) | Read-only |
-| `game_rooms` | Multiplayer game state | Read + Write |
-| `pool_refresh` | Tracks daily pool refresh | Read-only |
-| `daily_schedule` | Daily player selection (one per day) | Read + Insert |
+| `countries` | Country names | Read: anyone, Write: admin |
+| `clubs` | Club data with badges, league, country | Read: anyone, Write: admin |
+| `players` | Player identity, nationality, thumbnail | Read: anyone, Write: admin |
+| `player_clubs` | Player club history (joined/departed, loan/youth flags) | Read: anyone, Write: admin |
+| `game_rooms` | Multiplayer game state | Read + Write: anyone |
+| `pool_refresh` | Tracks daily pool refresh | Read: anyone, Write: admin |
+| `daily_schedule` | Daily player selection (one per day) | Read + Insert: anyone, Update + Delete: admin |
+| `admin_users` | Allowed admin emails | Read: admin only |
 
 ## Git Workflow
 

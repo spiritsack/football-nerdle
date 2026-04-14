@@ -1,7 +1,28 @@
 import { supabase } from "./supabaseClient";
+import type { Player } from "../types";
 import type { AdminClubRow } from "../pages/Admin/types";
 
-// --- Player thumbnail lookup ---
+// --- Player lookup ---
+
+export async function getPlayersByIds(
+  playerIds: string[],
+): Promise<Map<string, Player>> {
+  if (!supabase || playerIds.length === 0) return new Map();
+  const { data } = await supabase
+    .from("players")
+    .select("id, name, thumbnail, nationality_id, countries(name)")
+    .in("id", playerIds);
+  if (!data) return new Map();
+  return new Map((data as unknown as Array<{
+    id: string; name: string; thumbnail: string; nationality_id: string;
+    countries: { name: string } | null;
+  }>).map((r) => [r.id, {
+    id: r.id,
+    name: r.name,
+    thumbnail: r.thumbnail || "",
+    nationality: r.countries?.name ?? r.nationality_id ?? "",
+  }]));
+}
 
 export async function getPlayerThumbnails(
   playerIds: string[],
