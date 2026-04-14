@@ -79,11 +79,12 @@ interface PlayerRow {
   position: string;
   date_born: string;
   cached_at: string;
+  is_legacy: boolean | null;
   player_clubs: PlayerClubRow[];
   countries: { name: string } | null;
 }
 
-const PLAYER_SELECT = "id, name, thumbnail, nationality_id, position, date_born, cached_at, countries(name), player_clubs(club_id, year_joined, year_departed, is_hidden, is_youth_team, is_loan, sort_order, clubs(id, name, badge))";
+const PLAYER_SELECT = "id, name, thumbnail, nationality_id, position, date_born, cached_at, is_legacy, countries(name), player_clubs(club_id, year_joined, year_departed, is_hidden, is_youth_team, is_loan, sort_order, clubs(id, name, badge))";
 
 let countryNamesCache: Set<string> | null = null;
 
@@ -189,6 +190,7 @@ async function buildPlayerWithTeams(row: PlayerRow): Promise<PlayerWithTeams> {
     cachedAt: row.cached_at,
     position: row.position || undefined,
     dateBorn: row.date_born || undefined,
+    isLegacy: row.is_legacy,
   };
 }
 

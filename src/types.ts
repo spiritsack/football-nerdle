@@ -19,6 +19,7 @@ export interface PlayerWithTeams extends Player {
   cachedAt?: string;
   position?: string;
   dateBorn?: string;
+  isLegacy?: boolean | null;
 }
 
 export type RoomStatus = "waiting" | "playing" | "finished";

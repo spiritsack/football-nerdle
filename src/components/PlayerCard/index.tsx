@@ -43,20 +43,45 @@ function RevealedField({ label, value }: { label: string; value: string }) {
 export default function PlayerCard({ player, clubs, hints, revealed, hardMode, result, onGuess }: PlayerCardProps) {
   const age = player.dateBorn ? new Date().getFullYear() - parseInt(player.dateBorn, 10) : null;
 
-  const borderColor = result === "won" ? "border-green-600" : result === "lost" ? "border-red-600" : "border-gray-600";
+  // A player is considered "legacy" (potentially retired) if all their clubs have a departure year.
+  // The is_legacy DB field overrides auto-detection when set.
+  const autoLegacy = clubs.length > 0 && clubs.every((c) => c.yearDeparted);
+  const isLegacy = player.isLegacy != null ? player.isLegacy : autoLegacy;
+
+  const borderColor = result === "won" ? "border-green-600" : result === "lost" ? "border-red-600" : isLegacy ? "border-amber-700/60" : "border-gray-600";
 
   return (
-    <div className={`bg-gray-800 border-2 ${borderColor} rounded-2xl overflow-visible max-w-md w-full transition-colors duration-500`}>
+    <div className={`${isLegacy ? "bg-gray-800/90" : "bg-gray-800"} border-2 ${borderColor} rounded-2xl overflow-visible max-w-md w-full transition-colors duration-500 relative`}>
+      {/* Legacy badge */}
+      {isLegacy && (
+        <div className="absolute -top-3 right-4 flex items-center gap-1.5 bg-amber-900/80 border border-amber-700/60 rounded-full px-3 py-1 z-10">
+          <span className="text-amber-300 text-xs font-medium">Legacy Player</span>
+          <div className="relative group">
+            <button
+              type="button"
+              aria-label="This player is potentially retired"
+              className="text-amber-400/70 hover:text-amber-300 text-xs select-none focus:outline-none"
+            >
+              &#9432;
+            </button>
+            <div className="absolute bottom-full right-0 mb-2 w-48 px-3 py-2 bg-gray-700 text-gray-200 text-xs rounded-lg shadow-lg pointer-events-none opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity text-center z-20">
+              This player is potentially retired — no current team in their career data.
+              <div className="absolute top-full right-4 border-4 border-transparent border-t-gray-700" />
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Player identity header */}
       <div className="px-6 pt-5 pb-4 flex items-center gap-4 border-b border-gray-700">
         {(revealed || hints.photo) && player.thumbnail ? (
           <img
             src={player.thumbnail}
             alt={revealed ? player.name : ""}
-            className="w-20 h-20 rounded-full object-cover bg-gray-700 border-2 border-gray-600 shrink-0"
+            className={`w-20 h-20 rounded-full object-cover bg-gray-700 border-2 shrink-0 ${isLegacy ? "border-amber-700/50 sepia-[.3]" : "border-gray-600"}`}
           />
         ) : (
-          <div className="w-20 h-20 rounded-full bg-gray-700 border-2 border-gray-600 flex items-center justify-center text-3xl text-gray-500 select-none shrink-0">
+          <div className={`w-20 h-20 rounded-full bg-gray-700 border-2 flex items-center justify-center text-3xl text-gray-500 select-none shrink-0 ${isLegacy ? "border-amber-700/50" : "border-gray-600"}`}>
             ?
           </div>
         )}
@@ -92,7 +117,7 @@ export default function PlayerCard({ player, clubs, hints, revealed, hardMode, r
 
       {/* Club history */}
       <div className="px-6 pb-5 pt-2">
-        <p className="text-xs text-gray-500 uppercase tracking-wider mb-3">Club History</p>
+        <p className={`text-xs uppercase tracking-wider mb-3 ${isLegacy ? "text-amber-600/80" : "text-gray-500"}`}>Club History</p>
         {hardMode && !revealed ? (
           <div className="flex items-center justify-center gap-1 flex-wrap">
             {clubs.map((club, i) => (
