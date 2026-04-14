@@ -2,10 +2,11 @@
  * Import player and transfer data from TransferMarkt datasets into Supabase.
  *
  * Usage:
- *   npx tsx scripts/import-transfermarkt.ts
+ *   npx tsx scripts/import-transfermarkt.ts          # Import target competitions only
+ *   npx tsx scripts/import-transfermarkt.ts --all    # Import all players from dataset
  *
  * Requires:
- *   VITE_SUPABASE_URL, VITE_SUPABASE_ANON_KEY (or VITE_SUPABASE_PUBLISHABLE_DEFAULT_KEY)
+ *   VITE_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY (or VITE_SUPABASE_ANON_KEY)
  *
  * Data source: https://github.com/dcaribou/transfermarkt-datasets
  */
@@ -32,6 +33,7 @@ const BASE_URL = "https://pub-e682421888d945d684bcae8890b0ec20.r2.dev/data";
 
 // Top 5 leagues + Portuguese + Dutch first divisions
 const TARGET_COMPETITIONS = new Set(["GB1", "ES1", "IT1", "L1", "FR1", "PO1", "NL1"]);
+const IMPORT_ALL = process.argv.includes("--all");
 
 interface CsvPlayer {
   player_id: string;
@@ -116,9 +118,11 @@ function extractYear(dateStr: string): string {
   return match ? match[1] : "";
 }
 
-async function upsertBatch(table: string, rows: Record<string, unknown>[], onConflict?: string) {
+async function upsertBatch(table: string, rows: Record<string, unknown>[], onConflict?: string, ignoreDuplicates?: boolean) {
   if (rows.length === 0) return;
-  const opts = onConflict ? { onConflict } : undefined;
+  const opts: Record<string, unknown> = {};
+  if (onConflict) opts.onConflict = onConflict;
+  if (ignoreDuplicates) opts.ignoreDuplicates = true;
   const { error } = await supabase.from(table).upsert(rows, opts);
   if (error) console.warn(`  Upsert error on ${table}: ${error.message}`);
 }
@@ -126,12 +130,12 @@ async function upsertBatch(table: string, rows: Record<string, unknown>[], onCon
 async function main() {
   console.log("=== TransferMarkt Data Import ===\n");
 
-  // Step 1: Load clubs from target competitions
-  console.log("Step 1: Loading clubs...");
+  // Step 1: Load clubs
+  console.log(`Step 1: Loading clubs${IMPORT_ALL ? " (all)" : " (target competitions)"}...`);
   const clubMap = new Map<string, { id: string; name: string; competition: string }>();
   const clubRows: Record<string, unknown>[] = [];
 
-  for await (const club of readCsvGz<CsvClub>("clubs", (c) => TARGET_COMPETITIONS.has(c.domestic_competition_id))) {
+  for await (const club of readCsvGz<CsvClub>("clubs", IMPORT_ALL ? undefined : (c) => TARGET_COMPETITIONS.has(c.domestic_competition_id))) {
     clubMap.set(club.club_id, { id: club.club_id, name: club.name, competition: club.domestic_competition_id });
     clubRows.push({
       id: `tm_${club.club_id}`,
@@ -141,22 +145,22 @@ async function main() {
       badge: `https://tmssl.akamaized.net/images/wappen/normquad/${club.club_id}.png`,
     });
   }
-  console.log(`  Found ${clubMap.size} clubs in target competitions`);
+  console.log(`  Found ${clubMap.size} clubs`);
 
-  // Batch upsert clubs
+  // Batch upsert clubs (ignoreDuplicates preserves existing club data including manually uploaded crests)
   for (let i = 0; i < clubRows.length; i += 500) {
-    await upsertBatch("clubs", clubRows.slice(i, i + 500));
+    await upsertBatch("clubs", clubRows.slice(i, i + 500), undefined, true);
   }
   console.log(`  Upserted ${clubRows.length} clubs`);
 
-  // Step 2: Load players from target competitions
-  console.log("\nStep 2: Loading players...");
+  // Step 2: Load players
+  console.log(`\nStep 2: Loading players${IMPORT_ALL ? " (all)" : " (target competitions)"}...`);
   const targetPlayerIds = new Set<string>();
   const playerRows: Record<string, unknown>[] = [];
   const countrySet = new Set<string>();
 
   for await (const player of readCsvGz<CsvPlayer>("players", (p) =>
-    TARGET_COMPETITIONS.has(p.current_club_domestic_competition_id) &&
+    (IMPORT_ALL || TARGET_COMPETITIONS.has(p.current_club_domestic_competition_id)) &&
     p.position !== "" &&
     p.position !== "Manager"
   )) {
@@ -200,7 +204,7 @@ async function main() {
   const playerClubs = new Map<string, Map<string, { clubId: string; clubName: string; joined: string; departed: string }>>();
 
   let transferCount = 0;
-  for await (const transfer of readCsvGz<CsvTransfer>("transfers", (t) => targetPlayerIds.has(t.player_id))) {
+  for await (const transfer of readCsvGz<CsvTransfer>("transfers", IMPORT_ALL ? undefined : (t) => targetPlayerIds.has(t.player_id))) {
     transferCount++;
     const pid = transfer.player_id;
     if (!playerClubs.has(pid)) playerClubs.set(pid, new Map());
@@ -267,7 +271,7 @@ async function main() {
     }
   }
   for (let i = 0; i < extraClubs.length; i += 500) {
-    await upsertBatch("clubs", extraClubs.slice(i, i + 500));
+    await upsertBatch("clubs", extraClubs.slice(i, i + 500), undefined, true);
   }
   console.log(`  Upserted ${extraClubs.length} extra clubs from transfers`);
 

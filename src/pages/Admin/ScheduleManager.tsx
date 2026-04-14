@@ -1,9 +1,10 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { SEED_PLAYERS } from "../../data/seedPlayers";
 import { getAllScheduledDays } from "../../api/dailySchedule";
-import { upsertSchedule, deleteSchedule, getScheduleRange, getPlayerThumbnails } from "../../api/adminApi";
-import { SCHEDULE_DAYS_AHEAD } from "./constants";
+import { upsertSchedule, deleteSchedule, getScheduleRange, getPlayerThumbnails, getPlayersByIds } from "../../api/adminApi";
+import { SCHEDULE_DAYS_AHEAD, SCHEDULE_DAYS_BACK } from "./constants";
 import type { Player } from "../../types";
+import PlayerSearch from "../../components/PlayerSearch";
 import PlayerClubList from "./PlayerClubList";
 
 function formatDate(dateStr: string): string {
@@ -15,10 +16,10 @@ function getTodayString(): string {
   return new Date().toISOString().slice(0, 10);
 }
 
-function getDateRange(days: number): string[] {
+function getDateRange(daysBack: number, daysAhead: number): string[] {
   const today = new Date();
   const dates: string[] = [];
-  for (let i = 0; i < days; i++) {
+  for (let i = -daysBack; i < daysAhead; i++) {
     const d = new Date(today);
     d.setDate(today.getDate() + i);
     dates.push(d.toISOString().slice(0, 10));
@@ -36,6 +37,7 @@ export default function ScheduleManager() {
   const [days, setDays] = useState<DayState[]>([]);
   const [usedPlayerIds, setUsedPlayerIds] = useState<Set<string>>(new Set());
   const [expandedDate, setExpandedDate] = useState<string | null>(null);
+  const [showPast, setShowPast] = useState(false);
   const [loading, setLoading] = useState(true);
 
   const today = useMemo(() => getTodayString(), []);
@@ -51,7 +53,7 @@ export default function ScheduleManager() {
 
   const loadSchedule = useCallback(async () => {
     setLoading(true);
-    const dates = getDateRange(SCHEDULE_DAYS_AHEAD);
+    const dates = getDateRange(SCHEDULE_DAYS_BACK, SCHEDULE_DAYS_AHEAD);
     const [allUsed, rangeData] = await Promise.all([
       getAllScheduledDays(),
       getScheduleRange(dates[0], dates[dates.length - 1]),
@@ -70,10 +72,15 @@ export default function ScheduleManager() {
     const withFreshThumbs = (p: Player): Player =>
       thumbnails.has(p.id) ? { ...p, thumbnail: thumbnails.get(p.id)! } : p;
 
+    // Fetch any scheduled players not in SEED_PLAYERS from the database
+    const scheduledIds = [...scheduleMap.values()];
+    const unknownIds = scheduledIds.filter((id) => !SEED_PLAYERS.some((p) => p.id === id));
+    const dbPlayers = unknownIds.length > 0 ? await getPlayersByIds(unknownIds) : new Map<string, Player>();
+
     const dayStates: DayState[] = dates.map((date) => {
       const assignedId = scheduleMap.get(date);
       const assignedPlayer = assignedId
-        ? (SEED_PLAYERS.find((p) => p.id === assignedId) ?? null)
+        ? (SEED_PLAYERS.find((p) => p.id === assignedId) ?? dbPlayers.get(assignedId) ?? null)
         : null;
 
       let suggestion: Player | null = null;
@@ -201,123 +208,165 @@ export default function ScheduleManager() {
       <h2 className="text-lg font-semibold mb-4">
         Daily Schedule
         <span className="text-gray-400 text-sm font-normal ml-2">
-          {SEED_PLAYERS.length - usedPlayerIds.size} players remaining
+          {SEED_PLAYERS.length - usedPlayerIds.size} seed players remaining
         </span>
       </h2>
 
-      {days.map((day) => {
-        const isPast = day.date < today;
-        const isToday = day.date === today;
-        const player = day.assignedPlayer ?? day.suggestion;
-        const isSuggestion = !day.assignedPlayer && !!day.suggestion;
-        const isExpanded = expandedDate === day.date;
+      <div className="mb-4">
+        <PlayerSearch
+          onSelect={(player) => handleApprove("", player)}
+          usedPlayerIds={usedPlayerIds}
+          placeholder="Search and add a player to schedule..."
+        />
+      </div>
 
-        return (
-          <div
-            key={day.date}
-            className={`rounded-lg border ${
-              isToday
-                ? "border-green-600 bg-gray-800"
-                : isPast
-                  ? "border-gray-700 bg-gray-800/50 opacity-60"
-                  : "border-gray-700 bg-gray-800"
-            }`}
-          >
-            {/* Day row */}
-            <div className="flex items-center gap-3 px-4 py-3">
-              {/* Date */}
-              <div className="w-32 shrink-0">
-                <div className="text-sm font-medium text-white">
-                  {formatDate(day.date)}
-                  {isToday && <span className="text-green-400 ml-1">(today)</span>}
+      {(() => {
+        const pastDays = days.filter((d) => d.date < today);
+        const currentAndFuture = days.filter((d) => d.date >= today);
+
+        function renderDay(day: DayState) {
+          const isPast = day.date < today;
+          const isToday = day.date === today;
+          const player = day.assignedPlayer ?? day.suggestion;
+          const isSuggestion = !day.assignedPlayer && !!day.suggestion;
+          const isExpanded = expandedDate === day.date;
+
+          return (
+            <div
+              key={day.date}
+              className={`rounded-lg border ${
+                isToday
+                  ? "border-green-600 bg-gray-800"
+                  : isPast
+                    ? "border-gray-700 bg-gray-800/50 opacity-60"
+                    : "border-gray-700 bg-gray-800"
+              }`}
+            >
+              {/* Day row */}
+              <div className="flex items-center gap-3 px-4 py-3">
+                {/* Date */}
+                <div className="w-32 shrink-0">
+                  <div className="text-sm font-medium text-white">
+                    {formatDate(day.date)}
+                    {isToday && <span className="text-green-400 ml-1">(today)</span>}
+                  </div>
+                  <div className="text-xs text-gray-500">{day.date}</div>
                 </div>
-                <div className="text-xs text-gray-500">{day.date}</div>
+
+                {/* Player info */}
+                {player ? (
+                  <button
+                    onClick={() => toggleExpand(day.date)}
+                    className="flex items-center gap-3 flex-1 text-left hover:bg-gray-700/50 rounded-lg px-2 py-1 -mx-2 -my-1 transition-colors"
+                  >
+                    {player.thumbnail && (
+                      <img
+                        src={player.thumbnail}
+                        alt=""
+                        referrerPolicy="no-referrer"
+                        className="w-8 h-8 rounded-full object-cover bg-gray-700"
+                      />
+                    )}
+                    <div className="flex-1 min-w-0">
+                      <span className={`font-medium ${isSuggestion ? "text-yellow-300" : "text-white"}`}>
+                        {player.name}
+                      </span>
+                      <a
+                        href={`https://duckduckgo.com/?q=${encodeURIComponent(player.name + " wiki")}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        onClick={(e) => e.stopPropagation()}
+                        className="text-gray-500 hover:text-blue-400 ml-1.5 inline-block transition-colors"
+                        title="Look up on Wikipedia"
+                      >
+                        <svg className="w-3.5 h-3.5 inline" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                        </svg>
+                      </a>
+                      {isSuggestion && (
+                        <span className="text-yellow-500/70 text-xs ml-2">suggestion</span>
+                      )}
+                      <div className="text-xs text-gray-400">{player.nationality}</div>
+                    </div>
+                    <svg
+                      className={`w-4 h-4 text-gray-500 transition-transform ${isExpanded ? "rotate-180" : ""}`}
+                      fill="none" viewBox="0 0 24 24" stroke="currentColor"
+                    >
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </button>
+                ) : (
+                  <span className="flex-1 text-gray-500 text-sm italic">No players available</span>
+                )}
+
+                {/* Actions */}
+                <div className="flex gap-2 shrink-0">
+                  {isSuggestion && !isPast && (
+                    <>
+                      <button
+                        onClick={() => handleApprove(day.date, day.suggestion!)}
+                        className="px-3 py-1.5 bg-green-600 hover:bg-green-700 text-white text-sm font-medium rounded-lg transition-colors"
+                      >
+                        Approve
+                      </button>
+                      <button
+                        onClick={() => handleReject(day.date)}
+                        className="px-3 py-1.5 bg-gray-600 hover:bg-gray-500 text-white text-sm font-medium rounded-lg transition-colors"
+                      >
+                        Skip
+                      </button>
+                    </>
+                  )}
+                  {day.assignedPlayer && !isPast && !isToday && (
+                    <button
+                      onClick={() => handleClear(day.date)}
+                      className="px-3 py-1.5 bg-red-600/20 hover:bg-red-600/40 text-red-400 text-sm font-medium rounded-lg transition-colors"
+                    >
+                      Clear
+                    </button>
+                  )}
+                </div>
               </div>
 
-              {/* Player info */}
-              {player ? (
+              {/* Expanded: club history */}
+              {isExpanded && player && (
+                <div className="border-t border-gray-700 px-4 py-3">
+                  <PlayerClubList playerId={player.id} />
+                </div>
+              )}
+            </div>
+          );
+        }
+
+        return (
+          <>
+            {pastDays.length > 0 && (
+              <div>
                 <button
-                  onClick={() => toggleExpand(day.date)}
-                  className="flex items-center gap-3 flex-1 text-left hover:bg-gray-700/50 rounded-lg px-2 py-1 -mx-2 -my-1 transition-colors"
+                  onClick={() => setShowPast((p) => !p)}
+                  className="flex items-center gap-2 text-gray-400 hover:text-white text-sm mb-2 transition-colors"
                 >
-                  {player.thumbnail && (
-                    <img
-                      src={player.thumbnail}
-                      alt=""
-                      referrerPolicy="no-referrer"
-                      className="w-8 h-8 rounded-full object-cover bg-gray-700"
-                    />
-                  )}
-                  <div className="flex-1 min-w-0">
-                    <span className={`font-medium ${isSuggestion ? "text-yellow-300" : "text-white"}`}>
-                      {player.name}
-                    </span>
-                    <a
-                      href={`https://duckduckgo.com/?q=${encodeURIComponent(player.name + " wiki")}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      onClick={(e) => e.stopPropagation()}
-                      className="text-gray-500 hover:text-blue-400 ml-1.5 inline-block transition-colors"
-                      title="Look up on Wikipedia"
-                    >
-                      <svg className="w-3.5 h-3.5 inline" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-                      </svg>
-                    </a>
-                    {isSuggestion && (
-                      <span className="text-yellow-500/70 text-xs ml-2">suggestion</span>
-                    )}
-                    <div className="text-xs text-gray-400">{player.nationality}</div>
-                  </div>
                   <svg
-                    className={`w-4 h-4 text-gray-500 transition-transform ${isExpanded ? "rotate-180" : ""}`}
+                    className={`w-4 h-4 transition-transform ${showPast ? "rotate-180" : ""}`}
                     fill="none" viewBox="0 0 24 24" stroke="currentColor"
                   >
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                   </svg>
+                  Previous dailies ({pastDays.length})
                 </button>
-              ) : (
-                <span className="flex-1 text-gray-500 text-sm italic">No players available</span>
-              )}
-
-              {/* Actions */}
-              <div className="flex gap-2 shrink-0">
-                {isSuggestion && !isPast && (
-                  <>
-                    <button
-                      onClick={() => handleApprove(day.date, day.suggestion!)}
-                      className="px-3 py-1.5 bg-green-600 hover:bg-green-700 text-white text-sm font-medium rounded-lg transition-colors"
-                    >
-                      Approve
-                    </button>
-                    <button
-                      onClick={() => handleReject(day.date)}
-                      className="px-3 py-1.5 bg-gray-600 hover:bg-gray-500 text-white text-sm font-medium rounded-lg transition-colors"
-                    >
-                      Skip
-                    </button>
-                  </>
+                {showPast && (
+                  <div className="space-y-2 mb-4">
+                    {pastDays.map(renderDay)}
+                  </div>
                 )}
-                {day.assignedPlayer && !isPast && !isToday && (
-                  <button
-                    onClick={() => handleClear(day.date)}
-                    className="px-3 py-1.5 bg-red-600/20 hover:bg-red-600/40 text-red-400 text-sm font-medium rounded-lg transition-colors"
-                  >
-                    Clear
-                  </button>
-                )}
-              </div>
-            </div>
-
-            {/* Expanded: club history */}
-            {isExpanded && player && (
-              <div className="border-t border-gray-700 px-4 py-3">
-                <PlayerClubList playerId={player.id} />
               </div>
             )}
-          </div>
+            <div className="space-y-2">
+              {currentAndFuture.map(renderDay)}
+            </div>
+          </>
         );
-      })}
+      })()}
     </div>
   );
 }
