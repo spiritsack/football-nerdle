@@ -65,7 +65,7 @@ export default function PlayerCard({ player, clubs, hints, revealed, hardMode, r
               &#9432;
             </button>
             <div className="absolute bottom-full right-0 mb-2 w-48 px-3 py-2 bg-gray-700 text-gray-200 text-xs rounded-lg shadow-lg pointer-events-none opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity text-center z-20">
-              This player is potentially retired — their club history has no current team.
+              This player is potentially retired — no current team in their career data.
               <div className="absolute top-full right-4 border-4 border-transparent border-t-gray-700" />
             </div>
           </div>
