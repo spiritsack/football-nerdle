@@ -102,7 +102,7 @@ export default function PlayerSearch({ onSelect, disabled, usedPlayerIds, placeh
         onKeyDown={handleKeyDown}
         disabled={disabled}
         placeholder={placeholder ?? "Search for a player..."}
-        className="w-full px-4 py-3 bg-gray-800 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:border-green-500 disabled:opacity-50"
+        className="w-full px-4 py-3 bg-surface-card border border-border-default rounded-lg text-white placeholder-text-muted focus:outline-none focus:border-border-accent disabled:opacity-50"
         role="combobox"
         aria-expanded={isOpen}
         aria-controls="player-search-listbox"
@@ -110,10 +110,10 @@ export default function PlayerSearch({ onSelect, disabled, usedPlayerIds, placeh
         aria-activedescendant={highlightIndex >= 0 ? `player-option-${highlightIndex}` : undefined}
       />
       {loading && (
-        <div className="absolute right-3 top-3.5 text-gray-400 text-sm">...</div>
+        <div className="absolute right-3 top-3.5 text-text-muted text-sm">...</div>
       )}
       {isOpen && !loading && results.length === 0 && (
-        <div className={`absolute z-10 w-full bg-gray-800 border border-gray-600 rounded-lg p-4 text-gray-400 text-sm ${dropUp ? "bottom-full mb-1" : "mt-1"}`}>
+        <div className={`absolute z-10 w-full bg-surface-card border border-border-default rounded-lg p-4 text-text-muted text-sm ${dropUp ? "bottom-full mb-1" : "mt-1"}`}>
           No players found
         </div>
       )}
@@ -122,7 +122,7 @@ export default function PlayerSearch({ onSelect, disabled, usedPlayerIds, placeh
           id="player-search-listbox"
           ref={listRef}
           role="listbox"
-          className={`absolute z-10 w-full bg-gray-800 border border-gray-600 rounded-lg overflow-hidden shadow-lg max-h-80 overflow-y-auto ${
+          className={`absolute z-10 w-full bg-surface-card border border-border-default rounded-lg overflow-hidden shadow-lg max-h-80 overflow-y-auto ${
             dropUp ? "bottom-full mb-1" : "mt-1"
           }`}
         >
@@ -137,19 +137,19 @@ export default function PlayerSearch({ onSelect, disabled, usedPlayerIds, placeh
                 onClick={() => handleSelect(player)}
                 onMouseEnter={() => setHighlightIndex(index)}
                 className={`w-full px-4 py-3 flex items-center gap-3 text-left transition-colors ${
-                  index === highlightIndex ? "bg-gray-700" : "hover:bg-gray-700"
+                  index === highlightIndex ? "bg-surface-input" : "hover:bg-surface-input"
                 }`}
               >
                 {player.thumbnail && (
                   <img
                     src={player.thumbnail}
                     alt=""
-                    className="w-10 h-10 rounded-full object-cover bg-gray-700"
+                    className="w-10 h-10 rounded-full object-cover bg-surface-input"
                   />
                 )}
                 <div>
                   <div className="text-white font-medium">{player.name}</div>
-                  <div className="text-gray-400 text-sm">{player.nationality}</div>
+                  <div className="text-text-muted text-sm">{player.nationality}</div>
                 </div>
               </button>
             </li>

@@ -1,0 +1,28 @@
+@theme {
+  /* Surface layers */
+  --color-surface: #111827;
+  --color-surface-card: #1f2937;
+  --color-surface-input: #374151;
+
+  /* Text */
+  --color-text-primary: #ffffff;
+  --color-text-secondary: #d1d5db;
+  --color-text-muted: #9ca3af;
+  --color-text-subtle: #6b7280;
+
+  /* Borders */
+  --color-border-default: #4b5563;
+  --color-border-subtle: #374151;
+  --color-border-accent: #22c55e;
+
+  /* Actions */
+  --color-primary: #16a34a;
+  --color-primary-hover: #22c55e;
+  --color-secondary: #2563eb;
+  --color-secondary-hover: #3b82f6;
+
+  /* Status */
+  --color-success: #4ade80;
+  --color-warning: #facc15;
+  --color-error: #f87171;
+}
