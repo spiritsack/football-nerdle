@@ -40,12 +40,16 @@ function RevealedField({ label, value }: { label: string; value: string }) {
   );
 }
 
-export default function PlayerCard({ player, clubs, hints, revealed, hardMode, result, onGuess }: PlayerCardProps) {
+export default function PlayerCard({ player, clubs, hints, revealed, hardMode, result, onGuess, onSkip, attempts, maxAttempts }: PlayerCardProps) {
   const age = player.dateBorn ? new Date().getFullYear() - parseInt(player.dateBorn, 10) : null;
 
-  // A player is considered "legacy" (potentially retired) if all their clubs have a departure year.
+  // A player is considered "legacy" (potentially retired) if all their clubs have a departure year
+  // and none departed in the current or previous year (still potentially active).
   // The is_legacy DB field overrides auto-detection when set.
-  const autoLegacy = clubs.length > 0 && clubs.every((c) => c.yearDeparted);
+  const lastYear = String(new Date().getFullYear() - 1);
+  const autoLegacy = clubs.length > 0
+    && clubs.every((c) => c.yearDeparted)
+    && clubs.every((c) => c.yearDeparted < lastYear);
   const isLegacy = player.isLegacy != null ? player.isLegacy : autoLegacy;
 
   const borderColor = result === "won" ? "border-green-600" : result === "lost" ? "border-red-600" : isLegacy ? "border-amber-700/60" : "border-gray-600";
@@ -89,12 +93,25 @@ export default function PlayerCard({ player, clubs, hints, revealed, hardMode, r
           {revealed ? (
             <p className="text-xl font-bold truncate">{player.name}</p>
           ) : onGuess ? (
-            <PlayerSearch
-              onSelect={onGuess}
-              placeholder={hints.initials
-                ? player.name.split(" ").map((part) => part[0] + ".".repeat(part.length - 1)).join(" ")
-                : "Player name"}
-            />
+            <div className="flex items-center gap-2 w-full">
+              <div className="flex-1 min-w-0">
+                <PlayerSearch
+                  onSelect={onGuess}
+                  placeholder={hints.initials
+                    ? player.name.split(" ").map((part) => part[0] + ".".repeat(part.length - 1)).join(" ")
+                    : "Player name"}
+                />
+              </div>
+              {onSkip && (
+                <button
+                  onClick={onSkip}
+                  className="px-3 py-3 bg-gray-700 hover:bg-gray-600 text-gray-400 hover:text-white text-xs font-medium rounded-lg transition-colors shrink-0"
+                  title={`Skip and reveal hint (${(attempts ?? 0) + 1}/${maxAttempts ?? 5})`}
+                >
+                  Skip
+                </button>
+              )}
+            </div>
           ) : (
             <>
               <div className="h-6 bg-gray-700 rounded w-40 mb-2" />

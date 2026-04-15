@@ -214,6 +214,36 @@ export function useGuessGame() {
     [state.targetPlayer, state.status, state.attempts, state.isDaily, state.isArchive, state.dayNumber]
   );
 
+  const skipGuess = useCallback(() => {
+    if (!state.targetPlayer || state.status !== "playing") return;
+    const newAttempts = state.attempts + 1;
+    const newHints = hintsForWrongCount(newAttempts);
+    if (newAttempts >= MAX_ATTEMPTS) {
+      if (state.isDaily) {
+        saveDailyResult("lost", newAttempts);
+        setStats(recordResult(false));
+        submitDailyResult(today, false, newAttempts);
+      } else if (state.isArchive && state.dayNumber) {
+        const archiveDate = getDateForDay(state.dayNumber);
+        saveDailyResultForDate(archiveDate, "lost", newAttempts);
+        submitDailyResult(archiveDate, false, newAttempts);
+      }
+      setState((s) => ({
+        ...s,
+        attempts: newAttempts,
+        status: "lost",
+        dailyCompleted: s.isDaily,
+        hints: newHints,
+      }));
+    } else {
+      setState((s) => ({
+        ...s,
+        attempts: newAttempts,
+        hints: newHints,
+      }));
+    }
+  }, [state.targetPlayer, state.status, state.attempts, state.isDaily, state.isArchive, state.dayNumber, today]);
+
   function getShareText(hardMode?: boolean): string {
     const dayNum = state.dayNumber ?? getDayNumber(today);
     const won = state.status === "won";
@@ -281,6 +311,7 @@ export function useGuessGame() {
     startDaily,
     startRandom,
     submitGuess,
+    skipGuess,
     getShareText,
   };
 }

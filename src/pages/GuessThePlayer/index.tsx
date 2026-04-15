@@ -27,6 +27,7 @@ export default function GuessThePlayer() {
     startRandom,
     loadArchiveDay,
     submitGuess,
+    skipGuess,
     getShareText,
   } = useGuessGame();
 
@@ -192,6 +193,9 @@ export default function GuessThePlayer() {
               revealed={false}
               hardMode={hardMode}
               onGuess={submitGuess}
+              onSkip={skipGuess}
+              attempts={attempts}
+              maxAttempts={maxAttempts}
             />
 
             {wrongGuesses.length > 0 && (

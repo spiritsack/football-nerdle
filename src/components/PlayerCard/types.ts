@@ -19,4 +19,7 @@ export interface PlayerCardProps {
   hardMode: boolean;
   result?: "won" | "lost";
   onGuess?: (player: Player) => void;
+  onSkip?: () => void;
+  attempts?: number;
+  maxAttempts?: number;
 }

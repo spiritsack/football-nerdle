@@ -133,7 +133,10 @@ export default function PlayerClubList({ playerId }: Props) {
     return <p className="text-gray-500 text-sm py-2">No club history found.</p>;
   }
 
-  const autoLegacy = clubs.length > 0 && clubs.every((c) => c.year_departed);
+  const lastYear = String(new Date().getFullYear() - 1);
+  const autoLegacy = clubs.length > 0
+    && clubs.every((c) => c.year_departed)
+    && clubs.every((c) => c.year_departed < lastYear);
   const effectiveLegacy = legacyOverride != null ? legacyOverride : autoLegacy;
 
   return (
