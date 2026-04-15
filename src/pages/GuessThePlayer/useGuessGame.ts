@@ -11,7 +11,7 @@ import {
   loadStats, recordResult
 } from "./helpers";
 
-const NO_HINTS: RevealedHints = { nationality: false, age: false, position: false, photo: false };
+const NO_HINTS: RevealedHints = { nationality: false, age: false, position: false, photo: false, initials: false };
 
 function hintsForWrongCount(wrongCount: number): RevealedHints {
   return {
@@ -19,6 +19,7 @@ function hintsForWrongCount(wrongCount: number): RevealedHints {
     age: wrongCount >= 2,
     position: wrongCount >= 3,
     photo: wrongCount >= 4,
+    initials: wrongCount >= 4,
   };
 }
 
