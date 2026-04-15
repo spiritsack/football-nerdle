@@ -89,7 +89,12 @@ export default function PlayerCard({ player, clubs, hints, revealed, hardMode, r
           {revealed ? (
             <p className="text-xl font-bold truncate">{player.name}</p>
           ) : onGuess ? (
-            <PlayerSearch onSelect={onGuess} placeholder="Player name" />
+            <PlayerSearch
+              onSelect={onGuess}
+              placeholder={hints.initials
+                ? player.name.split(" ").map((part) => part[0] + ".".repeat(part.length - 1)).join(" ")
+                : "Player name"}
+            />
           ) : (
             <>
               <div className="h-6 bg-gray-700 rounded w-40 mb-2" />
