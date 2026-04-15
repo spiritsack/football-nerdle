@@ -49,6 +49,7 @@ interface CsvPlayer {
   current_club_name: string;
   current_club_domestic_competition_id: string;
   market_value_in_eur: string;
+  highest_market_value_in_eur: string;
 }
 
 interface CsvTransfer {
@@ -112,6 +113,10 @@ function parseCsvLine(line: string): string[] {
   return result;
 }
 
+function removeAccents(str: string): string {
+  return str.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+}
+
 function extractYear(dateStr: string): string {
   if (!dateStr) return "";
   const match = dateStr.match(/^(\d{4})/);
@@ -168,9 +173,11 @@ async function main() {
     const nationality = player.country_of_citizenship || "";
     if (nationality) countrySet.add(nationality);
 
+    const playerName = player.name || `${player.first_name} ${player.last_name}`.trim();
     playerRows.push({
       id: `tm_${player.player_id}`,
-      name: player.name || `${player.first_name} ${player.last_name}`.trim(),
+      name: playerName,
+      name_search: removeAccents(playerName),
       thumbnail: player.image_url || "",
       nationality_id: nationality || null,
       position: player.sub_position || player.position || "",
@@ -179,6 +186,7 @@ async function main() {
       current_club_id: clubMap.has(player.current_club_id) ? `tm_${player.current_club_id}` : null,
       transfermarkt_id: player.player_id,
       data_source: "transfermarkt",
+      popularity: parseInt(player.highest_market_value_in_eur, 10) || 0,
     });
   }
   console.log(`  Found ${targetPlayerIds.size} players`);

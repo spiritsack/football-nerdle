@@ -10,12 +10,18 @@ interface PlayerSearchRow {
   countries: { name: string } | null;
 }
 
+function removeAccents(str: string): string {
+  return str.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+}
+
 export async function searchPlayers(query: string): Promise<Player[]> {
   if (!supabase) return [];
+  const normalized = removeAccents(query);
   const { data, error } = await supabase
     .from("players")
     .select("id, name, thumbnail, nationality_id, countries(name)")
-    .ilike("name", `%${query}%`)
+    .ilike("name_search", `%${normalized}%`)
+    .order("popularity", { ascending: false })
     .limit(10);
   if (error || !data) return [];
   const rows = data as unknown as PlayerSearchRow[];
