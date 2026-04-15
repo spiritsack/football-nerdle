@@ -10,21 +10,29 @@ interface PlayerSearchRow {
   countries: { name: string } | null;
 }
 
-function removeAccents(str: string): string {
-  return str.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
-}
-
 export async function searchPlayers(query: string): Promise<Player[]> {
   if (!supabase) return [];
-  const normalized = removeAccents(query);
-  const { data, error } = await supabase
+
+  // Use server-side unaccent function for diacritics-insensitive search
+  const { data, error } = await supabase.rpc("search_players", { query });
+
+  if (!error && data && data.length > 0) {
+    return (data as { id: string; name: string; thumbnail: string; nationality: string }[]).map((row) => ({
+      id: row.id,
+      name: row.name,
+      thumbnail: row.thumbnail || "",
+      nationality: row.nationality,
+    }));
+  }
+
+  // Fallback to plain ilike if RPC unavailable (e.g. migration not run yet)
+  const { data: fallback, error: fbErr } = await supabase
     .from("players")
     .select("id, name, thumbnail, nationality_id, countries(name)")
-    .ilike("name_search", `%${normalized}%`)
-    .order("popularity", { ascending: false })
+    .ilike("name", `%${query}%`)
     .limit(10);
-  if (error || !data) return [];
-  const rows = data as unknown as PlayerSearchRow[];
+  if (fbErr || !fallback) return [];
+  const rows = fallback as unknown as PlayerSearchRow[];
   return rows.map((row) => ({
     id: row.id,
     name: row.name,
