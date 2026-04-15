@@ -3,7 +3,7 @@ import { searchPlayers } from "../../api/playerCache";
 import type { Player } from "../../types";
 import type { PlayerSearchProps } from "./types";
 
-export default function PlayerSearch({ onSelect, disabled, usedPlayerIds, placeholder }: PlayerSearchProps) {
+export default function PlayerSearch({ onSelect, disabled, usedPlayerIds, disabledPlayerIds, placeholder }: PlayerSearchProps) {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<Player[]>([]);
   const [isOpen, setIsOpen] = useState(false);
@@ -64,7 +64,12 @@ export default function PlayerSearch({ onSelect, disabled, usedPlayerIds, placeh
     }, 300);
   }
 
+  function isPlayerDisabled(player: Player): boolean {
+    return disabledPlayerIds?.has(player.id) ?? false;
+  }
+
   function handleSelect(player: Player) {
+    if (isPlayerDisabled(player)) return;
     setQuery("");
     setResults([]);
     setIsOpen(false);
@@ -126,18 +131,24 @@ export default function PlayerSearch({ onSelect, disabled, usedPlayerIds, placeh
             dropUp ? "bottom-full mb-1" : "mt-1"
           }`}
         >
-          {results.map((player, index) => (
+          {results.map((player, index) => {
+            const disabledReason = disabledPlayerIds?.get(player.id);
+            return (
             <li
               key={player.id}
               id={`player-option-${index}`}
               role="option"
               aria-selected={index === highlightIndex}
+              aria-disabled={!!disabledReason}
             >
               <button
                 onClick={() => handleSelect(player)}
                 onMouseEnter={() => setHighlightIndex(index)}
+                disabled={!!disabledReason}
                 className={`w-full px-4 py-3 flex items-center gap-3 text-left transition-colors ${
-                  index === highlightIndex ? "bg-gray-700" : "hover:bg-gray-700"
+                  disabledReason
+                    ? "opacity-50 cursor-not-allowed"
+                    : index === highlightIndex ? "bg-gray-700" : "hover:bg-gray-700"
                 }`}
               >
                 {player.thumbnail && (
@@ -147,13 +158,17 @@ export default function PlayerSearch({ onSelect, disabled, usedPlayerIds, placeh
                     className="w-10 h-10 rounded-full object-cover bg-gray-700"
                   />
                 )}
-                <div>
+                <div className="flex-1 min-w-0">
                   <div className="text-white font-medium">{player.name}</div>
                   <div className="text-gray-400 text-sm">{player.nationality}</div>
                 </div>
+                {disabledReason && (
+                  <span className="text-gray-500 text-xs shrink-0">{disabledReason}</span>
+                )}
               </button>
             </li>
-          ))}
+          );
+          })}
         </ul>
       )}
     </div>

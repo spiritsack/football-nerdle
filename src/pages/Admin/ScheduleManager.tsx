@@ -36,6 +36,7 @@ interface DayState {
 export default function ScheduleManager() {
   const [days, setDays] = useState<DayState[]>([]);
   const [usedPlayerIds, setUsedPlayerIds] = useState<Set<string>>(new Set());
+  const [scheduledPlayerLabels, setScheduledPlayerLabels] = useState<Map<string, string>>(new Map());
   const [expandedDate, setExpandedDate] = useState<string | null>(null);
   const [showPast, setShowPast] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -61,6 +62,13 @@ export default function ScheduleManager() {
 
     const allUsedIds = new Set(allUsed.map((r) => r.player_id));
     setUsedPlayerIds(allUsedIds);
+
+    const labels = new Map<string, string>();
+    for (const row of allUsed) {
+      const isPast = row.date < today;
+      labels.set(row.player_id, isPast ? `Played ${row.date}` : `Scheduled ${row.date}`);
+    }
+    setScheduledPlayerLabels(labels);
 
     const scheduleMap = new Map(rangeData.map((r) => [r.date, r.player_id]));
 
@@ -215,7 +223,7 @@ export default function ScheduleManager() {
       <div className="mb-4">
         <PlayerSearch
           onSelect={(player) => handleApprove("", player)}
-          usedPlayerIds={usedPlayerIds}
+          disabledPlayerIds={scheduledPlayerLabels}
           placeholder="Search and add a player to schedule..."
         />
       </div>
