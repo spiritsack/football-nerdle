@@ -21,6 +21,8 @@ See a player's club history and guess who it is in **5 attempts**.
 - **Hard Mode** — Only club badges shown (no names or years)
 - **Hints** — Wrong guesses progressively reveal nationality, age, position, and photo
 - **Loan indicators** — Loan spells shown with dashed borders
+- **Legacy players** — Retired players shown with vintage-styled cards
+- **Daily leaderboard** — See how the community did after completing a puzzle
 
 ## Tech Stack
 
@@ -28,13 +30,14 @@ See a player's club history and guess who it is in **5 attempts**.
 - Vite 8
 - Tailwind CSS 4
 - [Supabase](https://supabase.com/) for player data, multiplayer game rooms, and admin auth
-- Player data sourced from [TransferMarkt](https://github.com/dcaribou/transfermarkt-datasets) (~47,000 players)
+- Player data sourced from [TransferMarkt](https://github.com/dcaribou/transfermarkt-datasets) (~47,000 players) + [Wikidata](https://www.wikidata.org/) career backfill
 
 ## Development
 
 ```bash
 npm install
-npm run dev
+npm run dev        # Staging database
+npm run dev:prod   # Production database
 ```
 
 Copy `.env.example` to `.env` and fill in your Supabase credentials:
@@ -56,7 +59,25 @@ SUPABASE_SERVICE_ROLE_KEY=your-key npx tsx scripts/import-transfermarkt.ts
 SUPABASE_SERVICE_ROLE_KEY=your-key npx tsx scripts/import-transfermarkt.ts --all
 ```
 
-Requires the Supabase **service role key** (RLS restricts writes to admin users).
+Backfill missing club history from Wikidata:
+
+```bash
+# Backfill all players missing transfer data
+VITE_SUPABASE_URL=... SUPABASE_SERVICE_ROLE_KEY=... npx tsx scripts/backfill-wikidata.ts
+
+# Test with a single player (by TransferMarkt ID)
+VITE_SUPABASE_URL=... SUPABASE_SERVICE_ROLE_KEY=... npx tsx scripts/backfill-wikidata.ts --player 3220
+```
+
+Copy data between Supabase instances (e.g. production to staging):
+
+```bash
+SOURCE_SUPABASE_URL=... SOURCE_SUPABASE_SERVICE_KEY=... \
+TARGET_SUPABASE_URL=... TARGET_SUPABASE_SERVICE_KEY=... \
+npx tsx scripts/copy-db.ts
+```
+
+All import/copy scripts require the Supabase **service role key** (RLS restricts writes to admin users).
 
 ### Admin interface
 

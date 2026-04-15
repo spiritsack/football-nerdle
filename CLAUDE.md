@@ -9,7 +9,7 @@ A football (soccer) trivia web app with multiple game modes, deployed to GitHub 
 - **Styling**: Tailwind CSS 4 (via `@tailwindcss/vite` plugin)
 - **Routing**: React Router DOM 7 (HashRouter for GitHub Pages compatibility)
 - **Backend**: Supabase (Postgres + Realtime + Auth) — player data, multiplayer rooms, admin auth
-- **Data Source**: [TransferMarkt datasets](https://github.com/dcaribou/transfermarkt-datasets) — ~47k players imported via scripts
+- **Data Sources**: [TransferMarkt datasets](https://github.com/dcaribou/transfermarkt-datasets) (~47k players) + [Wikidata](https://www.wikidata.org/) (career backfill for ~18k players missing transfer history)
 - **Deployment**: GitHub Pages at `https://spiritsack.github.io/football-nerdle/`
 
 ## Environment Variables
@@ -22,7 +22,8 @@ A football (soccer) trivia web app with multiple game modes, deployed to GitHub 
 
 ## Commands
 
-- `npm run dev` — Start dev server
+- `npm run dev` — Start dev server (staging database)
+- `npm run dev:prod` — Start dev server (production database)
 - `npm run build` — Type-check (`tsc -b`) then build with Vite
 - `npm run lint` — ESLint
 - `npm run preview` — Preview production build
@@ -30,6 +31,8 @@ A football (soccer) trivia web app with multiple game modes, deployed to GitHub 
 - `npm run test:e2e` — E2E tests (Playwright)
 - `npx tsx scripts/import-transfermarkt.ts` — Import target league players
 - `npx tsx scripts/import-transfermarkt.ts --all` — Import all players from dataset
+- `npx tsx scripts/backfill-wikidata.ts` — Backfill missing club history from Wikidata
+- `npx tsx scripts/copy-db.ts` — Copy data between Supabase instances (e.g. prod→staging)
 
 ## Project Structure
 
@@ -44,6 +47,7 @@ src/
     supabaseClient.ts   — Supabase client singleton
     playerCache.ts      — Player data queries: search, lookup, random selection
     dailySchedule.ts    — Daily player selection (Supabase daily_schedule table)
+    dailyLeaderboard.ts — Community leaderboard: submit results, fetch distribution
     multiplayerRoom.ts  — Room CRUD: createRoom, joinRoom, updateTurn, subscribeToRoom
     adminApi.ts         — Admin write operations: schedule, clubs, crests, player lookup
     useAdminAuth.ts     — Supabase Auth hook for admin sign-in/sign-out
@@ -68,8 +72,10 @@ src/
   components/
     PlayerSearch/       — Reusable player autocomplete (searches Supabase)
       index.tsx, types.ts
-    PlayerCard/         — Player card with club history, hints, and guess input
+    PlayerCard/         — Player card with club history, hints, legacy styling, and guess input
       index.tsx, types.ts
+    DailyLeaderboard/   — Community result distribution bar chart
+      index.tsx
   utils/
     gameLogic.ts        — didPlayTogether (pure function), ApiError
     dates.ts            — Shared date formatting (getTodayString)
@@ -78,6 +84,8 @@ src/
     seedPlayers.ts      — 107 seed players for daily puzzle (TransferMarkt IDs)
 scripts/
   import-transfermarkt.ts — Import players/transfers from TransferMarkt CSVs (--all for full dataset)
+  backfill-wikidata.ts    — Backfill missing club history from Wikidata SPARQL API
+  copy-db.ts              — Copy data between Supabase instances
   seed-players.ts         — Pre-populate players from top clubs
 supabase/
   migrations/           — SQL migration files for Supabase schema
@@ -86,7 +94,9 @@ e2e/                    — Playwright E2E tests
 
 ## Architecture
 
-- **Player data**: All player data lives in Supabase, imported from TransferMarkt datasets (~47k players). No runtime API calls to external services. Player search queries the Supabase `players` table directly.
+- **Player data**: All player data lives in Supabase, imported from TransferMarkt datasets (~47k players) with club history backfilled from Wikidata (~18k additional players). No runtime API calls to external services. Player search queries the Supabase `players` table directly.
+- **Legacy players**: Retired players (no current club) are auto-detected and shown with vintage-styled cards. Admin can override via `is_legacy` field.
+- **Daily leaderboard**: Anonymous result submissions to `daily_results` table. Shown as a bar chart after game completion. Deduplicated client-side via localStorage.
 - **Admin authentication**: Supabase Auth (email/password) protects the admin interface. An `admin_users` table stores allowed emails. The `is_admin()` SQL function checks the JWT against this table. No service role key in client code.
 - **RLS policies**: Data tables allow SELECT for anyone, INSERT/UPDATE restricted to admin users. `daily_schedule` allows anon INSERT (game auto-creates daily entries). `game_rooms` allows full anon access (multiplayer).
 - **`didPlayTogether`**: Pure function in `utils/gameLogic.ts` — checks if two players overlapped at the same club. No API calls.
@@ -103,6 +113,7 @@ e2e/                    — Playwright E2E tests
 | `game_rooms` | Multiplayer game state | Read + Write: anyone |
 | `pool_refresh` | Tracks daily pool refresh | Read: anyone, Write: admin |
 | `daily_schedule` | Daily player selection (one per day) | Read + Insert: anyone, Update + Delete: admin |
+| `daily_results` | Anonymous game result submissions for leaderboard | Read + Insert: anyone |
 | `admin_users` | Allowed admin emails | Read: admin only |
 
 ## Git Workflow
