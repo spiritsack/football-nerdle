@@ -39,7 +39,7 @@ export default function DailyLeaderboard({ date, userAttempts }: Props) {
   return (
     <div className="bg-gray-800 border border-gray-600 rounded-xl p-6 max-w-md w-full">
       <h3 className="text-lg font-semibold text-center text-gray-300 mb-4">
-        Today's Results <span className="text-gray-500 font-normal text-sm">({total} {total === 1 ? "player" : "players"})</span>
+        Today's Results
       </h3>
       <div className="space-y-2">
         {ALL_BUCKETS.map((bucket) => {
