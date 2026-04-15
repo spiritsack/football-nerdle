@@ -1,6 +1,7 @@
 import { useState, useCallback, useEffect } from "react";
 import { getPlayerWithTeamsCached, getFromCacheById, getRandomCachedPlayer } from "../../api/playerCache";
 import { getOrCreateDailyPlayer, getScheduledPlayerForDate } from "../../api/dailySchedule";
+import { submitDailyResult } from "../../api/dailyLeaderboard";
 import type { Player } from "../../types";
 import { MAX_ATTEMPTS, SHARE_URL } from "./constants";
 import type { GuessGameState, GuessStats, RevealedHints } from "./types";
@@ -170,9 +171,12 @@ export function useGuessGame() {
         if (state.isDaily) {
           saveDailyResult("won", finalAttempts);
           setStats(recordResult(true));
+          submitDailyResult(today, true, finalAttempts);
         } else if (state.isArchive && state.dayNumber) {
           // Save archive result per-date but don't affect stats/streak
-          saveDailyResultForDate(getDateForDay(state.dayNumber), "won", finalAttempts);
+          const archiveDate = getDateForDay(state.dayNumber);
+          saveDailyResultForDate(archiveDate, "won", finalAttempts);
+          submitDailyResult(archiveDate, true, finalAttempts);
         }
         setState((s) => ({ ...s, status: "won", attempts: finalAttempts, dailyCompleted: s.isDaily }));
       } else {
@@ -182,8 +186,11 @@ export function useGuessGame() {
           if (state.isDaily) {
             saveDailyResult("lost", newAttempts);
             setStats(recordResult(false));
+            submitDailyResult(today, false, newAttempts);
           } else if (state.isArchive && state.dayNumber) {
-            saveDailyResultForDate(getDateForDay(state.dayNumber), "lost", newAttempts);
+            const archiveDate = getDateForDay(state.dayNumber);
+            saveDailyResultForDate(archiveDate, "lost", newAttempts);
+            submitDailyResult(archiveDate, false, newAttempts);
           }
           setState((s) => ({
             ...s,

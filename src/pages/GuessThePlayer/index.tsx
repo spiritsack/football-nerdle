@@ -2,8 +2,9 @@ import { useState, useMemo, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useGuessGame } from "./useGuessGame";
 import { HARD_MODE_KEY } from "./constants";
-import { mergeConsecutiveClubs, getTodayString } from "./helpers";
+import { mergeConsecutiveClubs, getTodayString, getDateForDay } from "./helpers";
 import PlayerCard from "../../components/PlayerCard";
+import DailyLeaderboard from "../../components/DailyLeaderboard";
 import { getLastRefresh } from "../../api/playerCache";
 
 export default function GuessThePlayer() {
@@ -288,6 +289,13 @@ export default function GuessThePlayer() {
                 </div>
               )}
             </div>
+
+            {(isDaily || isArchive) && (
+              <DailyLeaderboard
+                date={isArchive && dayNumber ? getDateForDay(dayNumber) : today}
+                userAttempts={status === "won" ? attempts : 0}
+              />
+            )}
           </>
         )}
       </main>
