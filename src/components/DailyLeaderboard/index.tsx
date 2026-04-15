@@ -31,7 +31,14 @@ export default function DailyLeaderboard({ date, userAttempts }: Props) {
   if (loading) return null;
 
   const countMap = new Map(entries.map((e) => [e.attempts, e.count]));
-  const total = entries.reduce((sum, e) => sum + e.count, 0);
+
+  // Optimistically include the user's result if not yet in the data
+  const userCount = countMap.get(userAttempts) ?? 0;
+  if (userCount === 0) {
+    countMap.set(userAttempts, 1);
+  }
+
+  const total = [...countMap.values()].reduce((sum, c) => sum + c, 0);
   const maxCount = Math.max(...ALL_BUCKETS.map((b) => countMap.get(b) ?? 0), 1);
 
   if (total === 0) return null;
