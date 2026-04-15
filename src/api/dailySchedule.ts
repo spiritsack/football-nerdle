@@ -2,6 +2,26 @@ import { supabase } from "./supabaseClient";
 import { SEED_PLAYERS } from "../data/seedPlayers";
 import type { Player } from "../types";
 
+async function lookupPlayerById(id: string): Promise<Player | null> {
+  if (!supabase) return null;
+  const { data } = await supabase
+    .from("players")
+    .select("id, name, thumbnail, nationality_id, countries(name)")
+    .eq("id", id)
+    .single();
+  if (!data) return null;
+  const row = data as unknown as {
+    id: string; name: string; thumbnail: string; nationality_id: string;
+    countries: { name: string } | null;
+  };
+  return {
+    id: row.id,
+    name: row.name,
+    thumbnail: row.thumbnail || "",
+    nationality: row.countries?.name ?? row.nationality_id ?? "",
+  };
+}
+
 // Fallback: sequential day-number indexing when Supabase is unavailable
 function fallbackDailyPlayer(date: string): Player {
   const start = new Date("2026-03-24");
@@ -21,7 +41,8 @@ export async function getOrCreateDailyPlayer(date: string): Promise<Player> {
       .single();
 
     if (existing) {
-      const player = SEED_PLAYERS.find((p) => p.id === existing.player_id);
+      const player = SEED_PLAYERS.find((p) => p.id === existing.player_id)
+        ?? await lookupPlayerById(existing.player_id);
       if (player) return player;
     }
 
@@ -47,7 +68,8 @@ export async function getOrCreateDailyPlayer(date: string): Promise<Player> {
       .single();
 
     if (final) {
-      const player = SEED_PLAYERS.find((p) => p.id === final.player_id);
+      const player = SEED_PLAYERS.find((p) => p.id === final.player_id)
+        ?? await lookupPlayerById(final.player_id);
       if (player) return player;
     }
 
@@ -66,7 +88,8 @@ export async function getScheduledPlayerForDate(date: string): Promise<Player | 
       .eq("date", date)
       .single();
     if (!data) return null;
-    return SEED_PLAYERS.find((p) => p.id === data.player_id) ?? null;
+    return SEED_PLAYERS.find((p) => p.id === data.player_id)
+      ?? await lookupPlayerById(data.player_id);
   } catch {
     return null;
   }
