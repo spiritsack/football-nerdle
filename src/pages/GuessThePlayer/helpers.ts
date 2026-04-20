@@ -102,18 +102,31 @@ export function mergeConsecutiveClubs(clubs: FormerTeam[]): MergedClub[] {
 
 const DEFAULT_STATS: GuessStats = { played: 0, won: 0, lost: 0, streak: 0, longestStreak: 0 };
 
-export function loadStats(): GuessStats {
+function daysBetween(from: string, to: string): number {
+  const toUTC = (s: string) => {
+    const [y, m, d] = s.split("-").map(Number);
+    return Date.UTC(y, m - 1, d);
+  };
+  return Math.round((toUTC(to) - toUTC(from)) / 86_400_000);
+}
+
+export function loadStats(today: string = getTodayString()): GuessStats {
   try {
     const stored = localStorage.getItem(STATS_KEY);
-    if (!stored) return { ...DEFAULT_STATS };
-    return { ...DEFAULT_STATS, ...JSON.parse(stored) };
+    const stats: GuessStats = stored
+      ? { ...DEFAULT_STATS, ...JSON.parse(stored) }
+      : { ...DEFAULT_STATS };
+    if (stats.streak > 0 && stats.lastPlayedDate && daysBetween(stats.lastPlayedDate, today) > 1) {
+      stats.streak = 0;
+    }
+    return stats;
   } catch {
     return { ...DEFAULT_STATS };
   }
 }
 
-export function recordResult(won: boolean): GuessStats {
-  const stats = loadStats();
+export function recordResult(won: boolean, today: string = getTodayString()): GuessStats {
+  const stats = loadStats(today);
   stats.played++;
   if (won) {
     stats.won++;
@@ -125,6 +138,7 @@ export function recordResult(won: boolean): GuessStats {
     stats.lost++;
     stats.streak = 0;
   }
+  stats.lastPlayedDate = today;
   localStorage.setItem(STATS_KEY, JSON.stringify(stats));
   return stats;
 }

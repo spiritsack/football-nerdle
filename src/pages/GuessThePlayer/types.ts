@@ -43,4 +43,5 @@ export interface GuessStats {
   lost: number;
   streak: number;
   longestStreak: number;
+  lastPlayedDate?: string;
 }

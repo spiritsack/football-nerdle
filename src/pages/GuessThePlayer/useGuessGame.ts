@@ -27,7 +27,7 @@ export function useGuessGame() {
   const [today] = useState(getTodayString);
   const [dailyResult] = useState(getDailyResult);
   const alreadyPlayedToday = dailyResult?.date === today;
-  const [stats, setStats] = useState<GuessStats>(loadStats);
+  const [stats, setStats] = useState<GuessStats>(() => loadStats(today));
 
   const [state, setState] = useState<GuessGameState>(() => ({
     targetPlayer: null,
@@ -171,7 +171,7 @@ export function useGuessGame() {
         const finalAttempts = state.attempts + 1;
         if (state.isDaily) {
           saveDailyResult("won", finalAttempts);
-          setStats(recordResult(true));
+          setStats(recordResult(true, today));
           submitDailyResult(today, true, finalAttempts);
         } else if (state.isArchive && state.dayNumber) {
           // Save archive result per-date but don't affect stats/streak
@@ -186,7 +186,7 @@ export function useGuessGame() {
         if (newAttempts >= MAX_ATTEMPTS) {
           if (state.isDaily) {
             saveDailyResult("lost", newAttempts);
-            setStats(recordResult(false));
+            setStats(recordResult(false, today));
             submitDailyResult(today, false, newAttempts);
           } else if (state.isArchive && state.dayNumber) {
             const archiveDate = getDateForDay(state.dayNumber);
@@ -221,7 +221,7 @@ export function useGuessGame() {
     if (newAttempts >= MAX_ATTEMPTS) {
       if (state.isDaily) {
         saveDailyResult("lost", newAttempts);
-        setStats(recordResult(false));
+        setStats(recordResult(false, today));
         submitDailyResult(today, false, newAttempts);
       } else if (state.isArchive && state.dayNumber) {
         const archiveDate = getDateForDay(state.dayNumber);
