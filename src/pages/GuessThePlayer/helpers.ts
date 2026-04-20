@@ -1,5 +1,7 @@
 import { SEED_PLAYERS } from "../../data/seedPlayers";
 import { DAILY_GUESS_KEY, DAILY_RESULT_PREFIX, DAY_ONE_DATE, STATS_KEY } from "./constants";
+
+const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
 import type { DailyResult, GuessStats } from "./types";
 import type { FormerTeam } from "../../types";
 import type { MergedClub } from "../../components/PlayerCard/types";
@@ -110,12 +112,43 @@ function daysBetween(from: string, to: string): number {
   return Math.round((toUTC(to) - toUTC(from)) / 86_400_000);
 }
 
+// Legacy stats (pre-fix) have no lastPlayedDate. Recover it by scanning the
+// per-date daily result keys for the most recent play — so existing users
+// get correct gap detection on their first post-deploy play.
+function inferLastPlayedDate(): string | undefined {
+  let latest: string | undefined;
+  try {
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (!key || !key.startsWith(DAILY_RESULT_PREFIX)) continue;
+      const date = key.slice(DAILY_RESULT_PREFIX.length);
+      if (!ISO_DATE.test(date)) continue;
+      if (!latest || date > latest) latest = date;
+    }
+    if (!latest) {
+      const legacy = localStorage.getItem(DAILY_GUESS_KEY);
+      if (legacy) {
+        const parsed = JSON.parse(legacy);
+        if (typeof parsed?.date === "string" && ISO_DATE.test(parsed.date)) {
+          latest = parsed.date;
+        }
+      }
+    }
+  } catch {
+    // fall through
+  }
+  return latest;
+}
+
 export function loadStats(today: string = getTodayString()): GuessStats {
   try {
     const stored = localStorage.getItem(STATS_KEY);
     const stats: GuessStats = stored
       ? { ...DEFAULT_STATS, ...JSON.parse(stored) }
       : { ...DEFAULT_STATS };
+    if (!stats.lastPlayedDate && stats.played > 0) {
+      stats.lastPlayedDate = inferLastPlayedDate();
+    }
     if (stats.streak > 0 && stats.lastPlayedDate && daysBetween(stats.lastPlayedDate, today) > 1) {
       stats.streak = 0;
     }
