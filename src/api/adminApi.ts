@@ -169,6 +169,98 @@ export async function updatePlayerClubLoan(
   return !error;
 }
 
+export async function deletePlayerClub(playerClubId: number): Promise<boolean> {
+  if (!supabase) return false;
+  const { error } = await supabase
+    .from("player_clubs")
+    .delete()
+    .eq("id", playerClubId);
+  if (error) console.error("deletePlayerClub failed:", error);
+  return !error;
+}
+
+export async function updatePlayerClubYears(
+  playerClubId: number,
+  yearJoined: string,
+  yearDeparted: string,
+): Promise<boolean> {
+  if (!supabase) return false;
+  const { error } = await supabase
+    .from("player_clubs")
+    .update({ year_joined: yearJoined, year_departed: yearDeparted })
+    .eq("id", playerClubId);
+  if (error) console.error("updatePlayerClubYears failed:", error);
+  return !error;
+}
+
+export async function addPlayerClub(
+  playerId: string,
+  clubId: string,
+  yearJoined: string,
+  yearDeparted: string,
+): Promise<AdminClubRow | null> {
+  if (!supabase) return null;
+
+  const { data: existing } = await supabase
+    .from("player_clubs")
+    .select("id, sort_order, year_joined")
+    .eq("player_id", playerId)
+    .order("sort_order", { ascending: true, nullsFirst: false })
+    .order("year_joined", { ascending: true });
+
+  const rows = existing ?? [];
+  const hasNulls = rows.some((r) => r.sort_order == null);
+  if (hasNulls) {
+    for (let i = 0; i < rows.length; i++) {
+      await supabase
+        .from("player_clubs")
+        .update({ sort_order: i })
+        .eq("id", rows[i].id);
+    }
+  }
+  const nextSortOrder = rows.length;
+
+  const { data, error } = await supabase
+    .from("player_clubs")
+    .insert({
+      player_id: playerId,
+      club_id: clubId,
+      year_joined: yearJoined,
+      year_departed: yearDeparted,
+      sort_order: nextSortOrder,
+    })
+    .select("id, club_id, year_joined, year_departed, is_hidden, is_youth_team, is_loan, sort_order, clubs(name, badge)")
+    .single();
+  if (error || !data) {
+    console.error("addPlayerClub failed:", error);
+    return null;
+  }
+
+  const row = data as unknown as {
+    id: number;
+    club_id: string;
+    year_joined: string;
+    year_departed: string;
+    is_hidden: boolean;
+    is_youth_team: boolean;
+    is_loan: boolean;
+    sort_order: number | null;
+    clubs: { name: string; badge: string } | null;
+  };
+  return {
+    id: row.id,
+    club_id: row.club_id,
+    club_name: row.clubs?.name ?? row.club_id,
+    badge: row.clubs?.badge ?? "",
+    year_joined: row.year_joined,
+    year_departed: row.year_departed,
+    is_hidden: row.is_hidden,
+    is_youth_team: row.is_youth_team,
+    is_loan: row.is_loan,
+    sort_order: row.sort_order,
+  };
+}
+
 // --- Club reorder operations ---
 
 export async function updateClubSortOrders(
