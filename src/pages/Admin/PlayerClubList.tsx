@@ -5,12 +5,14 @@ import {
   updatePlayerClubHidden,
   updatePlayerClubYouthTeam,
   updatePlayerClubLoan,
+  updatePlayerClubYears,
   updatePlayerLegacy,
   updateClubSortOrders,
   updateClubName,
 } from "../../api/adminApi";
 import type { AdminClubRow } from "./types";
 import CrestDropZone from "./CrestDropZone";
+import AddClubForm from "./AddClubForm";
 
 interface Props {
   playerId: string;
@@ -21,6 +23,9 @@ export default function PlayerClubList({ playerId }: Props) {
   const [loading, setLoading] = useState(true);
   const [editingNameId, setEditingNameId] = useState<number | null>(null);
   const [editNameValue, setEditNameValue] = useState("");
+  const [editingYearsId, setEditingYearsId] = useState<number | null>(null);
+  const [editYearJoined, setEditYearJoined] = useState("");
+  const [editYearDeparted, setEditYearDeparted] = useState("");
   const [legacyOverride, setLegacyOverride] = useState<boolean | null>(null);
 
   useEffect(() => {
@@ -125,12 +130,62 @@ export default function PlayerClubList({ playerId }: Props) {
     }
   }
 
+  function startEditYears(club: AdminClubRow) {
+    setEditingYearsId(club.id);
+    setEditYearJoined(club.year_joined || "");
+    setEditYearDeparted(club.year_departed || "");
+  }
+
+  async function saveEditYears(club: AdminClubRow) {
+    const joined = editYearJoined.trim();
+    const departed = editYearDeparted.trim();
+    if (joined && !/^\d{4}$/.test(joined)) {
+      setEditingYearsId(null);
+      return;
+    }
+    if (departed && !/^\d{4}$/.test(departed)) {
+      setEditingYearsId(null);
+      return;
+    }
+    if (joined === club.year_joined && departed === club.year_departed) {
+      setEditingYearsId(null);
+      return;
+    }
+    const ok = await updatePlayerClubYears(club.id, joined, departed);
+    if (ok) {
+      setClubs((prev) =>
+        prev.map((c) =>
+          c.id === club.id ? { ...c, year_joined: joined, year_departed: departed } : c,
+        ),
+      );
+    }
+    setEditingYearsId(null);
+  }
+
+  function handleYearsKeyDown(e: React.KeyboardEvent, club: AdminClubRow) {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      saveEditYears(club);
+    } else if (e.key === "Escape") {
+      setEditingYearsId(null);
+    }
+  }
+
+  function handleClubAdded(row: AdminClubRow) {
+    setClubs((prev) => [...prev, row]);
+  }
+
   if (loading) {
     return <p className="text-gray-500 text-sm py-2">Loading clubs...</p>;
   }
 
   if (clubs.length === 0) {
-    return <p className="text-gray-500 text-sm py-2">No club history found.</p>;
+    return (
+      <div className="space-y-2">
+        <p className="text-gray-500 text-sm py-2">No club history found.</p>
+        <AddClubForm playerId={playerId} onAdded={handleClubAdded} />
+      </div>
+    );
   }
 
   const lastYear = String(new Date().getFullYear() - 1);
@@ -220,9 +275,41 @@ export default function PlayerClubList({ playerId }: Props) {
                 {club.club_name}
               </button>
             )}
-            <div className="text-xs text-gray-500">
-              {club.year_joined || "?"} – {club.year_departed || "present"}
-            </div>
+            {editingYearsId === club.id ? (
+              <div className="flex items-center gap-1 mt-0.5">
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  maxLength={4}
+                  value={editYearJoined}
+                  onChange={(e) => setEditYearJoined(e.target.value.replace(/\D/g, ""))}
+                  onKeyDown={(e) => handleYearsKeyDown(e, club)}
+                  className="w-16 px-1.5 py-0.5 text-xs bg-gray-700 text-white rounded border border-gray-500 focus:outline-none focus:border-green-500"
+                  placeholder="YYYY"
+                  autoFocus
+                />
+                <span className="text-xs text-gray-500">–</span>
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  maxLength={4}
+                  value={editYearDeparted}
+                  onChange={(e) => setEditYearDeparted(e.target.value.replace(/\D/g, ""))}
+                  onKeyDown={(e) => handleYearsKeyDown(e, club)}
+                  onBlur={() => saveEditYears(club)}
+                  className="w-16 px-1.5 py-0.5 text-xs bg-gray-700 text-white rounded border border-gray-500 focus:outline-none focus:border-green-500"
+                  placeholder="present"
+                />
+              </div>
+            ) : (
+              <button
+                onClick={() => startEditYears(club)}
+                className="text-xs text-gray-500 hover:text-white hover:underline cursor-text"
+                title="Click to edit years"
+              >
+                {club.year_joined || "?"} – {club.year_departed || "present"}
+              </button>
+            )}
           </div>
 
           {/* Flags */}
@@ -273,6 +360,7 @@ export default function PlayerClubList({ playerId }: Props) {
           </button>
         </div>
       ))}
+      <AddClubForm playerId={playerId} onAdded={handleClubAdded} />
     </div>
   );
 }
