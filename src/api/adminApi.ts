@@ -169,6 +169,16 @@ export async function updatePlayerClubLoan(
   return !error;
 }
 
+export async function deletePlayerClub(playerClubId: number): Promise<boolean> {
+  if (!supabase) return false;
+  const { error } = await supabase
+    .from("player_clubs")
+    .delete()
+    .eq("id", playerClubId);
+  if (error) console.error("deletePlayerClub failed:", error);
+  return !error;
+}
+
 export async function updatePlayerClubYears(
   playerClubId: number,
   yearJoined: string,
@@ -193,13 +203,22 @@ export async function addPlayerClub(
 
   const { data: existing } = await supabase
     .from("player_clubs")
-    .select("sort_order")
+    .select("id, sort_order, year_joined")
     .eq("player_id", playerId)
-    .order("sort_order", { ascending: false, nullsFirst: false })
-    .limit(1);
-  const nextSortOrder = existing && existing.length > 0 && existing[0].sort_order != null
-    ? existing[0].sort_order + 1
-    : 0;
+    .order("sort_order", { ascending: true, nullsFirst: false })
+    .order("year_joined", { ascending: true });
+
+  const rows = existing ?? [];
+  const hasNulls = rows.some((r) => r.sort_order == null);
+  if (hasNulls) {
+    for (let i = 0; i < rows.length; i++) {
+      await supabase
+        .from("player_clubs")
+        .update({ sort_order: i })
+        .eq("id", rows[i].id);
+    }
+  }
+  const nextSortOrder = rows.length;
 
   const { data, error } = await supabase
     .from("player_clubs")

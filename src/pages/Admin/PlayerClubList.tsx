@@ -6,6 +6,7 @@ import {
   updatePlayerClubYouthTeam,
   updatePlayerClubLoan,
   updatePlayerClubYears,
+  deletePlayerClub,
   updatePlayerLegacy,
   updateClubSortOrders,
   updateClubName,
@@ -173,6 +174,15 @@ export default function PlayerClubList({ playerId }: Props) {
 
   function handleClubAdded(row: AdminClubRow) {
     setClubs((prev) => [...prev, row]);
+  }
+
+  async function handleDelete(club: AdminClubRow) {
+    const ok = window.confirm(`Delete ${club.club_name} (${club.year_joined || "?"}–${club.year_departed || "present"}) from this player's history?`);
+    if (!ok) return;
+    const deleted = await deletePlayerClub(club.id);
+    if (deleted) {
+      setClubs((prev) => prev.filter((c) => c.id !== club.id));
+    }
   }
 
   if (loading) {
@@ -357,6 +367,18 @@ export default function PlayerClubList({ playerId }: Props) {
                   d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
               </svg>
             )}
+          </button>
+
+          {/* Delete */}
+          <button
+            onClick={() => handleDelete(club)}
+            title="Delete this club from the player's history"
+            className="p-1.5 rounded text-gray-500 hover:text-red-400 hover:bg-gray-700 transition-colors"
+          >
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6M1 7h22M9 7V4a1 1 0 011-1h4a1 1 0 011 1v3" />
+            </svg>
           </button>
         </div>
       ))}
