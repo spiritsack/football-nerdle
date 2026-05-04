@@ -8,7 +8,7 @@ import { SEED_PLAYERS } from "../../data/seedPlayers";
 import type { Player } from "../../types";
 
 const PACK_SIZE = 10;
-const CANDIDATE_LIMIT = 30;
+const VISIBLE_CANDIDATE_LIMIT = 30;
 const SEED_PLAYER_IDS = new Set(SEED_PLAYERS.map((p) => p.id));
 
 interface ClubOption {
@@ -38,6 +38,7 @@ export default function PackBuilder() {
   const [clubResults, setClubResults] = useState<ClubOption[]>([]);
   const [candidates, setCandidates] = useState<RankedCandidate[]>([]);
   const [loadingCandidates, setLoadingCandidates] = useState(false);
+  const [candidateQuery, setCandidateQuery] = useState("");
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [date, setDate] = useState<string>(getDefaultDate);
   const [alreadyScheduled, setAlreadyScheduled] = useState(false);
@@ -63,12 +64,14 @@ export default function PackBuilder() {
     if (!club) {
       setCandidates([]);
       setSelectedIds([]);
+      setCandidateQuery("");
       return;
     }
     setLoadingCandidates(true);
+    setCandidateQuery("");
     getClubCandidatePool(club.id).then((pool) => {
       if (cancelled) return;
-      const ranked = rankClubCandidates(pool, SEED_PLAYER_IDS, { limit: CANDIDATE_LIMIT });
+      const ranked = rankClubCandidates(pool, SEED_PLAYER_IDS);
       setCandidates(ranked);
       setLoadingCandidates(false);
     });
@@ -92,6 +95,12 @@ export default function PackBuilder() {
     () => new Map(candidates.map((c) => [c.id, c])),
     [candidates],
   );
+
+  const visibleCandidates = useMemo(() => {
+    const q = candidateQuery.trim().toLowerCase();
+    if (!q) return candidates.slice(0, VISIBLE_CANDIDATE_LIMIT);
+    return candidates.filter((c) => c.name.toLowerCase().includes(q));
+  }, [candidates, candidateQuery]);
 
   const selectedPlayers = useMemo(
     () => selectedIds.map((id) => candidateById.get(id)).filter((c): c is RankedCandidate => !!c),
@@ -228,15 +237,29 @@ export default function PackBuilder() {
           <div aria-label="Candidates" className="bg-gray-900 border border-gray-700 rounded-lg p-3">
             <h3 className="text-sm font-semibold text-gray-300 mb-2 flex items-center justify-between">
               <span>Candidates</span>
-              <span className="text-xs text-gray-500">{candidates.length} ranked</span>
+              <span className="text-xs text-gray-500">
+                {candidateQuery.trim()
+                  ? `${visibleCandidates.length} match · ${candidates.length} total`
+                  : `top ${Math.min(VISIBLE_CANDIDATE_LIMIT, candidates.length)} of ${candidates.length}`}
+              </span>
             </h3>
+            <input
+              type="search"
+              value={candidateQuery}
+              onChange={(e) => setCandidateQuery(e.target.value)}
+              placeholder="Search players at this club..."
+              aria-label="Search candidates"
+              className="w-full mb-2 bg-gray-800 border border-gray-700 rounded px-3 py-1.5 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-green-500"
+            />
             {loadingCandidates ? (
               <p className="text-gray-500 text-sm">Loading candidates...</p>
             ) : candidates.length === 0 ? (
               <p className="text-gray-500 text-sm">No eligible candidates for this club.</p>
+            ) : visibleCandidates.length === 0 ? (
+              <p className="text-gray-500 text-sm">No players match "{candidateQuery}".</p>
             ) : (
               <ul className="space-y-1 max-h-[36rem] overflow-y-auto">
-                {candidates.map((c) => {
+                {visibleCandidates.map((c) => {
                   const isSelected = selectedIds.includes(c.id);
                   const atCapacity = selectedIds.length >= PACK_SIZE;
                   return (
