@@ -2,6 +2,9 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 import { useAdminAuth } from "../../api/useAdminAuth";
 import ScheduleManager from "./ScheduleManager";
+import PackBuilder from "./PackBuilder";
+
+type AdminTab = "schedule" | "pack";
 
 function SignInForm({ onSignIn, error }: { onSignIn: (email: string, password: string) => void; error: string | null }) {
   const [email, setEmail] = useState("");
@@ -45,6 +48,7 @@ function SignInForm({ onSignIn, error }: { onSignIn: (email: string, password: s
 
 export default function Admin() {
   const { session, loading, error, signIn, signOut } = useAdminAuth();
+  const [tab, setTab] = useState<AdminTab>("schedule");
 
   if (loading) {
     return (
@@ -73,7 +77,35 @@ export default function Admin() {
             </Link>
           </div>
         </div>
-        <ScheduleManager />
+        <nav role="tablist" aria-label="Admin sections" className="flex gap-2 border-b border-gray-700 mb-6">
+          <button
+            role="tab"
+            aria-selected={tab === "schedule"}
+            onClick={() => setTab("schedule")}
+            className={`px-4 py-2 -mb-px border-b-2 transition-colors ${
+              tab === "schedule"
+                ? "border-green-500 text-white"
+                : "border-transparent text-gray-400 hover:text-white"
+            }`}
+          >
+            Schedule
+          </button>
+          <button
+            role="tab"
+            aria-selected={tab === "pack"}
+            onClick={() => setTab("pack")}
+            className={`px-4 py-2 -mb-px border-b-2 transition-colors ${
+              tab === "pack"
+                ? "border-green-500 text-white"
+                : "border-transparent text-gray-400 hover:text-white"
+            }`}
+          >
+            Pack Builder
+          </button>
+        </nav>
+
+        {tab === "schedule" && <ScheduleManager />}
+        {tab === "pack" && <PackBuilder />}
       </div>
     </div>
   );
