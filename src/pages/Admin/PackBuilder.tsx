@@ -1,12 +1,14 @@
 import { useEffect, useMemo, useState } from "react";
-import PlayerSearch from "../../components/PlayerSearch";
 import { searchClubs } from "../../api/adminApi";
-import { isPackScheduled, publishPack } from "../../api/packAdminApi";
+import { isPackScheduled, publishPack, getClubCandidatePool } from "../../api/packAdminApi";
 import { validatePackForPublish, type PackBuilderState } from "./packBuilderValidation";
+import { rankClubCandidates, type RankedCandidate } from "./packCandidateRanker";
+import { SEED_PLAYERS } from "../../data/seedPlayers";
 import type { Player } from "../../types";
 
 const PACK_SIZE = 10;
-const EMPTY_SLOTS: (Player | null)[] = Array(PACK_SIZE).fill(null);
+const CANDIDATE_LIMIT = 30;
+const SEED_PLAYER_IDS = new Set(SEED_PLAYERS.map((p) => p.id));
 
 interface ClubOption {
   id: string;
@@ -20,17 +22,28 @@ function getDefaultDate(): string {
   return d.toISOString().slice(0, 10);
 }
 
+function candidateAsPlayer(c: RankedCandidate): Player {
+  return {
+    id: c.id,
+    name: c.name,
+    thumbnail: c.thumbnail,
+    nationality: "",
+  };
+}
+
 export default function PackBuilder() {
   const [club, setClub] = useState<ClubOption | null>(null);
   const [clubQuery, setClubQuery] = useState("");
   const [clubResults, setClubResults] = useState<ClubOption[]>([]);
-  const [players, setPlayers] = useState<(Player | null)[]>(EMPTY_SLOTS);
+  const [candidates, setCandidates] = useState<RankedCandidate[]>([]);
+  const [loadingCandidates, setLoadingCandidates] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [date, setDate] = useState<string>(getDefaultDate);
   const [alreadyScheduled, setAlreadyScheduled] = useState(false);
   const [publishing, setPublishing] = useState(false);
   const [publishMessage, setPublishMessage] = useState<{ kind: "ok" | "error"; text: string } | null>(null);
 
-  // Search clubs
+  // Search clubs.
   useEffect(() => {
     if (clubQuery.trim().length < 2) {
       setClubResults([]);
@@ -43,7 +56,25 @@ export default function PackBuilder() {
     return () => clearTimeout(handle);
   }, [clubQuery]);
 
-  // Check date conflict
+  // Load candidates when a club is picked.
+  useEffect(() => {
+    let cancelled = false;
+    if (!club) {
+      setCandidates([]);
+      setSelectedIds([]);
+      return;
+    }
+    setLoadingCandidates(true);
+    getClubCandidatePool(club.id).then((pool) => {
+      if (cancelled) return;
+      const ranked = rankClubCandidates(pool, SEED_PLAYER_IDS, { limit: CANDIDATE_LIMIT });
+      setCandidates(ranked);
+      setLoadingCandidates(false);
+    });
+    return () => { cancelled = true; };
+  }, [club]);
+
+  // Check date conflict.
   useEffect(() => {
     let cancelled = false;
     if (!date) {
@@ -56,36 +87,46 @@ export default function PackBuilder() {
     return () => { cancelled = true; };
   }, [date]);
 
-  const state: PackBuilderState = useMemo(
-    () => ({ clubId: club?.id ?? null, players, date, alreadyScheduled }),
-    [club, players, date, alreadyScheduled],
+  const candidateById = useMemo(
+    () => new Map(candidates.map((c) => [c.id, c])),
+    [candidates],
   );
 
-  const validation = validatePackForPublish(state);
-
-  const usedPlayerIds = useMemo(
-    () => new Set(players.filter((p): p is Player => p !== null).map((p) => p.id)),
-    [players],
+  const selectedPlayers = useMemo(
+    () => selectedIds.map((id) => candidateById.get(id)).filter((c): c is RankedCandidate => !!c),
+    [selectedIds, candidateById],
   );
 
-  function setPlayerAt(index: number, player: Player | null) {
-    setPlayers((prev) => {
-      const next = [...prev];
-      next[index] = player;
-      return next;
+  const validation = validatePackForPublish({
+    clubId: club?.id ?? null,
+    players: [
+      ...selectedPlayers.map(candidateAsPlayer),
+      ...Array(Math.max(0, PACK_SIZE - selectedPlayers.length)).fill(null),
+    ],
+    date,
+    alreadyScheduled,
+  } as PackBuilderState);
+
+  function addCandidate(id: string) {
+    setSelectedIds((prev) => {
+      if (prev.includes(id) || prev.length >= PACK_SIZE) return prev;
+      return [...prev, id];
     });
+  }
+
+  function removeSelected(id: string) {
+    setSelectedIds((prev) => prev.filter((x) => x !== id));
   }
 
   async function handlePublish() {
     if (!validation.ok || !club) return;
     setPublishing(true);
     setPublishMessage(null);
-    const ids = players.map((p) => p!.id);
-    const result = await publishPack(date, club.id, ids);
+    const result = await publishPack(date, club.id, selectedIds);
     setPublishing(false);
     if (result.ok) {
       setPublishMessage({ kind: "ok", text: `Pack published for ${date}` });
-      setPlayers(EMPTY_SLOTS);
+      setSelectedIds([]);
       setAlreadyScheduled(true);
     } else {
       setPublishMessage({ kind: "error", text: result.error ?? "Publish failed" });
@@ -155,39 +196,96 @@ export default function PackBuilder() {
         </div>
       </div>
 
-      <div className="space-y-2 mb-6">
-        <h3 className="text-sm text-gray-400">Players ({players.filter(Boolean).length} / {PACK_SIZE})</h3>
-        {players.map((player, i) => (
-          <div key={i} className="flex items-center gap-3">
-            <span className="w-6 text-gray-500 text-sm shrink-0">{i + 1}.</span>
-            {player ? (
-              <div className="flex-1 flex items-center gap-2 bg-gray-700 border border-gray-600 rounded-lg px-3 py-2">
-                {player.thumbnail
-                  ? <img src={player.thumbnail} alt="" className="w-8 h-8 rounded-full object-cover bg-gray-600" />
-                  : <span className="w-8 h-8 rounded-full bg-red-900/50 flex items-center justify-center text-red-300 text-xs">!</span>
-                }
-                <span className="flex-1 text-white">{player.name}</span>
-                {!player.thumbnail && <span className="text-xs text-red-400">no photo</span>}
-                <button
-                  type="button"
-                  onClick={() => setPlayerAt(i, null)}
-                  className="text-gray-400 hover:text-white text-sm"
-                >
-                  Remove
-                </button>
-              </div>
+      {club && (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+          {/* Candidate pool */}
+          <div aria-label="Candidates" className="bg-gray-900 border border-gray-700 rounded-lg p-3">
+            <h3 className="text-sm font-semibold text-gray-300 mb-2 flex items-center justify-between">
+              <span>Candidates</span>
+              <span className="text-xs text-gray-500">{candidates.length} ranked</span>
+            </h3>
+            {loadingCandidates ? (
+              <p className="text-gray-500 text-sm">Loading candidates...</p>
+            ) : candidates.length === 0 ? (
+              <p className="text-gray-500 text-sm">No eligible candidates for this club.</p>
             ) : (
-              <div className="flex-1">
-                <PlayerSearch
-                  onSelect={(p) => setPlayerAt(i, p)}
-                  usedPlayerIds={usedPlayerIds}
-                  placeholder={`Player ${i + 1}`}
-                />
-              </div>
+              <ul className="space-y-1 max-h-[36rem] overflow-y-auto">
+                {candidates.map((c) => {
+                  const isSelected = selectedIds.includes(c.id);
+                  const atCapacity = selectedIds.length >= PACK_SIZE;
+                  return (
+                    <li
+                      key={c.id}
+                      className={`flex items-center gap-2 px-2 py-1.5 rounded ${
+                        isSelected ? "bg-green-900/30 opacity-50" : "hover:bg-gray-800"
+                      }`}
+                    >
+                      <img src={c.thumbnail} alt="" className="w-8 h-8 rounded-full object-cover bg-gray-700 shrink-0" />
+                      <div className="flex-1 min-w-0">
+                        <div className="text-sm text-white truncate">{c.name}</div>
+                        <div className="text-xs text-gray-500 flex items-center gap-2">
+                          <span>{c.tenureLabel || "—"}</span>
+                          {c.inSeedList && <span className="text-yellow-500">★ seed</span>}
+                          {c.hasTopLeagueElsewhere && <span className="text-blue-400">top-5</span>}
+                          {c.isLoan && <span className="text-amber-400">loan</span>}
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => addCandidate(c.id)}
+                        disabled={isSelected || atCapacity}
+                        aria-label={`Add ${c.name}`}
+                        className={`px-2 py-1 text-xs rounded transition-colors ${
+                          isSelected || atCapacity
+                            ? "bg-gray-700 text-gray-500 cursor-not-allowed"
+                            : "bg-green-700 hover:bg-green-600 text-white"
+                        }`}
+                      >
+                        {isSelected ? "Added" : "Add"}
+                      </button>
+                    </li>
+                  );
+                })}
+              </ul>
             )}
           </div>
-        ))}
-      </div>
+
+          {/* Selected 10 */}
+          <div aria-label="Selected" className="bg-gray-900 border border-gray-700 rounded-lg p-3">
+            <h3 className="text-sm font-semibold text-gray-300 mb-2 flex items-center justify-between">
+              <span>Selected</span>
+              <span className="text-xs text-gray-500">{selectedIds.length} / {PACK_SIZE}</span>
+            </h3>
+            <ul className="space-y-1">
+              {Array.from({ length: PACK_SIZE }, (_, i) => {
+                const id = selectedIds[i];
+                const player = id ? candidateById.get(id) : undefined;
+                return (
+                  <li key={i} className="flex items-center gap-2 px-2 py-1.5 rounded bg-gray-800/50">
+                    <span className="w-5 text-xs text-gray-500 text-right shrink-0">{i + 1}.</span>
+                    {player ? (
+                      <>
+                        <img src={player.thumbnail} alt="" className="w-7 h-7 rounded-full object-cover bg-gray-700 shrink-0" />
+                        <span className="flex-1 text-sm text-white truncate">{player.name}</span>
+                        <button
+                          type="button"
+                          onClick={() => removeSelected(player.id)}
+                          aria-label={`Remove ${player.name}`}
+                          className="px-2 py-1 text-xs rounded bg-gray-700 hover:bg-red-700 text-white transition-colors"
+                        >
+                          Remove
+                        </button>
+                      </>
+                    ) : (
+                      <span className="flex-1 text-sm text-gray-600 italic">empty slot</span>
+                    )}
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
+        </div>
+      )}
 
       <div className="flex items-center gap-3">
         <button

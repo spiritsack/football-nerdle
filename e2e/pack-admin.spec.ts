@@ -4,7 +4,7 @@ const ADMIN_EMAIL = process.env.PACK_ADMIN_EMAIL;
 const ADMIN_PASSWORD = process.env.PACK_ADMIN_PASSWORD;
 
 test.describe("Admin Pack Builder", () => {
-  test("Pack Builder tab renders the publish form (no auth required for tab-render check)", async ({ page }) => {
+  test("Pack Builder tab renders the form, candidates appear after picking a club", async ({ page }) => {
     if (!ADMIN_EMAIL || !ADMIN_PASSWORD) {
       test.skip(true, "Set PACK_ADMIN_EMAIL/PACK_ADMIN_PASSWORD to run admin e2e.");
       return;
@@ -15,31 +15,39 @@ test.describe("Admin Pack Builder", () => {
     await page.getByPlaceholder("Password").fill(ADMIN_PASSWORD);
     await page.getByRole("button", { name: "Sign In" }).click();
 
-    // Switch to Pack Builder tab.
     await page.getByRole("tab", { name: "Pack Builder" }).click();
-
     const builder = page.getByLabel("Pack Builder");
     await expect(builder).toBeVisible();
-
-    // Date input + club input + 10 player slots.
     await expect(builder.getByLabel("Date")).toBeVisible();
-    await expect(builder.getByLabel("Club")).toBeVisible();
-    await expect(builder.getByPlaceholder("Player 1")).toBeVisible();
-    await expect(builder.getByPlaceholder("Player 10")).toBeVisible();
 
-    // Publish button is disabled until 10 players + club are selected.
+    // Publish disabled until conditions met.
     const publishBtn = builder.getByRole("button", { name: /Publish Pack/ });
     await expect(publishBtn).toBeDisabled();
-    await expect(builder.getByText(/Pick a club|Need 10 players/)).toBeVisible();
+
+    // Pick a club; candidate panel should populate.
+    const clubInput = builder.getByPlaceholder("Search clubs...");
+    await clubInput.fill("Liverpool");
+    const clubOption = page.getByRole("listbox").getByRole("button").first();
+    await clubOption.waitFor({ state: "visible", timeout: 5_000 });
+    await clubOption.click();
+
+    const candidatesPanel = builder.getByLabel("Candidates");
+    await expect(candidatesPanel).toBeVisible();
+    await expect(candidatesPanel.getByRole("button", { name: /^Add / }).first()).toBeVisible({ timeout: 10_000 });
+
+    // Selected panel shows 10 empty slots.
+    const selected = builder.getByLabel("Selected");
+    await expect(selected.getByText("0 / 10")).toBeVisible();
+    await expect(selected.getByText("empty slot")).toHaveCount(10);
   });
 
-  test("publish flow: build pack and verify it plays on /pack", async ({ page }) => {
+  test("publish flow: rank candidates, add 10, publish", async ({ page }) => {
     if (!ADMIN_EMAIL || !ADMIN_PASSWORD) {
       test.skip(true, "Set PACK_ADMIN_EMAIL/PACK_ADMIN_PASSWORD to run admin e2e.");
       return;
     }
 
-    // Mock supabase pack_schedule insert so the test doesn't pollute prod data.
+    // Mock pack_schedule writes and conflict-check so we don't pollute data.
     await page.route(/\/rest\/v1\/pack_schedule(\?.*)?$/, (route) => {
       const method = route.request().method();
       if (method === "POST") {
@@ -49,7 +57,6 @@ test.describe("Admin Pack Builder", () => {
           body: JSON.stringify([{ date: "2099-01-01" }]),
         });
       }
-      // Pretend nothing is scheduled for the picked date.
       return route.fulfill({
         status: 200,
         contentType: "application/json",
@@ -63,8 +70,6 @@ test.describe("Admin Pack Builder", () => {
     await page.getByRole("button", { name: "Sign In" }).click();
 
     await page.getByRole("tab", { name: "Pack Builder" }).click();
-
-    // Pick a club: search for a known top club.
     const builder = page.getByLabel("Pack Builder");
     const clubInput = builder.getByPlaceholder("Search clubs...");
     await clubInput.fill("Liverpool");
@@ -72,21 +77,20 @@ test.describe("Admin Pack Builder", () => {
     await clubOption.waitFor({ state: "visible", timeout: 5_000 });
     await clubOption.click();
 
-    // Fill 10 players via the per-row search.
-    const knownPlayers = ["Lewandowski", "Messi", "Ronaldo", "Mbappe", "Haaland", "Salah", "Modric", "Kane", "Benzema", "De Bruyne"];
+    const candidatesPanel = builder.getByLabel("Candidates");
+    await candidatesPanel.getByRole("button", { name: /^Add / }).first().waitFor({ state: "visible", timeout: 10_000 });
+
+    // Add the top 10 candidates.
     for (let i = 0; i < 10; i++) {
-      const slot = builder.getByPlaceholder(`Player ${i + 1}`);
-      if (!(await slot.isVisible().catch(() => false))) break;
-      await slot.fill(knownPlayers[i]);
-      const opt = page.getByRole("option").first();
-      const ok = await opt.waitFor({ state: "visible", timeout: 3_000 }).then(() => true).catch(() => false);
+      const enabledAdd = candidatesPanel.getByRole("button", { name: /^Add / }).filter({ hasNotText: "Added" }).first();
+      const ok = await enabledAdd.waitFor({ state: "visible", timeout: 3_000 }).then(() => true).catch(() => false);
       if (!ok) break;
-      await opt.click();
+      await enabledAdd.click();
     }
 
     const publishBtn = builder.getByRole("button", { name: /Publish Pack/ });
     if (await publishBtn.isDisabled()) {
-      test.skip(true, "Could not auto-fill 10 valid players from the search results.");
+      test.skip(true, "Fewer than 10 ranked candidates available for the picked club.");
       return;
     }
 
