@@ -1,8 +1,10 @@
+import { useState } from "react";
 import { Link } from "react-router-dom";
 import { usePackGame } from "./usePackGame";
 import PlayerSearch from "../../components/PlayerSearch";
 import { MAX_GUESSES_PER_PLAYER } from "./constants";
 import { deriveHints } from "./hints";
+import { buildShareText, getPackDayNumber } from "./helpers";
 
 export default function Pack() {
   const { state, submitGuess } = usePackGame();
@@ -12,6 +14,21 @@ export default function Pack() {
   const hints = currentPlayer && pack
     ? deriveHints(currentPlayer, pack.club.id, wrongGuessesForCurrent.length)
     : null;
+  const [copied, setCopied] = useState(false);
+
+  function handleShare() {
+    if (!pack) return;
+    const text = buildShareText({
+      date: pack.date,
+      clubName: pack.club.name,
+      score,
+      attempts,
+    });
+    navigator.clipboard.writeText(text).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
+  }
 
   return (
     <div className="min-h-screen bg-gray-900 text-white flex flex-col">
@@ -85,15 +102,26 @@ export default function Pack() {
 
         {status === "finished" && pack && (
           <>
-            <h2 className="text-3xl font-bold text-green-400">Pack complete!</h2>
-            <p className="text-2xl">
-              <span className="font-bold text-green-400">{score}</span>
-              <span className="text-gray-400"> / {pack.players.length}</span>
+            <p className="text-gray-300 text-lg">
+              {pack.club.name} · Pack #{getPackDayNumber(pack.date)}
             </p>
-            <ProgressStrip total={pack.players.length} attempts={attempts} currentIndex={currentIndex} />
-            <Link to="/" className="px-6 py-3 bg-green-600 hover:bg-green-500 rounded-lg font-semibold transition-colors">
-              Back to Home
-            </Link>
+            <p className="text-7xl font-bold bg-gradient-to-br from-green-300 to-emerald-500 bg-clip-text text-transparent">
+              {score}<span className="text-gray-500">/{pack.players.length}</span>
+            </p>
+            <p className="text-2xl tracking-wide" aria-label="Result grid">
+              {attempts.map((a) => (a.correct ? "✅" : "❌")).join("")}
+            </p>
+            <div className="flex gap-3 flex-wrap justify-center">
+              <button
+                onClick={handleShare}
+                className="px-6 py-3 bg-blue-600 hover:bg-blue-500 rounded-lg font-semibold transition-colors"
+              >
+                {copied ? "Copied!" : "Share Result"}
+              </button>
+              <Link to="/" className="px-6 py-3 bg-green-600 hover:bg-green-500 rounded-lg font-semibold transition-colors">
+                Back to Home
+              </Link>
+            </div>
           </>
         )}
       </main>

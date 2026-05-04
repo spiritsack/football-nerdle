@@ -4,6 +4,7 @@ import type { Player } from "../../types";
 import { initialState, submitGuess as reduceGuess, advance as reduceAdvance } from "./gameLogic";
 import type { PackGameState } from "./types";
 import { getTodayString } from "../../utils/dates";
+import { loadPackResult, savePackResult } from "./helpers";
 
 const REVEAL_MS = 1500;
 
@@ -32,6 +33,17 @@ export function usePackGame() {
           setState({ ...EMPTY, status: "idle", error: "No pack scheduled for today." });
           return;
         }
+        const stored = loadPackResult(today);
+        if (stored && stored.attempts.length === pack.players.length) {
+          setState({
+            ...initialState(pack),
+            status: "finished",
+            attempts: stored.attempts,
+            score: stored.score,
+            currentIndex: pack.players.length,
+          });
+          return;
+        }
         setState(initialState(pack));
       } catch (e) {
         if (cancelled) return;
@@ -41,6 +53,15 @@ export function usePackGame() {
     })();
     return () => { cancelled = true; };
   }, [today]);
+
+  useEffect(() => {
+    if (state.status !== "finished" || !state.pack) return;
+    savePackResult({
+      date: state.pack.date,
+      score: state.score,
+      attempts: state.attempts,
+    });
+  }, [state.status, state.pack, state.score, state.attempts]);
 
   const submitGuess = useCallback((guess: Player) => {
     setState((s) => reduceGuess(s, guess));
