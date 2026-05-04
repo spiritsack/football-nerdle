@@ -20,6 +20,56 @@ export async function isPackScheduled(date: string): Promise<boolean> {
   return !error && !!data;
 }
 
+export interface AdminPackPlayer {
+  id: string;
+  name: string;
+  thumbnail: string;
+}
+
+export interface AdminPack {
+  date: string;
+  club: { id: string; name: string; badge: string };
+  players: AdminPackPlayer[];
+}
+
+interface AdminPackRow {
+  date: string;
+  club_id: string;
+  player_ids: string[];
+  clubs: { id: string; name: string; badge: string } | null;
+}
+
+export async function getPackForAdmin(date: string): Promise<AdminPack | null> {
+  if (!supabase) return null;
+  const { data, error } = await supabase
+    .from("pack_schedule")
+    .select("date, club_id, player_ids, clubs(id, name, badge)")
+    .eq("date", date)
+    .maybeSingle();
+  if (error || !data) return null;
+  const row = data as unknown as AdminPackRow;
+  if (!row.clubs) return null;
+
+  const { data: playerRows } = await supabase
+    .from("players")
+    .select("id, name, thumbnail")
+    .in("id", row.player_ids);
+
+  const byId = new Map<string, AdminPackPlayer>();
+  for (const p of (playerRows ?? []) as AdminPackPlayer[]) {
+    byId.set(p.id, { id: p.id, name: p.name, thumbnail: p.thumbnail ?? "" });
+  }
+  const players = row.player_ids
+    .map((id) => byId.get(id))
+    .filter((p): p is AdminPackPlayer => !!p);
+
+  return {
+    date: row.date,
+    club: { id: row.clubs.id, name: row.clubs.name, badge: row.clubs.badge },
+    players,
+  };
+}
+
 export interface PublishPackResult {
   ok: boolean;
   error?: string;
@@ -37,6 +87,24 @@ export async function publishPack(
   const { error } = await supabase
     .from("pack_schedule")
     .insert({ date, club_id: clubId, player_ids: playerIds });
+
+  if (error) return { ok: false, error: error.message };
+  return { ok: true };
+}
+
+export async function updatePack(
+  date: string,
+  clubId: string,
+  playerIds: string[],
+): Promise<PublishPackResult> {
+  if (!supabase) return { ok: false, error: "Supabase unavailable" };
+  if (playerIds.length !== 10) return { ok: false, error: "Pack must have exactly 10 players" };
+  if (new Set(playerIds).size !== 10) return { ok: false, error: "Player list contains duplicates" };
+
+  const { error } = await supabase
+    .from("pack_schedule")
+    .update({ club_id: clubId, player_ids: playerIds })
+    .eq("date", date);
 
   if (error) return { ok: false, error: error.message };
   return { ok: true };
