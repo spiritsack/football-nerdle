@@ -5,6 +5,7 @@ import PlayerSearch from "../../components/PlayerSearch";
 import { MAX_GUESSES_PER_PLAYER } from "./constants";
 import { deriveHints } from "./hints";
 import { buildShareText, getPackDayNumber } from "./helpers";
+import PackLeaderboard from "../../components/PackLeaderboard";
 
 export default function Pack() {
   const { state, submitGuess, stats } = usePackGame();
@@ -176,6 +177,8 @@ export default function Pack() {
                 </div>
               )}
             </div>
+
+            <PackLeaderboard date={pack.date} userScore={score} />
           </>
         )}
       </main>

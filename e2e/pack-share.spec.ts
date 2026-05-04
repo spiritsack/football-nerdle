@@ -33,7 +33,7 @@ test.describe("Pack mode score & share", () => {
 
     // Finished screen appears in place of the play UI.
     await expect(page.getByText(/Pack #\d+/)).toBeVisible({ timeout: 15_000 });
-    await expect(page.getByText("7/10")).toBeVisible();
+    await expect(page.getByText(/7\/10/).first()).toBeVisible();
     await expect(page.getByLabel("Result grid")).toContainText("✅");
     await expect(page.getByLabel("Result grid")).toContainText("❌");
     await expect(page.getByRole("button", { name: /Share Result/ })).toBeVisible();

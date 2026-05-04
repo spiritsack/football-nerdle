@@ -8,6 +8,7 @@ import { loadPackResult, savePackResult } from "./helpers";
 import { DEFAULT_PACK_STATS, loadPackStats, recordPackResult } from "./stats";
 import { PACK_STREAK_THRESHOLD } from "./constants";
 import type { PackStats } from "./stats";
+import { submitPackResult } from "../../api/packLeaderboard";
 
 const REVEAL_MS = 1500;
 
@@ -73,6 +74,7 @@ export function usePackGame() {
     recordedRef.current = true;
     const date = state.pack.date;
     const score = state.score;
+    const attempts = state.attempts;
     const prior = loadPackStats();
 
     (async () => {
@@ -84,6 +86,7 @@ export function usePackGame() {
         return !!r && r.score >= PACK_STREAK_THRESHOLD;
       });
       setStats(updated);
+      submitPackResult(date, score, attempts);
     })();
   }, [state.status, state.pack, state.score, state.attempts]);
 
