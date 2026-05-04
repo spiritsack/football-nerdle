@@ -104,4 +104,26 @@ describe("validatePackForPublish", () => {
     expect(r.ok).toBe(true);
     expect(r.reason).toBeUndefined();
   });
+
+  it("allows editing an existing scheduled pack on the same date", () => {
+    const r = validatePackForPublish({
+      clubId: "club-1",
+      players: tenPlayers(),
+      date: FUTURE_DATE,
+      alreadyScheduled: true,
+      isEditingExisting: true,
+    });
+    expect(r.ok).toBe(true);
+  });
+
+  it("allows editing a pack on a past date (e.g. fixing yesterday's pack)", () => {
+    const r = validatePackForPublish({
+      clubId: "club-1",
+      players: tenPlayers(),
+      date: "2000-01-01",
+      alreadyScheduled: true,
+      isEditingExisting: true,
+    });
+    expect(r.ok).toBe(true);
+  });
 });

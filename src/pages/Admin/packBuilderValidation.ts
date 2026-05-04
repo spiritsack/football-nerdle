@@ -5,6 +5,7 @@ export interface PackBuilderState {
   players: (Player | null)[];
   date: string;
   alreadyScheduled: boolean;
+  isEditingExisting?: boolean;
 }
 
 export interface ValidationResult {
@@ -19,8 +20,8 @@ export function validatePackForPublish(state: PackBuilderState): ValidationResul
   if (!state.date) return { ok: false, reason: "Pick a date" };
 
   const todayStr = new Date().toISOString().slice(0, 10);
-  if (state.date < todayStr) return { ok: false, reason: "Date must be today or future" };
-  if (state.alreadyScheduled) return { ok: false, reason: "A pack is already scheduled for this date" };
+  if (state.date < todayStr && !state.isEditingExisting) return { ok: false, reason: "Date must be today or future" };
+  if (state.alreadyScheduled && !state.isEditingExisting) return { ok: false, reason: "A pack is already scheduled for this date" };
 
   const filled = state.players.filter((p): p is Player => p !== null);
   if (filled.length !== PACK_SIZE) return { ok: false, reason: `Need ${PACK_SIZE} players (${filled.length} selected)` };

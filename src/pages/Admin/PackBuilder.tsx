@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { searchClubs } from "../../api/adminApi";
-import { isPackScheduled, publishPack, getClubCandidatePool } from "../../api/packAdminApi";
+import { getPackForAdmin, publishPack, updatePack, getClubCandidatePool } from "../../api/packAdminApi";
 import { validatePackForPublish, type PackBuilderState } from "./packBuilderValidation";
 import { rankClubCandidates, type RankedCandidate } from "./packCandidateRanker";
 import { reorder } from "./packReorder";
@@ -40,8 +40,10 @@ export default function PackBuilder() {
   const [loadingCandidates, setLoadingCandidates] = useState(false);
   const [candidateQuery, setCandidateQuery] = useState("");
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [extraPlayersById, setExtraPlayersById] = useState<Map<string, RankedCandidate>>(new Map());
   const [date, setDate] = useState<string>(getDefaultDate);
-  const [alreadyScheduled, setAlreadyScheduled] = useState(false);
+  const [editingExisting, setEditingExisting] = useState(false);
+  const [loadingPack, setLoadingPack] = useState(false);
   const [publishing, setPublishing] = useState(false);
   const [publishMessage, setPublishMessage] = useState<{ kind: "ok" | "error"; text: string } | null>(null);
 
@@ -78,23 +80,52 @@ export default function PackBuilder() {
     return () => { cancelled = true; };
   }, [club]);
 
-  // Check date conflict.
+  // Load existing pack for the chosen date (edit mode) or reset to create mode.
   useEffect(() => {
     let cancelled = false;
     if (!date) {
-      setAlreadyScheduled(false);
+      setEditingExisting(false);
       return;
     }
-    isPackScheduled(date).then((scheduled) => {
-      if (!cancelled) setAlreadyScheduled(scheduled);
+    setLoadingPack(true);
+    getPackForAdmin(date).then((existing) => {
+      if (cancelled) return;
+      setLoadingPack(false);
+      if (existing) {
+        setEditingExisting(true);
+        setClub(existing.club);
+        setSelectedIds(existing.players.map((p) => p.id));
+        const map = new Map<string, RankedCandidate>();
+        for (const p of existing.players) {
+          map.set(p.id, {
+            id: p.id,
+            name: p.name,
+            thumbnail: p.thumbnail,
+            tenure: 0,
+            tenureLabel: "",
+            isLoan: false,
+            hasTopLeagueElsewhere: false,
+            inSeedList: false,
+            score: 0,
+          });
+        }
+        setExtraPlayersById(map);
+        setPublishMessage(null);
+      } else {
+        setEditingExisting(false);
+        setExtraPlayersById(new Map());
+      }
     });
     return () => { cancelled = true; };
   }, [date]);
 
-  const candidateById = useMemo(
-    () => new Map(candidates.map((c) => [c.id, c])),
-    [candidates],
-  );
+  const candidateById = useMemo(() => {
+    const m = new Map<string, RankedCandidate>(candidates.map((c) => [c.id, c]));
+    for (const [id, p] of extraPlayersById) {
+      if (!m.has(id)) m.set(id, p);
+    }
+    return m;
+  }, [candidates, extraPlayersById]);
 
   const visibleCandidates = useMemo(() => {
     const q = candidateQuery.trim().toLowerCase();
@@ -114,7 +145,8 @@ export default function PackBuilder() {
       ...Array(Math.max(0, PACK_SIZE - selectedPlayers.length)).fill(null),
     ],
     date,
-    alreadyScheduled,
+    alreadyScheduled: editingExisting,
+    isEditingExisting: editingExisting,
   } as PackBuilderState);
 
   function addCandidate(id: string) {
@@ -157,14 +189,20 @@ export default function PackBuilder() {
     if (!validation.ok || !club) return;
     setPublishing(true);
     setPublishMessage(null);
-    const result = await publishPack(date, club.id, selectedIds);
+    const result = editingExisting
+      ? await updatePack(date, club.id, selectedIds)
+      : await publishPack(date, club.id, selectedIds);
     setPublishing(false);
     if (result.ok) {
-      setPublishMessage({ kind: "ok", text: `Pack published for ${date}` });
-      setSelectedIds([]);
-      setAlreadyScheduled(true);
+      if (editingExisting) {
+        setPublishMessage({ kind: "ok", text: `Pack updated for ${date}` });
+      } else {
+        setPublishMessage({ kind: "ok", text: `Pack published for ${date}` });
+        setSelectedIds([]);
+        setEditingExisting(true);
+      }
     } else {
-      setPublishMessage({ kind: "error", text: result.error ?? "Publish failed" });
+      setPublishMessage({ kind: "error", text: result.error ?? "Save failed" });
     }
   }
 
@@ -181,8 +219,11 @@ export default function PackBuilder() {
             onChange={(e) => setDate(e.target.value)}
             className="bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-green-500"
           />
-          {alreadyScheduled && (
-            <span className="text-xs text-amber-400">A pack is already scheduled for this date.</span>
+          {loadingPack && (
+            <span className="text-xs text-gray-400">Checking schedule...</span>
+          )}
+          {editingExisting && !loadingPack && (
+            <span className="text-xs text-blue-400">Editing existing pack for this date.</span>
           )}
         </label>
 
@@ -381,7 +422,9 @@ export default function PackBuilder() {
               : "bg-gray-700 text-gray-400 cursor-not-allowed"
           }`}
         >
-          {publishing ? "Publishing..." : "Publish Pack"}
+          {publishing
+            ? editingExisting ? "Saving..." : "Publishing..."
+            : editingExisting ? "Save Changes" : "Publish Pack"}
         </button>
         {!validation.ok && (
           <span className="text-sm text-gray-400">{validation.reason}</span>
