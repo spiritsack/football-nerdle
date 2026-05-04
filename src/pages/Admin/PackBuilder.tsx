@@ -1,5 +1,6 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { searchClubs } from "../../api/adminApi";
+import { searchPlayers } from "../../api/playerCache";
 import { getPackForAdmin, publishPack, updatePack, getClubCandidatePool } from "../../api/packAdminApi";
 import { validatePackForPublish, type PackBuilderState } from "./packBuilderValidation";
 import { rankClubCandidates, type RankedCandidate } from "./packCandidateRanker";
@@ -46,6 +47,10 @@ export default function PackBuilder() {
   const [loadingPack, setLoadingPack] = useState(false);
   const [publishing, setPublishing] = useState(false);
   const [publishMessage, setPublishMessage] = useState<{ kind: "ok" | "error"; text: string } | null>(null);
+  const [manualQuery, setManualQuery] = useState("");
+  const [manualResults, setManualResults] = useState<Player[]>([]);
+  const [manualLoading, setManualLoading] = useState(false);
+  const manualBoxRef = useRef<HTMLDivElement>(null);
 
   // Search clubs.
   useEffect(() => {
@@ -59,6 +64,36 @@ export default function PackBuilder() {
     }, 250);
     return () => clearTimeout(handle);
   }, [clubQuery]);
+
+  // Search any player (manual override — admin vouches for club membership).
+  useEffect(() => {
+    if (manualQuery.trim().length < 2) {
+      setManualResults([]);
+      setManualLoading(false);
+      return;
+    }
+    setManualLoading(true);
+    const handle = setTimeout(async () => {
+      try {
+        const results = await searchPlayers(manualQuery.trim());
+        setManualResults(results);
+      } finally {
+        setManualLoading(false);
+      }
+    }, 250);
+    return () => clearTimeout(handle);
+  }, [manualQuery]);
+
+  // Close manual results on outside click.
+  useEffect(() => {
+    function onMouseDown(e: MouseEvent) {
+      if (manualBoxRef.current && !manualBoxRef.current.contains(e.target as Node)) {
+        setManualResults([]);
+      }
+    }
+    document.addEventListener("mousedown", onMouseDown);
+    return () => document.removeEventListener("mousedown", onMouseDown);
+  }, []);
 
   // Load candidates when a club is picked.
   useEffect(() => {
@@ -154,6 +189,29 @@ export default function PackBuilder() {
       if (prev.includes(id) || prev.length >= PACK_SIZE) return prev;
       return [...prev, id];
     });
+  }
+
+  function addManualPlayer(p: Player) {
+    if (selectedIds.includes(p.id) || selectedIds.length >= PACK_SIZE) return;
+    setExtraPlayersById((prev) => {
+      if (prev.has(p.id)) return prev;
+      const next = new Map(prev);
+      next.set(p.id, {
+        id: p.id,
+        name: p.name,
+        thumbnail: p.thumbnail || "",
+        tenure: 0,
+        tenureLabel: "manual add",
+        isLoan: false,
+        hasTopLeagueElsewhere: false,
+        inSeedList: false,
+        score: 0,
+      });
+      return next;
+    });
+    setSelectedIds((prev) => [...prev, p.id]);
+    setManualQuery("");
+    setManualResults([]);
   }
 
   function removeSelected(id: string) {
@@ -271,6 +329,64 @@ export default function PackBuilder() {
           )}
         </div>
       </div>
+
+      {club && (
+        <div ref={manualBoxRef} className="mb-3 relative">
+          <label className="block text-xs text-gray-400 mb-1" htmlFor="manual-player-search">
+            Add any player (manual — admin verifies club membership)
+          </label>
+          <input
+            id="manual-player-search"
+            type="search"
+            value={manualQuery}
+            onChange={(e) => setManualQuery(e.target.value)}
+            placeholder="Search the full player database..."
+            disabled={selectedIds.length >= PACK_SIZE}
+            className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white placeholder-gray-400 focus:outline-none focus:border-green-500 disabled:opacity-50"
+          />
+          {manualLoading && (
+            <div className="absolute right-3 top-9 text-gray-400 text-sm">...</div>
+          )}
+          {manualResults.length > 0 && (
+            <ul role="listbox" className="absolute z-20 mt-1 w-full bg-gray-700 border border-gray-600 rounded-lg max-h-72 overflow-y-auto shadow-lg">
+              {manualResults.map((p) => {
+                const already = selectedIds.includes(p.id);
+                const atCapacity = selectedIds.length >= PACK_SIZE;
+                const disabled = already || atCapacity || !p.thumbnail;
+                const reason = !p.thumbnail ? "no photo" : already ? "already added" : atCapacity ? "pack full" : null;
+                return (
+                  <li key={p.id}>
+                    <button
+                      type="button"
+                      onClick={() => addManualPlayer(p)}
+                      disabled={disabled}
+                      className={`w-full px-3 py-2 flex items-center gap-2 text-left transition-colors ${
+                        disabled ? "opacity-50 cursor-not-allowed" : "hover:bg-gray-600"
+                      }`}
+                    >
+                      {p.thumbnail ? (
+                        <img src={p.thumbnail} alt="" className="w-8 h-8 rounded-full object-cover bg-gray-800 shrink-0" />
+                      ) : (
+                        <div className="w-8 h-8 rounded-full bg-gray-800 shrink-0" />
+                      )}
+                      <div className="flex-1 min-w-0">
+                        <div className="text-sm text-white truncate">{p.name}</div>
+                        {p.nationality && <div className="text-xs text-gray-400 truncate">{p.nationality}</div>}
+                      </div>
+                      {reason && <span className="text-xs text-gray-400 shrink-0">{reason}</span>}
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+          {manualQuery.trim().length >= 2 && !manualLoading && manualResults.length === 0 && (
+            <div className="absolute z-20 mt-1 w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-sm text-gray-400">
+              No players found
+            </div>
+          )}
+        </div>
+      )}
 
       {club && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
