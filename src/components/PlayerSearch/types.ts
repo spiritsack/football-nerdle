@@ -6,4 +6,5 @@ export interface PlayerSearchProps {
   usedPlayerIds?: Set<string>;
   disabledPlayerIds?: Map<string, string>;  // id → reason label (shown but not selectable)
   placeholder?: string;
+  hideThumbnails?: boolean;
 }

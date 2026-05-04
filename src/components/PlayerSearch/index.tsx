@@ -3,7 +3,7 @@ import { searchPlayers } from "../../api/playerCache";
 import type { Player } from "../../types";
 import type { PlayerSearchProps } from "./types";
 
-export default function PlayerSearch({ onSelect, disabled, usedPlayerIds, disabledPlayerIds, placeholder }: PlayerSearchProps) {
+export default function PlayerSearch({ onSelect, disabled, usedPlayerIds, disabledPlayerIds, placeholder, hideThumbnails }: PlayerSearchProps) {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<Player[]>([]);
   const [isOpen, setIsOpen] = useState(false);
@@ -151,7 +151,7 @@ export default function PlayerSearch({ onSelect, disabled, usedPlayerIds, disabl
                     : index === highlightIndex ? "bg-gray-700" : "hover:bg-gray-700"
                 }`}
               >
-                {player.thumbnail && (
+                {!hideThumbnails && player.thumbnail && (
                   <img
                     src={player.thumbnail}
                     alt=""
