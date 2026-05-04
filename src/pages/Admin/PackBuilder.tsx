@@ -3,6 +3,7 @@ import { searchClubs } from "../../api/adminApi";
 import { isPackScheduled, publishPack, getClubCandidatePool } from "../../api/packAdminApi";
 import { validatePackForPublish, type PackBuilderState } from "./packBuilderValidation";
 import { rankClubCandidates, type RankedCandidate } from "./packCandidateRanker";
+import { reorder } from "./packReorder";
 import { SEED_PLAYERS } from "../../data/seedPlayers";
 import type { Player } from "../../types";
 
@@ -116,6 +117,31 @@ export default function PackBuilder() {
 
   function removeSelected(id: string) {
     setSelectedIds((prev) => prev.filter((x) => x !== id));
+  }
+
+  function moveSelected(from: number, to: number) {
+    setSelectedIds((prev) => reorder(prev, from, to));
+  }
+
+  const [draggingIndex, setDraggingIndex] = useState<number | null>(null);
+
+  function handleDragStart(index: number) {
+    setDraggingIndex(index);
+  }
+
+  function handleDragOver(e: React.DragEvent) {
+    e.preventDefault();
+  }
+
+  function handleDrop(e: React.DragEvent, index: number) {
+    e.preventDefault();
+    if (draggingIndex === null) return;
+    moveSelected(draggingIndex, index);
+    setDraggingIndex(null);
+  }
+
+  function handleDragEnd() {
+    setDraggingIndex(null);
   }
 
   async function handlePublish() {
@@ -256,25 +282,59 @@ export default function PackBuilder() {
               <span>Selected</span>
               <span className="text-xs text-gray-500">{selectedIds.length} / {PACK_SIZE}</span>
             </h3>
+            <p className="text-xs text-gray-500 mb-2">1 = easiest · {PACK_SIZE} = hardest. Drag to reorder.</p>
             <ul className="space-y-1">
               {Array.from({ length: PACK_SIZE }, (_, i) => {
                 const id = selectedIds[i];
                 const player = id ? candidateById.get(id) : undefined;
+                const filled = !!player;
+                const isDragging = draggingIndex === i;
                 return (
-                  <li key={i} className="flex items-center gap-2 px-2 py-1.5 rounded bg-gray-800/50">
+                  <li
+                    key={i}
+                    draggable={filled}
+                    onDragStart={() => filled && handleDragStart(i)}
+                    onDragOver={handleDragOver}
+                    onDrop={(e) => handleDrop(e, i)}
+                    onDragEnd={handleDragEnd}
+                    aria-label={filled ? `Selected slot ${i + 1}` : undefined}
+                    className={`flex items-center gap-2 px-2 py-1.5 rounded bg-gray-800/50 ${
+                      filled ? "cursor-grab active:cursor-grabbing" : ""
+                    } ${isDragging ? "opacity-50" : ""}`}
+                  >
                     <span className="w-5 text-xs text-gray-500 text-right shrink-0">{i + 1}.</span>
                     {player ? (
                       <>
                         <img src={player.thumbnail} alt="" className="w-7 h-7 rounded-full object-cover bg-gray-700 shrink-0" />
                         <span className="flex-1 text-sm text-white truncate">{player.name}</span>
-                        <button
-                          type="button"
-                          onClick={() => removeSelected(player.id)}
-                          aria-label={`Remove ${player.name}`}
-                          className="px-2 py-1 text-xs rounded bg-gray-700 hover:bg-red-700 text-white transition-colors"
-                        >
-                          Remove
-                        </button>
+                        <div className="flex items-center gap-1 shrink-0">
+                          <button
+                            type="button"
+                            onClick={() => moveSelected(i, i - 1)}
+                            disabled={i === 0}
+                            aria-label={`Move ${player.name} up`}
+                            className="px-1.5 py-1 text-xs rounded bg-gray-700 hover:bg-gray-600 disabled:opacity-30 disabled:cursor-not-allowed text-white transition-colors"
+                          >
+                            ↑
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => moveSelected(i, i + 1)}
+                            disabled={i >= selectedIds.length - 1}
+                            aria-label={`Move ${player.name} down`}
+                            className="px-1.5 py-1 text-xs rounded bg-gray-700 hover:bg-gray-600 disabled:opacity-30 disabled:cursor-not-allowed text-white transition-colors"
+                          >
+                            ↓
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => removeSelected(player.id)}
+                            aria-label={`Remove ${player.name}`}
+                            className="px-2 py-1 text-xs rounded bg-gray-700 hover:bg-red-700 text-white transition-colors"
+                          >
+                            Remove
+                          </button>
+                        </div>
                       </>
                     ) : (
                       <span className="flex-1 text-sm text-gray-600 italic">empty slot</span>

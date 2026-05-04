@@ -97,4 +97,57 @@ test.describe("Admin Pack Builder", () => {
     await publishBtn.click();
     await expect(builder.getByRole("status")).toContainText(/Pack published/);
   });
+
+  test("selected players can be reordered with the up/down controls", async ({ page }) => {
+    if (!ADMIN_EMAIL || !ADMIN_PASSWORD) {
+      test.skip(true, "Set PACK_ADMIN_EMAIL/PACK_ADMIN_PASSWORD to run admin e2e.");
+      return;
+    }
+
+    await page.route(/\/rest\/v1\/pack_schedule(\?.*)?$/, (route) => {
+      return route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify([]),
+      });
+    });
+
+    await page.goto("/#/admin");
+    await page.getByPlaceholder("Email").fill(ADMIN_EMAIL);
+    await page.getByPlaceholder("Password").fill(ADMIN_PASSWORD);
+    await page.getByRole("button", { name: "Sign In" }).click();
+
+    await page.getByRole("tab", { name: "Pack Builder" }).click();
+    const builder = page.getByLabel("Pack Builder");
+
+    await builder.getByPlaceholder("Search clubs...").fill("Liverpool");
+    const clubOption = page.getByRole("listbox").getByRole("button").first();
+    await clubOption.waitFor({ state: "visible", timeout: 5_000 });
+    await clubOption.click();
+
+    const candidatesPanel = builder.getByLabel("Candidates");
+    await candidatesPanel.getByRole("button", { name: /^Add / }).first().waitFor({ state: "visible", timeout: 10_000 });
+
+    // Add at least 3 candidates so we can reorder.
+    for (let i = 0; i < 3; i++) {
+      const enabledAdd = candidatesPanel.getByRole("button", { name: /^Add / }).filter({ hasNotText: "Added" }).first();
+      const ok = await enabledAdd.waitFor({ state: "visible", timeout: 3_000 }).then(() => true).catch(() => false);
+      if (!ok) break;
+      await enabledAdd.click();
+    }
+
+    const selectedPanel = builder.getByLabel("Selected");
+    const slot1Name = (await selectedPanel.locator("li").nth(0).locator("img + span").textContent())?.trim();
+    const slot2Name = (await selectedPanel.locator("li").nth(1).locator("img + span").textContent())?.trim();
+    if (!slot1Name || !slot2Name) {
+      test.skip(true, "Could not read names from the first two selected slots.");
+      return;
+    }
+
+    // Move slot 1's player down — they should swap places with slot 2's player.
+    await selectedPanel.getByRole("button", { name: `Move ${slot1Name} down` }).click();
+
+    await expect(selectedPanel.locator("li").nth(0).locator("img + span")).toHaveText(slot2Name);
+    await expect(selectedPanel.locator("li").nth(1).locator("img + span")).toHaveText(slot1Name);
+  });
 });
