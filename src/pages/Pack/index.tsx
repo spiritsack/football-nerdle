@@ -2,12 +2,16 @@ import { Link } from "react-router-dom";
 import { usePackGame } from "./usePackGame";
 import PlayerSearch from "../../components/PlayerSearch";
 import { MAX_GUESSES_PER_PLAYER } from "./constants";
+import { deriveHints } from "./hints";
 
 export default function Pack() {
   const { state, submitGuess } = usePackGame();
   const { pack, status, currentIndex, guessesForCurrent, wrongGuessesForCurrent, score, attempts, error } = state;
   const currentPlayer = pack?.players[currentIndex] ?? null;
   const lastAttempt = attempts[attempts.length - 1];
+  const hints = currentPlayer && pack
+    ? deriveHints(currentPlayer, pack.club.id, wrongGuessesForCurrent.length)
+    : null;
 
   return (
     <div className="min-h-screen bg-gray-900 text-white flex flex-col">
@@ -65,6 +69,8 @@ export default function Pack() {
               )}
             </div>
 
+            {hints && <HintsList hints={hints} />}
+
             {status === "playing" && (
               <PlayerSearch onSelect={submitGuess} placeholder="Player name" hideThumbnails />
             )}
@@ -92,6 +98,25 @@ export default function Pack() {
         )}
       </main>
     </div>
+  );
+}
+
+function HintsList({ hints }: { hints: ReturnType<typeof deriveHints> }) {
+  const items: { label: string; value: string }[] = [];
+  if (hints.nationality) items.push({ label: "Nationality", value: hints.nationality });
+  if (hints.position) items.push({ label: "Position", value: hints.position });
+  if (hints.era) items.push({ label: "Era at this club", value: hints.era });
+  if (hints.otherClub) items.push({ label: "Also played for", value: hints.otherClub });
+  if (items.length === 0) return null;
+  return (
+    <dl aria-label="Hints" className="grid grid-cols-2 gap-x-4 gap-y-1 max-w-sm w-full text-sm">
+      {items.map((item) => (
+        <div key={item.label} className="contents">
+          <dt className="text-gray-400 text-right">{item.label}</dt>
+          <dd className="text-white font-medium">{item.value}</dd>
+        </div>
+      ))}
+    </dl>
   );
 }
 
