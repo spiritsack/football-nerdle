@@ -7,7 +7,7 @@ import { deriveHints } from "./hints";
 import { buildShareText, getPackDayNumber } from "./helpers";
 
 export default function Pack() {
-  const { state, submitGuess } = usePackGame();
+  const { state, submitGuess, stats } = usePackGame();
   const { pack, status, currentIndex, guessesForCurrent, wrongGuessesForCurrent, score, attempts, error } = state;
   const currentPlayer = pack?.players[currentIndex] ?? null;
   const lastAttempt = attempts[attempts.length - 1];
@@ -121,6 +121,33 @@ export default function Pack() {
               <Link to="/" className="px-6 py-3 bg-green-600 hover:bg-green-500 rounded-lg font-semibold transition-colors">
                 Back to Home
               </Link>
+            </div>
+
+            <div aria-label="Pack stats" className="bg-gray-800 border border-gray-600 rounded-xl p-6 max-w-md w-full">
+              <h3 className="text-lg font-semibold text-center text-gray-300 mb-4">Your Stats</h3>
+              <div className="grid grid-cols-4 gap-2 text-center">
+                <div>
+                  <div className="text-2xl font-bold">{stats.played}</div>
+                  <div className="text-gray-400 text-xs">Played</div>
+                </div>
+                <div>
+                  <div className="text-2xl font-bold text-green-400">{stats.bestScore}</div>
+                  <div className="text-gray-400 text-xs">Best</div>
+                </div>
+                <div>
+                  <div className="text-2xl font-bold text-yellow-400">{stats.streak}</div>
+                  <div className="text-gray-400 text-xs">Streak</div>
+                </div>
+                <div>
+                  <div className="text-2xl font-bold text-yellow-400">{stats.longestStreak}</div>
+                  <div className="text-gray-400 text-xs">Longest</div>
+                </div>
+              </div>
+              {stats.played > 0 && (
+                <div className="mt-3 text-center text-gray-400 text-sm">
+                  Avg: {(stats.totalScore / stats.played).toFixed(1)} / 10
+                </div>
+              )}
             </div>
           </>
         )}
