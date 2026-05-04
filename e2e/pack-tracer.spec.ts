@@ -5,11 +5,11 @@ test.describe("Pack Mode (tracer)", () => {
     await page.goto("/#/pack");
 
     const search = page.getByPlaceholder("Player name");
-    const idleAlert = page.getByRole("alert");
+    const fallback = page.getByLabel("No pack today");
 
     const outcome = await Promise.race([
       search.waitFor({ state: "visible", timeout: 15_000 }).then(() => "playing" as const).catch(() => null),
-      idleAlert.waitFor({ state: "visible", timeout: 15_000 }).then(() => "idle" as const).catch(() => null),
+      fallback.waitFor({ state: "visible", timeout: 15_000 }).then(() => "idle" as const).catch(() => null),
     ]);
 
     if (outcome === "idle") {

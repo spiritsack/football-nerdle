@@ -32,3 +32,21 @@ export async function getPackForDate(date: string): Promise<PackData | null> {
     players: valid,
   };
 }
+
+export async function getScheduledPackDatesBetween(
+  exclusiveStart: string,
+  exclusiveEnd: string,
+): Promise<string[]> {
+  if (!supabase) return [];
+  if (exclusiveStart >= exclusiveEnd) return [];
+  try {
+    const { data } = await supabase
+      .from("pack_schedule")
+      .select("date")
+      .gt("date", exclusiveStart)
+      .lt("date", exclusiveEnd);
+    return (data ?? []).map((r: { date: string }) => r.date);
+  } catch {
+    return [];
+  }
+}
