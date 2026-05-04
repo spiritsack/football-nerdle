@@ -46,9 +46,36 @@ export default function Pack() {
         {status === "loading" && <p className="text-gray-400">Loading pack...</p>}
 
         {status === "idle" && (
-          <div role="alert" className="bg-orange-900/30 border border-orange-700 rounded-lg px-4 py-3 max-w-md w-full text-center text-orange-300 text-sm">
-            {error ?? "No pack available."}
-          </div>
+          <section
+            aria-label="No pack today"
+            className="flex flex-col items-center gap-4 max-w-md w-full text-center"
+          >
+            <div className="text-6xl" aria-hidden="true">📅</div>
+            <h2 className="text-2xl font-semibold">No pack today</h2>
+            <p className="text-gray-400 text-sm">
+              {error ?? "There is no pack scheduled for today."} Come back tomorrow, or try another mode.
+            </p>
+            <div className="flex gap-3 flex-wrap justify-center">
+              <Link
+                to="/guess"
+                className="px-5 py-2.5 bg-green-600 hover:bg-green-500 rounded-lg font-semibold transition-colors"
+              >
+                Guess the Player
+              </Link>
+              <Link
+                to="/battle"
+                className="px-5 py-2.5 bg-gray-700 hover:bg-gray-600 rounded-lg font-semibold transition-colors"
+              >
+                Battle Mode
+              </Link>
+              <Link
+                to="/"
+                className="px-5 py-2.5 bg-gray-800 hover:bg-gray-700 rounded-lg font-semibold border border-gray-600 transition-colors"
+              >
+                Home
+              </Link>
+            </div>
+          </section>
         )}
 
         {pack && (status === "playing" || status === "revealing") && currentPlayer && (
