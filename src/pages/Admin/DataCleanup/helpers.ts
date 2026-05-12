@@ -44,25 +44,23 @@ export interface ClubCandidate {
 
 export function pickDefaultWinner(c: PlayerCandidate | ClubCandidate): "a" | "b" {
   if ("stint_count_a" in c) {
-    const p = c as PlayerCandidate;
-    if (p.stint_count_a !== p.stint_count_b) {
-      return p.stint_count_a > p.stint_count_b ? "a" : "b";
+    if (c.stint_count_a !== c.stint_count_b) {
+      return c.stint_count_a > c.stint_count_b ? "a" : "b";
     }
-    if (Boolean(p.transfermarkt_id_a) !== Boolean(p.transfermarkt_id_b)) {
-      return p.transfermarkt_id_a ? "a" : "b";
+    if (Boolean(c.transfermarkt_id_a) !== Boolean(c.transfermarkt_id_b)) {
+      return c.transfermarkt_id_a ? "a" : "b";
     }
-    if (Boolean(p.thumbnail_a) !== Boolean(p.thumbnail_b)) {
-      return p.thumbnail_a ? "a" : "b";
+    if (Boolean(c.thumbnail_a) !== Boolean(c.thumbnail_b)) {
+      return c.thumbnail_a ? "a" : "b";
     }
     return "a";
   }
 
-  const club = c as ClubCandidate;
-  if (club.player_count_a !== club.player_count_b) {
-    return club.player_count_a > club.player_count_b ? "a" : "b";
+  if (c.player_count_a !== c.player_count_b) {
+    return c.player_count_a > c.player_count_b ? "a" : "b";
   }
-  if (Boolean(club.badge_a) !== Boolean(club.badge_b)) {
-    return club.badge_a ? "a" : "b";
+  if (Boolean(c.badge_a) !== Boolean(c.badge_b)) {
+    return c.badge_a ? "a" : "b";
   }
   return "a";
 }
