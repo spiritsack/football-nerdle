@@ -20,14 +20,14 @@ test.describe("Daily Guess the Player", () => {
 
   test("shows hard mode toggle defaulting to ON", async ({ page }) => {
     await expect(page.getByText("Club History")).toBeVisible({ timeout: 10_000 });
-    await expect(page.getByRole("button", { name: /Hard Mode: ON/ })).toBeVisible();
+    const toggle = page.getByRole("switch", { name: /Hard Mode/i });
+    await expect(toggle).toBeVisible();
+    await expect(toggle).toHaveAttribute("aria-checked", "true");
   });
 
-  test("shows hard mode info button with accessible label", async ({ page }) => {
+  test("shows hard mode description when ON", async ({ page }) => {
     await expect(page.getByText("Club History")).toBeVisible({ timeout: 10_000 });
-    const infoBtn = page.getByRole("button", { name: /Hard mode info/ });
-    await expect(infoBtn).toBeVisible();
-    await expect(infoBtn).toHaveAttribute("aria-label", /only be turned off once per day/i);
+    await expect(page.getByText(/badges only/i)).toBeVisible();
   });
 
   test("shows attempts counter", async ({ page }) => {
@@ -37,8 +37,10 @@ test.describe("Daily Guess the Player", () => {
 
   test("can disable hard mode (shows club names)", async ({ page }) => {
     await expect(page.getByText("Club History")).toBeVisible({ timeout: 10_000 });
-    await page.getByRole("button", { name: /Hard Mode: ON/ }).click();
-    await expect(page.getByRole("button", { name: /Hard Mode: OFF/ })).toBeVisible();
+    const toggle = page.getByRole("switch", { name: /Hard Mode/i });
+    await toggle.click();
+    await expect(toggle).toHaveAttribute("aria-checked", "false");
+    await expect(page.getByText(/club names and years shown/i)).toBeVisible();
   });
 
   test("shows search input", async ({ page }) => {

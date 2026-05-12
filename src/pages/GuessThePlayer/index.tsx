@@ -125,35 +125,31 @@ export default function GuessThePlayer() {
         )}
 
         {status === "playing" && (
-          <div className="flex items-center gap-2">
-            <button
-              onClick={toggleHardMode}
-              disabled={!hardMode}
-              className={`px-4 py-1.5 rounded-full text-sm font-medium transition-colors ${
-                hardMode
-                  ? "bg-red-600 hover:bg-red-500 text-white"
-                  : "bg-gray-700 text-gray-500 cursor-not-allowed"
-              }`}
-            >
-              Hard Mode: {hardMode ? "ON" : "OFF"}
-            </button>
-            <div className="relative group">
+          <div className="flex flex-col items-center gap-1">
+            <div className="flex items-center gap-3">
+              <span className="text-sm font-medium text-gray-300">Hard Mode</span>
               <button
-                type="button"
-                aria-label={hardMode
-                ? "Hard mode info: only club badges shown, no names or years. Can only be turned off once per day."
-                : "Hard mode info: hard mode is off for today. Resets tomorrow."}
-                className="text-gray-500 hover:text-gray-300 focus:text-gray-300 text-sm select-none focus:outline-none"
+                role="switch"
+                aria-checked={hardMode}
+                aria-label="Hard Mode"
+                onClick={toggleHardMode}
+                disabled={!hardMode}
+                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                  hardMode
+                    ? "bg-red-600 hover:bg-red-500"
+                    : "bg-gray-600 cursor-not-allowed"
+                }`}
               >
-                ⓘ
+                <span
+                  className={`inline-block h-4 w-4 rounded-full bg-white transition-transform ${
+                    hardMode ? "translate-x-6" : "translate-x-1"
+                  }`}
+                />
               </button>
-              <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-56 px-3 py-2 bg-gray-700 text-gray-200 text-xs rounded-lg shadow-lg pointer-events-none opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity text-center z-10">
-                {hardMode
-                  ? "Only club badges shown — no names or years. Can only be turned off once per day."
-                  : "Hard mode is off for today. Resets tomorrow."}
-                <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-gray-700" />
-              </div>
             </div>
+            <p className="text-xs text-gray-500">
+              {hardMode ? "Badges only — no club names or years" : "Club names and years shown"}
+            </p>
           </div>
         )}
 
