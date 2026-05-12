@@ -35,6 +35,7 @@ lerna-debug.log*
 .claude
 .agents
 skills-lock.json
+.scratch
 
 # Playwright
 test-results/

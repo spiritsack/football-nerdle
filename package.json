@@ -14,6 +14,7 @@
     "test:e2e": "playwright test"
   },
   "dependencies": {
+    "@ai-hero/sandcastle": "^0.5.7",
     "@supabase/supabase-js": "^2.100.0",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
