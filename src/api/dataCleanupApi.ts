@@ -1,5 +1,6 @@
 import { supabase } from "./supabaseClient";
 import type { PlayerCandidate, ClubCandidate } from "../pages/Admin/DataCleanup/helpers";
+import type { StintFragment, OrphanPlayer, OrphanClub } from "../pages/Admin/DataCleanup/types";
 
 export async function findDuplicatePlayerCandidates(
   minScore = 0.55,
@@ -83,4 +84,82 @@ export async function mergeClubs(
     return null;
   }
   return data;
+}
+
+export async function findFragmentedStints(
+  maxResults = 100,
+): Promise<StintFragment[]> {
+  if (!supabase) return [];
+  const { data, error } = await supabase.rpc("find_fragmented_stints", {
+    max_results: maxResults,
+  });
+  if (error) {
+    console.error("findFragmentedStints failed:", error);
+    return [];
+  }
+  return data ?? [];
+}
+
+export async function mergeStints(
+  playerId: string,
+  clubId: string,
+): Promise<{ stints_merged: number; kept_joined: string; kept_departed: string } | null> {
+  if (!supabase) return null;
+  const { data, error } = await supabase.rpc("merge_stints", {
+    p_player_id: playerId,
+    p_club_id: clubId,
+  });
+  if (error) {
+    console.error("mergeStints failed:", error);
+    return null;
+  }
+  return data;
+}
+
+export async function findOrphanPlayers(
+  maxResults = 100,
+): Promise<OrphanPlayer[]> {
+  if (!supabase) return [];
+  const { data, error } = await supabase.rpc("find_orphan_players", {
+    max_results: maxResults,
+  });
+  if (error) {
+    console.error("findOrphanPlayers failed:", error);
+    return [];
+  }
+  return data ?? [];
+}
+
+export async function findOrphanClubs(
+  maxResults = 100,
+): Promise<OrphanClub[]> {
+  if (!supabase) return [];
+  const { data, error } = await supabase.rpc("find_orphan_clubs", {
+    max_results: maxResults,
+  });
+  if (error) {
+    console.error("findOrphanClubs failed:", error);
+    return [];
+  }
+  return data ?? [];
+}
+
+export async function deleteOrphanPlayer(id: string): Promise<boolean> {
+  if (!supabase) return false;
+  const { error } = await supabase.rpc("delete_orphan_player", { p_id: id });
+  if (error) {
+    console.error("deleteOrphanPlayer failed:", error);
+    return false;
+  }
+  return true;
+}
+
+export async function deleteOrphanClub(id: string): Promise<boolean> {
+  if (!supabase) return false;
+  const { error } = await supabase.rpc("delete_orphan_club", { p_id: id });
+  if (error) {
+    console.error("deleteOrphanClub failed:", error);
+    return false;
+  }
+  return true;
 }
