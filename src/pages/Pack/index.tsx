@@ -114,7 +114,7 @@ export default function Pack() {
                   <p className={`text-xl font-bold ${lastAttempt?.correct ? "text-green-400" : "text-red-400"}`}>
                     {currentPlayer.name}
                   </p>
-                  <p className="text-gray-400 text-sm">{lastAttempt?.correct ? "Correct!" : lastAttempt?.skipped ? "Skipped" : "Out of guesses"}</p>
+                  <p className="text-gray-400 text-sm">{revealLabel(lastAttempt)}</p>
                 </div>
               )}
             </div>
@@ -197,6 +197,12 @@ export default function Pack() {
       </main>
     </div>
   );
+}
+
+function revealLabel(attempt: { correct: boolean; skipped?: boolean } | undefined): string {
+  if (attempt?.correct) return "Correct!";
+  if (attempt?.skipped) return "Skipped";
+  return "Out of guesses";
 }
 
 function HintsList({ hints }: { hints: ReturnType<typeof deriveHints> }) {
