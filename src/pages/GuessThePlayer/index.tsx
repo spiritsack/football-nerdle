@@ -131,6 +131,7 @@ export default function GuessThePlayer() {
               role="switch"
               aria-checked={!hardMode}
               aria-label="Show club names"
+              title={!hardMode ? "You've peeked at today's teams — I'll reset this for tomorrow :)" : undefined}
               onClick={toggleHardMode}
               disabled={!hardMode}
               className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
