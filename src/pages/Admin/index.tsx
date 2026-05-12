@@ -3,8 +3,9 @@ import { Link } from "react-router-dom";
 import { useAdminAuth } from "../../api/useAdminAuth";
 import ScheduleManager from "./ScheduleManager";
 import PackBuilder from "./PackBuilder";
+import DataCleanup from "./DataCleanup";
 
-type AdminTab = "schedule" | "pack";
+type AdminTab = "schedule" | "pack" | "cleanup";
 
 function SignInForm({ onSignIn, error }: { onSignIn: (email: string, password: string) => void; error: string | null }) {
   const [email, setEmail] = useState("");
@@ -102,10 +103,23 @@ export default function Admin() {
           >
             Pack Builder
           </button>
+          <button
+            role="tab"
+            aria-selected={tab === "cleanup"}
+            onClick={() => setTab("cleanup")}
+            className={`px-4 py-2 -mb-px border-b-2 transition-colors ${
+              tab === "cleanup"
+                ? "border-green-500 text-white"
+                : "border-transparent text-gray-400 hover:text-white"
+            }`}
+          >
+            Data Cleanup
+          </button>
         </nav>
 
         {tab === "schedule" && <ScheduleManager />}
         {tab === "pack" && <PackBuilder />}
+        {tab === "cleanup" && <DataCleanup />}
       </div>
     </div>
   );
