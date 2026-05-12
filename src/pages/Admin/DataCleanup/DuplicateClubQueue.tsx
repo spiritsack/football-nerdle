@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useClubCandidates } from "./useMergeCandidates";
-import { pickDefaultWinner, scoreColor, type ClubCandidate } from "./helpers";
-import type { WinnerSide } from "./types";
+import { pickDefaultWinner, scoreColor } from "./helpers";
+import type { ClubCandidate, WinnerSide } from "./types";
 
 function ScoreChips({ c }: { c: ClubCandidate }) {
   return (

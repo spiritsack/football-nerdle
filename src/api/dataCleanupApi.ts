@@ -1,5 +1,5 @@
 import { supabase } from "./supabaseClient";
-import type { PlayerCandidate, ClubCandidate } from "../pages/Admin/DataCleanup/helpers";
+import type { PlayerCandidate, ClubCandidate } from "../pages/Admin/DataCleanup/types";
 import type { StintFragment, OrphanPlayer, OrphanClub } from "../pages/Admin/DataCleanup/types";
 
 export async function findDuplicatePlayerCandidates(

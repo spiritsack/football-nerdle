@@ -4,9 +4,8 @@ import {
   scoreColor,
   areStintsOverlapping,
   computeMergedRange,
-  type PlayerCandidate,
-  type ClubCandidate,
 } from "../pages/Admin/DataCleanup/helpers";
+import type { PlayerCandidate, ClubCandidate } from "../pages/Admin/DataCleanup/types";
 
 function makePlayerCandidate(overrides: Partial<PlayerCandidate> = {}): PlayerCandidate {
   return {

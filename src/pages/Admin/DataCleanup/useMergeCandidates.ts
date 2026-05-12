@@ -12,8 +12,7 @@ import {
   deleteOrphanPlayer,
   deleteOrphanClub,
 } from "../../../api/dataCleanupApi";
-import type { PlayerCandidate, ClubCandidate } from "./helpers";
-import type { StintFragment, OrphanPlayer, OrphanClub } from "./types";
+import type { PlayerCandidate, ClubCandidate, StintFragment, OrphanPlayer, OrphanClub } from "./types";
 
 export function usePlayerCandidates(minScore = 0.55) {
   const [candidates, setCandidates] = useState<PlayerCandidate[]>([]);
