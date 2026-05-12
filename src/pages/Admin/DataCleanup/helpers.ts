@@ -74,8 +74,13 @@ export function computeMergedRange(stints: YearRange[]): YearRange {
     }
   }
 
+  let departed = "";
+  if (!hasOngoing && latest !== -Infinity) {
+    departed = String(latest);
+  }
+
   return {
     year_joined: earliest === Infinity ? "" : String(earliest),
-    year_departed: hasOngoing ? "" : (latest === -Infinity ? "" : String(latest)),
+    year_departed: departed,
   };
 }
