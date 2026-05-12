@@ -23,6 +23,10 @@ export function pickDefaultWinner(c: PlayerCandidate | ClubCandidate): WinnerSid
   return "a";
 }
 
+export function isFieldConflict(a: string, b: string): boolean {
+  return a !== "" && b !== "" && a !== b;
+}
+
 export function scoreColor(score: number): string {
   if (score >= 0.95) return "text-green-400";
   if (score >= 0.70) return "text-yellow-400";

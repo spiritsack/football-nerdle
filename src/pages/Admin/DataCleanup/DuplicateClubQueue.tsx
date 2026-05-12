@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useClubCandidates } from "./useMergeCandidates";
-import { pickDefaultWinner, scoreColor } from "./helpers";
+import { pickDefaultWinner, scoreColor, isFieldConflict } from "./helpers";
 import type { ClubCandidate, WinnerSide } from "./types";
 
 function ScoreChips({ c }: { c: ClubCandidate }) {
@@ -48,7 +48,7 @@ function ClubSide({ c, side, selected, onSelect }: {
         )}
         <div>
           <div className="font-semibold text-white">{name}</div>
-          <div className="text-xs text-gray-400">{country || "—"}</div>
+          <div className={`text-xs ${isFieldConflict(c.country_a, c.country_b) ? "text-red-400" : "text-gray-400"}`}>{country || "—"}</div>
         </div>
       </div>
       <div className="text-xs text-gray-300">Players: {count}</div>

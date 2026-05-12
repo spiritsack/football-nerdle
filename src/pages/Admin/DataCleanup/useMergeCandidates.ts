@@ -16,8 +16,16 @@ import type { PlayerCandidate, ClubCandidate, StintFragment, OrphanPlayer, Orpha
 
 export function usePlayerCandidates(minScore = 0.55) {
   const [candidates, setCandidates] = useState<PlayerCandidate[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    findDuplicatePlayerCandidates(minScore).then((data) => {
+      if (active) { setCandidates(data); setLoading(false); }
+    });
+    return () => { active = false; };
+  }, [minScore]);
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -26,8 +34,6 @@ export function usePlayerCandidates(minScore = 0.55) {
     setCandidates(data);
     setLoading(false);
   }, [minScore]);
-
-  useEffect(() => { refresh(); }, [refresh]);
 
   const dismiss = async (idA: string, idB: string, reason = "") => {
     const ok = await dismissDuplicate("player", idA, idB, reason);
@@ -53,8 +59,16 @@ export function usePlayerCandidates(minScore = 0.55) {
 
 export function useClubCandidates(minScore = 0.55) {
   const [candidates, setCandidates] = useState<ClubCandidate[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    findDuplicateClubCandidates(minScore).then((data) => {
+      if (active) { setCandidates(data); setLoading(false); }
+    });
+    return () => { active = false; };
+  }, [minScore]);
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -63,8 +77,6 @@ export function useClubCandidates(minScore = 0.55) {
     setCandidates(data);
     setLoading(false);
   }, [minScore]);
-
-  useEffect(() => { refresh(); }, [refresh]);
 
   const dismiss = async (idA: string, idB: string, reason = "") => {
     const ok = await dismissDuplicate("club", idA, idB, reason);
@@ -90,8 +102,16 @@ export function useClubCandidates(minScore = 0.55) {
 
 export function useFragmentedStints() {
   const [fragments, setFragments] = useState<StintFragment[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    findFragmentedStints().then((data) => {
+      if (active) { setFragments(data); setLoading(false); }
+    });
+    return () => { active = false; };
+  }, []);
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -100,8 +120,6 @@ export function useFragmentedStints() {
     setFragments(data);
     setLoading(false);
   }, []);
-
-  useEffect(() => { refresh(); }, [refresh]);
 
   const mergeStints = async (playerId: string, clubId: string) => {
     setError(null);
@@ -121,8 +139,16 @@ export function useFragmentedStints() {
 
 export function useOrphanPlayers() {
   const [orphans, setOrphans] = useState<OrphanPlayer[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    findOrphanPlayers().then((data) => {
+      if (active) { setOrphans(data); setLoading(false); }
+    });
+    return () => { active = false; };
+  }, []);
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -131,8 +157,6 @@ export function useOrphanPlayers() {
     setOrphans(data);
     setLoading(false);
   }, []);
-
-  useEffect(() => { refresh(); }, [refresh]);
 
   const remove = async (id: string) => {
     setError(null);
@@ -150,8 +174,16 @@ export function useOrphanPlayers() {
 
 export function useOrphanClubs() {
   const [orphans, setOrphans] = useState<OrphanClub[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    findOrphanClubs().then((data) => {
+      if (active) { setOrphans(data); setLoading(false); }
+    });
+    return () => { active = false; };
+  }, []);
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -160,8 +192,6 @@ export function useOrphanClubs() {
     setOrphans(data);
     setLoading(false);
   }, []);
-
-  useEffect(() => { refresh(); }, [refresh]);
 
   const remove = async (id: string) => {
     setError(null);

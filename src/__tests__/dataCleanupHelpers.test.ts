@@ -4,6 +4,7 @@ import {
   scoreColor,
   areStintsOverlapping,
   computeMergedRange,
+  isFieldConflict,
 } from "../pages/Admin/DataCleanup/helpers";
 import type { PlayerCandidate, ClubCandidate } from "../pages/Admin/DataCleanup/types";
 
@@ -243,5 +244,27 @@ describe("computeMergedRange", () => {
   it("returns empty strings for empty input", () => {
     const result = computeMergedRange([]);
     expect(result).toEqual({ year_joined: "", year_departed: "" });
+  });
+});
+
+describe("isFieldConflict", () => {
+  it("returns true when both values are non-empty and different", () => {
+    expect(isFieldConflict("1990-01-15", "1990-02-20")).toBe(true);
+  });
+
+  it("returns false when values match", () => {
+    expect(isFieldConflict("1990-01-15", "1990-01-15")).toBe(false);
+  });
+
+  it("returns false when first value is empty", () => {
+    expect(isFieldConflict("", "1990-01-15")).toBe(false);
+  });
+
+  it("returns false when second value is empty", () => {
+    expect(isFieldConflict("1990-01-15", "")).toBe(false);
+  });
+
+  it("returns false when both values are empty", () => {
+    expect(isFieldConflict("", "")).toBe(false);
   });
 });

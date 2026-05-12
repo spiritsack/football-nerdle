@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { usePlayerCandidates } from "./useMergeCandidates";
-import { pickDefaultWinner, scoreColor } from "./helpers";
+import { pickDefaultWinner, scoreColor, isFieldConflict } from "./helpers";
 import type { PlayerCandidate, WinnerSide } from "./types";
 
 function ScoreChips({ c }: { c: PlayerCandidate }) {
@@ -29,6 +29,8 @@ function PlayerSide({ c, side, selected, onSelect }: {
   const tmId = side === "a" ? c.transfermarkt_id_a : c.transfermarkt_id_b;
   const stints = side === "a" ? c.stint_count_a : c.stint_count_b;
 
+  const conflict = (a: string, b: string) => isFieldConflict(a, b) ? "text-red-400" : "";
+
   return (
     <button
       type="button"
@@ -51,9 +53,9 @@ function PlayerSide({ c, side, selected, onSelect }: {
         </div>
       </div>
       <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs text-gray-300">
-        <span>DOB: {dob || "—"}</span>
-        <span>Nationality: {nat || "—"}</span>
-        <span>Position: {pos || "—"}</span>
+        <span className={conflict(c.dob_a, c.dob_b)}>DOB: {dob || "—"}</span>
+        <span className={conflict(c.nationality_a, c.nationality_b)}>Nationality: {nat || "—"}</span>
+        <span className={conflict(c.position_a, c.position_b)}>Position: {pos || "—"}</span>
         <span>Stints: {stints}</span>
       </div>
       {selected && <div className="mt-2 text-green-400 text-xs font-semibold">WINNER (keep)</div>}
