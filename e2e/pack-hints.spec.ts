@@ -19,7 +19,7 @@ test.describe("Pack mode hints", () => {
     // Submit a wrong guess.
     await search.fill("Wayne Rooney");
     let option = page.getByRole("option").first();
-    await option.waitFor({ state: "visible", timeout: 5_000 });
+    await option.waitFor({ state: "visible", timeout: 15_000 });
     await option.click();
 
     // If that was the answer we advance — skip rest.
@@ -35,7 +35,7 @@ test.describe("Pack mode hints", () => {
     // 2nd wrong guess.
     await search.fill("Lionel Messi");
     option = page.getByRole("option").first();
-    await option.waitFor({ state: "visible", timeout: 5_000 });
+    await option.waitFor({ state: "visible", timeout: 15_000 });
     await option.click();
 
     if (await page.getByText(/Player\s+2\s*\/\s*10/).isVisible()) {

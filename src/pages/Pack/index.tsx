@@ -8,7 +8,7 @@ import { buildShareText, getPackDayNumber } from "./helpers";
 import PackLeaderboard from "../../components/PackLeaderboard";
 
 export default function Pack() {
-  const { state, submitGuess, stats } = usePackGame();
+  const { state, submitGuess, skip, stats } = usePackGame();
   const { pack, status, currentIndex, guessesForCurrent, wrongGuessesForCurrent, score, attempts, error } = state;
   const currentPlayer = pack?.players[currentIndex] ?? null;
   const lastAttempt = attempts[attempts.length - 1];
@@ -114,7 +114,7 @@ export default function Pack() {
                   <p className={`text-xl font-bold ${lastAttempt?.correct ? "text-green-400" : "text-red-400"}`}>
                     {currentPlayer.name}
                   </p>
-                  <p className="text-gray-400 text-sm">{lastAttempt?.correct ? "Correct!" : "Out of guesses"}</p>
+                  <p className="text-gray-400 text-sm">{revealLabel(lastAttempt)}</p>
                 </div>
               )}
             </div>
@@ -122,7 +122,15 @@ export default function Pack() {
             {hints && <HintsList hints={hints} />}
 
             {status === "playing" && (
-              <PlayerSearch onSelect={submitGuess} placeholder="Player name" hideThumbnails />
+              <div className="flex flex-col items-center gap-2 max-w-sm w-full">
+                <PlayerSearch onSelect={submitGuess} placeholder="Player name" hideThumbnails />
+                <button
+                  onClick={skip}
+                  className="px-4 py-2 text-sm text-gray-400 hover:text-white hover:bg-gray-700 rounded-lg transition-colors"
+                >
+                  Skip
+                </button>
+              </div>
             )}
 
             {wrongGuessesForCurrent.length > 0 && (
@@ -189,6 +197,12 @@ export default function Pack() {
       </main>
     </div>
   );
+}
+
+function revealLabel(attempt: { correct: boolean; skipped?: boolean } | undefined): string {
+  if (attempt?.correct) return "Correct!";
+  if (attempt?.skipped) return "Skipped";
+  return "Out of guesses";
 }
 
 function HintsList({ hints }: { hints: ReturnType<typeof deriveHints> }) {

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { getPackForDate, getScheduledPackDatesBetween } from "../../api/packSchedule";
 import type { Player } from "../../types";
-import { initialState, submitGuess as reduceGuess, advance as reduceAdvance } from "./gameLogic";
+import { initialState, submitGuess as reduceGuess, advance as reduceAdvance, skipPlayer as reduceSkip } from "./gameLogic";
 import type { PackGameState } from "./types";
 import { getTodayString } from "../../utils/dates";
 import { loadPackResult, savePackResult } from "./helpers";
@@ -98,6 +98,10 @@ export function usePackGame() {
     setState((s) => reduceAdvance(s));
   }, []);
 
+  const skip = useCallback(() => {
+    setState((s) => reduceSkip(s));
+  }, []);
+
   useEffect(() => {
     if (state.status !== "revealing") return;
     const id = setTimeout(() => {
@@ -106,5 +110,5 @@ export function usePackGame() {
     return () => clearTimeout(id);
   }, [state.status, state.currentIndex]);
 
-  return { state, submitGuess, advance, today, stats };
+  return { state, submitGuess, advance, skip, today, stats };
 }

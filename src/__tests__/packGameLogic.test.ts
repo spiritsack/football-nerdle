@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { initialState, submitGuess, advance } from "../pages/Pack/gameLogic";
+import { initialState, submitGuess, advance, skipPlayer } from "../pages/Pack/gameLogic";
 import type { PackData } from "../pages/Pack/types";
 import type { Player, PlayerWithTeams } from "../types";
 
@@ -130,5 +130,75 @@ describe("pack gameLogic — correct guess", () => {
     expect(next.attempts).toHaveLength(1);
     expect(next.attempts[0]).toEqual({ playerId: "p1", correct: true, guesses: 1 });
     expect(next.currentIndex).toBe(0);
+  });
+});
+
+describe("pack gameLogic — skipPlayer", () => {
+  it("transitions to 'revealing' with a failed, skipped attempt when no guesses used", () => {
+    const pack = makePack();
+    const state = initialState(pack);
+    const next = skipPlayer(state);
+
+    expect(next.status).toBe("revealing");
+    expect(next.score).toBe(0);
+    expect(next.attempts).toHaveLength(1);
+    expect(next.attempts[0]).toEqual({ playerId: "p1", correct: false, guesses: 0, skipped: true });
+  });
+
+  it("preserves guesses already used when skipping after wrong attempts", () => {
+    const pack = makePack();
+    const wrong: Player = { id: "w1", name: "Wrong", thumbnail: "", nationality: "" };
+    let state = initialState(pack);
+    state = submitGuess(state, wrong);
+    state = submitGuess(state, wrong);
+    const next = skipPlayer(state);
+
+    expect(next.status).toBe("revealing");
+    expect(next.score).toBe(0);
+    expect(next.guessesForCurrent).toBe(2);
+    expect(next.attempts[0]).toEqual({ playerId: "p1", correct: false, guesses: 2, skipped: true });
+  });
+
+  it("is ignored while revealing", () => {
+    const pack = makePack();
+    let state = initialState(pack);
+    state = submitGuess(state, asGuess(pack.players[0]));
+    expect(state.status).toBe("revealing");
+    const after = skipPlayer(state);
+    expect(after).toBe(state);
+  });
+
+  it("is ignored when finished", () => {
+    const pack = makePack(1);
+    let state = initialState(pack);
+    state = submitGuess(state, asGuess(pack.players[0]));
+    state = advance(state);
+    expect(state.status).toBe("finished");
+    const after = skipPlayer(state);
+    expect(after).toBe(state);
+  });
+
+  it("works correctly in a full game with mixed skips and guesses", () => {
+    const pack = makePack(3);
+    let state = initialState(pack);
+
+    state = skipPlayer(state);
+    state = advance(state);
+    expect(state.currentIndex).toBe(1);
+
+    state = submitGuess(state, asGuess(pack.players[1]));
+    state = advance(state);
+    expect(state.currentIndex).toBe(2);
+
+    state = skipPlayer(state);
+    state = advance(state);
+
+    expect(state.status).toBe("finished");
+    expect(state.score).toBe(1);
+    expect(state.attempts).toEqual([
+      { playerId: "p1", correct: false, guesses: 0, skipped: true },
+      { playerId: "p2", correct: true, guesses: 1 },
+      { playerId: "p3", correct: false, guesses: 0, skipped: true },
+    ]);
   });
 });
