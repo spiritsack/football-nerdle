@@ -51,6 +51,19 @@ export function submitGuess(state: PackGameState, guess: Player): PackGameState 
   };
 }
 
+export function skipPlayer(state: PackGameState): PackGameState {
+  if (!state.pack || state.status !== "playing") return state;
+  const target = state.pack.players[state.currentIndex];
+  return {
+    ...state,
+    status: "revealing",
+    attempts: [
+      ...state.attempts,
+      { playerId: target.id, correct: false, guesses: state.guessesForCurrent, skipped: true },
+    ],
+  };
+}
+
 export function advance(state: PackGameState): PackGameState {
   if (!state.pack || state.status !== "revealing") return state;
   const nextIndex = state.currentIndex + 1;

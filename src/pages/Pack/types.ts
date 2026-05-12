@@ -18,6 +18,7 @@ export interface PackAttempt {
   playerId: string;
   correct: boolean;
   guesses: number;
+  skipped?: boolean;
 }
 
 export interface PackGameState {
