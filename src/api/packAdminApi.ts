@@ -75,6 +75,34 @@ export interface PublishPackResult {
   error?: string;
 }
 
+// The runtime pack loader (getFromCacheById) drops any player whose
+// player_clubs row count is 0, because hints rely on club history. The admin
+// validation only checks count + thumbnails, so a manually-added player with
+// no club rows could be published silently and disappear in-game. This gate
+// prevents that.
+async function findPlayersMissingClubHistory(playerIds: string[]): Promise<string[]> {
+  if (!supabase || playerIds.length === 0) return [];
+  const { data, error } = await supabase
+    .from("players")
+    .select("id, name, player_clubs(player_id)")
+    .in("id", playerIds);
+  if (error || !data) return [];
+  const rows = data as unknown as { id: string; name: string; player_clubs: unknown[] | null }[];
+  const byId = new Map(rows.map((r) => [r.id, r]));
+  const missing: string[] = [];
+  for (const id of playerIds) {
+    const row = byId.get(id);
+    if (!row) {
+      missing.push(id);
+      continue;
+    }
+    if (!row.player_clubs || row.player_clubs.length === 0) {
+      missing.push(row.name || id);
+    }
+  }
+  return missing;
+}
+
 export async function publishPack(
   date: string,
   clubId: string,
@@ -83,6 +111,11 @@ export async function publishPack(
   if (!supabase) return { ok: false, error: "Supabase unavailable" };
   if (playerIds.length !== 10) return { ok: false, error: "Pack must have exactly 10 players" };
   if (new Set(playerIds).size !== 10) return { ok: false, error: "Player list contains duplicates" };
+
+  const missing = await findPlayersMissingClubHistory(playerIds);
+  if (missing.length > 0) {
+    return { ok: false, error: `Player(s) without club history: ${missing.join(", ")}` };
+  }
 
   const { error } = await supabase
     .from("pack_schedule")
@@ -100,6 +133,11 @@ export async function updatePack(
   if (!supabase) return { ok: false, error: "Supabase unavailable" };
   if (playerIds.length !== 10) return { ok: false, error: "Pack must have exactly 10 players" };
   if (new Set(playerIds).size !== 10) return { ok: false, error: "Player list contains duplicates" };
+
+  const missing = await findPlayersMissingClubHistory(playerIds);
+  if (missing.length > 0) {
+    return { ok: false, error: `Player(s) without club history: ${missing.join(", ")}` };
+  }
 
   const { error } = await supabase
     .from("pack_schedule")

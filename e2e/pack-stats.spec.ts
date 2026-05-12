@@ -9,12 +9,15 @@ test.describe("Pack mode stats panel", () => {
       return;
     }
 
+    const packSize = await page.getByRole("list", { name: "Pack progress" }).getByRole("listitem").count();
+    const todayScore = Math.min(8, packSize);
+
     const today = await page.evaluate(() => {
       const d = new Date();
       return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
     });
 
-    await page.evaluate((date) => {
+    await page.evaluate(({ date, size, score }) => {
       localStorage.setItem(
         "football-nerdle-pack-stats",
         JSON.stringify({
@@ -27,16 +30,16 @@ test.describe("Pack mode stats panel", () => {
           lastSuccessDate: date,
         }),
       );
-      const attempts = Array.from({ length: 10 }, (_, i) => ({
+      const attempts = Array.from({ length: size }, (_, i) => ({
         playerId: `p${i + 1}`,
-        correct: i < 8,
-        guesses: i < 8 ? 1 : 3,
+        correct: i < score,
+        guesses: i < score ? 1 : 3,
       }));
       localStorage.setItem(
         `football-nerdle-pack-${date}`,
-        JSON.stringify({ date, score: 8, attempts }),
+        JSON.stringify({ date, score, attempts }),
       );
-    }, today);
+    }, { date: today, size: packSize, score: todayScore });
 
     await page.goto("/#/pack");
 
