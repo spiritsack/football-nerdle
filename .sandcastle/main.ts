@@ -10,11 +10,20 @@
 //                               reviewer runs in the same sandbox on the same
 //                               branch (1 iteration). All issue pipelines run
 //                               concurrently via Promise.allSettled().
-//   Phase 3 (Merge):            A single agent merges all completed branches
-//                               into the current branch.
+//   Phase 3 (Publish):          A single agent pushes each completed branch
+//                               to origin and opens a pull request for human
+//                               review. Branches are never auto-merged into
+//                               main and issues are not auto-closed — both
+//                               happen when the human merges the PR.
 //
 // The outer loop repeats up to MAX_ITERATIONS times so that newly unblocked
-// issues are picked up after each round of merges.
+// issues are picked up after each round of publish.
+//
+// NOTE: because Phase 3 no longer merges into the current branch, the next
+// iteration's planner will keep re-picking issues whose PRs are still open.
+// That's expected — once the human merges a PR and closes its issue, the
+// planner stops selecting it. If you want to clear the queue locally without
+// waiting for the human, close the issue manually.
 //
 // Usage:
 //   npx tsx .sandcastle/main.ts
@@ -193,18 +202,19 @@ for (let iteration = 1; iteration <= MAX_ITERATIONS; iteration++) {
   }
 
   // -------------------------------------------------------------------------
-  // Phase 3: Merge
+  // Phase 3: Publish
   //
-  // One agent merges all completed branches into the current branch,
-  // resolving any conflicts and running tests to confirm everything works.
+  // One agent pushes each completed branch to origin and opens a pull
+  // request for human review. No direct merges into main, no auto-closing
+  // of issues — the human does both when they merge the PR.
   //
-  // The {{BRANCHES}} and {{ISSUES}} prompt arguments are lists that the agent
-  // uses to know which branches to merge and which issues to close.
+  // The {{BRANCHES}} and {{ISSUES}} prompt arguments tell the agent which
+  // branches to publish and which issue ID each PR should close.
   // -------------------------------------------------------------------------
   await sandcastle.run({
     hooks,
     sandbox: docker(),
-    name: "merger",
+    name: "publisher",
     maxIterations: 1,
     agent: sandcastle.claudeCode("claude-opus-4-6"),
     promptFile: "./.sandcastle/merge-prompt.md",
@@ -218,7 +228,7 @@ for (let iteration = 1; iteration <= MAX_ITERATIONS; iteration++) {
     },
   });
 
-  console.log("\nBranches merged.");
+  console.log("\nPull requests opened.");
 }
 
 console.log("\nAll done.");
