@@ -127,25 +127,35 @@ export default function GuessThePlayer() {
         {status === "playing" && (
           <div className="flex items-center gap-3">
             <span className="text-sm font-medium text-gray-300">Show club names</span>
-            <button
-              role="switch"
-              aria-checked={!hardMode}
-              aria-label="Show club names"
-              title={!hardMode ? "You've peeked at today's teams — I'll reset this for tomorrow :)" : undefined}
-              onClick={toggleHardMode}
-              disabled={!hardMode}
-              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                !hardMode
-                  ? "bg-emerald-700/70 cursor-not-allowed"
-                  : "bg-gray-600 hover:bg-gray-500"
-              }`}
-            >
-              <span
-                className={`inline-block h-4 w-4 rounded-full bg-white transition-transform ${
-                  !hardMode ? "translate-x-6" : "translate-x-1"
+            <div className="relative group">
+              <button
+                role="switch"
+                aria-checked={!hardMode}
+                aria-label="Show club names"
+                onClick={toggleHardMode}
+                disabled={!hardMode}
+                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                  !hardMode
+                    ? "bg-emerald-700/70 cursor-not-allowed"
+                    : "bg-gray-600 hover:bg-gray-500"
                 }`}
-              />
-            </button>
+              >
+                <span
+                  className={`inline-block h-4 w-4 rounded-full bg-white transition-transform ${
+                    !hardMode ? "translate-x-6" : "translate-x-1"
+                  }`}
+                />
+              </button>
+              {!hardMode && (
+                <div
+                  role="tooltip"
+                  className="pointer-events-none absolute left-1/2 top-full z-10 mt-2 w-56 -translate-x-1/2 rounded-md bg-gray-800 px-3 py-2 text-center text-xs text-gray-200 shadow-lg ring-1 ring-gray-700 opacity-0 transition-opacity duration-150 group-hover:opacity-100"
+                >
+                  You've peeked at today's teams — I'll reset this for tomorrow :)
+                  <span className="absolute -top-1 left-1/2 h-2 w-2 -translate-x-1/2 rotate-45 bg-gray-800 ring-1 ring-gray-700" />
+                </div>
+              )}
+            </div>
           </div>
         )}
 
