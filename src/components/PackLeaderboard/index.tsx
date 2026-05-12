@@ -1,14 +1,14 @@
 import { useEffect, useState } from "react";
 import { getPackLeaderboard, type PackLeaderboardEntry } from "../../api/packLeaderboard";
 
-const ALL_BUCKETS = [10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0];
-
 interface Props {
   date: string;
   userScore: number;
+  packSize: number;
 }
 
-export default function PackLeaderboard({ date, userScore }: Props) {
+export default function PackLeaderboard({ date, userScore, packSize }: Props) {
+  const allBuckets = Array.from({ length: packSize + 1 }, (_, i) => packSize - i);
   const [entries, setEntries] = useState<PackLeaderboardEntry[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -29,7 +29,7 @@ export default function PackLeaderboard({ date, userScore }: Props) {
   }
 
   const total = [...countMap.values()].reduce((sum, c) => sum + c, 0);
-  const maxCount = Math.max(...ALL_BUCKETS.map((b) => countMap.get(b) ?? 0), 1);
+  const maxCount = Math.max(...allBuckets.map((b) => countMap.get(b) ?? 0), 1);
 
   if (total === 0) return null;
 
@@ -37,7 +37,7 @@ export default function PackLeaderboard({ date, userScore }: Props) {
     <div aria-label="Today's results" className="bg-gray-800 border border-gray-600 rounded-xl p-6 max-w-md w-full">
       <h3 className="text-lg font-semibold text-center text-gray-300 mb-4">Today's Results</h3>
       <div className="space-y-2">
-        {ALL_BUCKETS.map((bucket) => {
+        {allBuckets.map((bucket) => {
           const count = countMap.get(bucket) ?? 0;
           const pct = total > 0 ? Math.round((count / total) * 100) : 0;
           const barWidth = maxCount > 0 ? (count / maxCount) * 100 : 0;
@@ -46,7 +46,7 @@ export default function PackLeaderboard({ date, userScore }: Props) {
           return (
             <div key={bucket} className="flex items-center gap-3">
               <span className={`text-xs w-12 shrink-0 text-right ${isUser ? "text-white font-bold" : "text-gray-400"}`}>
-                {bucket}/10
+                {bucket}/{packSize}
               </span>
               <div className="flex-1 h-6 bg-gray-700 rounded overflow-hidden relative">
                 <div
