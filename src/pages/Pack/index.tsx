@@ -85,6 +85,11 @@ export default function Pack() {
               <img src={pack.club.badge} alt={pack.club.name} className="w-16 h-16 object-contain" />
             )}
 
+            <div className="text-center">
+              <h2 className="text-2xl font-bold">{pack.club.name} Pack</h2>
+              <p className="text-gray-400 text-sm">Pack #{getPackDayNumber(pack.date)}</p>
+            </div>
+
             <ProgressStrip total={pack.players.length} attempts={attempts} currentIndex={currentIndex} />
 
             <div className="text-lg">
