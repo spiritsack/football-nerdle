@@ -9,6 +9,9 @@ test.describe("Pack mode leaderboard", () => {
       return;
     }
 
+    const packSize = await page.getByRole("list", { name: "Pack progress" }).getByRole("listitem").count();
+    const userScore = Math.min(7, packSize);
+
     const today = await page.evaluate(() => {
       const d = new Date();
       return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
@@ -16,31 +19,32 @@ test.describe("Pack mode leaderboard", () => {
 
     // Pre-populate a finished pack so the leaderboard renders, AND mark the
     // result as already submitted so we don't pollute production with a real insert.
-    await page.evaluate((date) => {
-      const attempts = Array.from({ length: 10 }, (_, i) => ({
+    await page.evaluate(({ date, size, score }) => {
+      const attempts = Array.from({ length: size }, (_, i) => ({
         playerId: `p${i + 1}`,
-        correct: i < 7,
-        guesses: i < 7 ? 1 : 3,
+        correct: i < score,
+        guesses: i < score ? 1 : 3,
       }));
       localStorage.setItem(
         `football-nerdle-pack-${date}`,
-        JSON.stringify({ date, score: 7, attempts }),
+        JSON.stringify({ date, score, attempts }),
       );
       localStorage.setItem(`football-nerdle-pack-lb-${date}`, "1");
-    }, today);
+    }, { date: today, size: packSize, score: userScore });
 
     await page.goto("/#/pack");
 
     const board = page.getByLabel("Today's results");
     await expect(board).toBeVisible({ timeout: 15_000 });
 
-    // The user's bucket (7/10) is rendered with bold styling.
-    const userRow = board.locator("div").filter({ hasText: /^7\/10/ }).first();
+    // The user's bucket is rendered with bold styling.
+    const userBucketPattern = new RegExp(`^${userScore}\\/${packSize}`);
+    const userRow = board.locator("div").filter({ hasText: userBucketPattern }).first();
     await expect(userRow).toBeVisible();
 
-    // All 11 buckets are rendered (0/10 through 10/10).
-    for (const score of [0, 1, 5, 7, 10]) {
-      await expect(board.getByText(`${score}/10`, { exact: true })).toBeVisible();
+    // All buckets from 0 to packSize are rendered.
+    for (const score of [0, 1, userScore, packSize]) {
+      await expect(board.getByText(`${score}/${packSize}`, { exact: true })).toBeVisible();
     }
   });
 });
