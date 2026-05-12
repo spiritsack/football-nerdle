@@ -49,5 +49,5 @@ export interface ShareInput {
 export function buildShareText({ date, clubName, score, attempts }: ShareInput): string {
   const dayNum = getPackDayNumber(date);
   const grid = attempts.map((a) => (a.correct ? "✅" : "❌")).join("");
-  return `Football Nerdle Pack #${dayNum} — ${clubName} ${score}/10\n${grid}\n${PACK_SHARE_URL}`;
+  return `Football Nerdle Pack #${dayNum} — ${clubName} ${score}/${attempts.length}\n${grid}\n${PACK_SHARE_URL}`;
 }

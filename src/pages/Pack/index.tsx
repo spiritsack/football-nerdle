@@ -183,7 +183,7 @@ export default function Pack() {
               )}
             </div>
 
-            <PackLeaderboard date={pack.date} userScore={score} />
+            <PackLeaderboard date={pack.date} userScore={score} packSize={pack.players.length} />
           </>
         )}
       </main>

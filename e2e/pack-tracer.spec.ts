@@ -18,9 +18,11 @@ test.describe("Pack Mode (tracer)", () => {
     }
 
     expect(outcome).toBe("playing");
-    await expect(page.getByRole("list", { name: "Pack progress" })).toBeVisible();
-    await expect(page.getByRole("listitem")).toHaveCount(10);
-    await expect(page.getByText(/Player\s+1\s*\/\s*10/)).toBeVisible();
+    const progress = page.getByRole("list", { name: "Pack progress" });
+    await expect(progress).toBeVisible();
+    const packSize = await progress.getByRole("listitem").count();
+    expect(packSize).toBeGreaterThan(0);
+    await expect(page.getByText(new RegExp(`Player\\s+1\\s*\\/\\s*${packSize}`))).toBeVisible();
     await expect(page.getByText(/Score:/)).toBeVisible();
   });
 
@@ -43,7 +45,7 @@ test.describe("Pack Mode (tracer)", () => {
 
     // Either it's the answer (advances to player 2) or it's wrong (counter ticks).
     await expect(async () => {
-      const onSecond = await page.getByText(/Player\s+2\s*\/\s*10/).isVisible();
+      const onSecond = await page.getByText(/Player\s+2\s*\/\s*\d+/).isVisible();
       const wrongTick = await page.getByText(/Guesses:.*1.*\/.*3/).isVisible();
       const reveal = await page.getByText("Out of guesses").isVisible();
       expect(onSecond || wrongTick || reveal).toBe(true);
