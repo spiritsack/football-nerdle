@@ -1,12 +1,26 @@
--- Enable pg_trgm for fuzzy name matching
+-- Enable extensions for fuzzy name matching.
+-- In this project both extensions live in the `public` schema; the wrapper
+-- below schema-qualifies the function + dictionary so it resolves regardless
+-- of the caller's search_path.
 CREATE EXTENSION IF NOT EXISTS pg_trgm;
+CREATE EXTENSION IF NOT EXISTS unaccent;
+
+-- unaccent() is STABLE, so it can't be used directly in index expressions.
+-- Wrap it in an IMMUTABLE SQL function so we can index/match on it.
+CREATE OR REPLACE FUNCTION immutable_unaccent(text)
+  RETURNS text
+  LANGUAGE sql
+  IMMUTABLE
+  PARALLEL SAFE
+  STRICT
+  AS $$ SELECT public.unaccent('public.unaccent'::regdictionary, $1) $$;
 
 -- GIN trigram indexes for candidate search
 CREATE INDEX IF NOT EXISTS idx_players_name_trgm
-  ON players USING gin (unaccent(name) gin_trgm_ops);
+  ON players USING gin (immutable_unaccent(name) gin_trgm_ops);
 
 CREATE INDEX IF NOT EXISTS idx_clubs_name_trgm
-  ON clubs USING gin (unaccent(name) gin_trgm_ops);
+  ON clubs USING gin (immutable_unaccent(name) gin_trgm_ops);
 
 -- Dismissed duplicate pairs (admin-rejected, order-agnostic)
 CREATE TABLE IF NOT EXISTS duplicate_dismissals (
@@ -52,6 +66,10 @@ CREATE POLICY "Admin write merge_log" ON merge_log
 --------------------------------------------------------------------
 -- Find duplicate player candidates
 --------------------------------------------------------------------
+-- Drop first so return-column changes take effect (CREATE OR REPLACE
+-- cannot alter a function's RETURNS TABLE signature).
+DROP FUNCTION IF EXISTS find_duplicate_player_candidates(FLOAT, INT);
+
 CREATE OR REPLACE FUNCTION find_duplicate_player_candidates(
   min_score FLOAT DEFAULT 0.55,
   max_results INT DEFAULT 50
@@ -73,6 +91,7 @@ RETURNS TABLE (
   cross_source BOOLEAN
 )
 LANGUAGE sql STABLE SECURITY DEFINER
+SET statement_timeout = '15s'
 AS $$
   WITH pairs AS (
     SELECT
@@ -92,13 +111,16 @@ AS $$
       CASE WHEN a.id < b.id THEN COALESCE(b.data_source, '') ELSE COALESCE(a.data_source, '') END AS source_b,
       CASE WHEN a.id < b.id THEN a.transfermarkt_id ELSE b.transfermarkt_id END AS transfermarkt_id_a,
       CASE WHEN a.id < b.id THEN b.transfermarkt_id ELSE a.transfermarkt_id END AS transfermarkt_id_b,
-      similarity(unaccent(a.name), unaccent(b.name)) AS name_sim,
+      similarity(immutable_unaccent(a.name), immutable_unaccent(b.name)) AS name_sim,
       (COALESCE(a.date_born, '') <> '' AND a.date_born = b.date_born) AS dob_match,
       (a.nationality_id IS NOT NULL AND a.nationality_id = b.nationality_id) AS same_nationality,
       (COALESCE(a.data_source, '') <> COALESCE(b.data_source, '')) AS cross_source
     FROM players a
     JOIN players b ON a.id < b.id
-      AND unaccent(a.name) % unaccent(b.name)
+      AND immutable_unaccent(a.name) % immutable_unaccent(b.name)
+      -- Hard floor on name similarity so common first-name overlaps
+      -- ("Juan García" / "Juan Pérez") don't flood the pair set.
+      AND similarity(immutable_unaccent(a.name), immutable_unaccent(b.name)) >= 0.45
     LEFT JOIN countries ca ON ca.id = a.nationality_id
     LEFT JOIN countries cb ON cb.id = b.nationality_id
   )
@@ -141,6 +163,8 @@ $$;
 --------------------------------------------------------------------
 -- Find duplicate club candidates
 --------------------------------------------------------------------
+DROP FUNCTION IF EXISTS find_duplicate_club_candidates(FLOAT, INT);
+
 CREATE OR REPLACE FUNCTION find_duplicate_club_candidates(
   min_score FLOAT DEFAULT 0.55,
   max_results INT DEFAULT 50
@@ -158,6 +182,7 @@ RETURNS TABLE (
   shared_player_count BIGINT
 )
 LANGUAGE sql STABLE SECURITY DEFINER
+SET statement_timeout = '15s'
 AS $$
   WITH pairs AS (
     SELECT
@@ -169,11 +194,12 @@ AS $$
       CASE WHEN a.id < b.id THEN COALESCE(cb.name, b.country_id, '') ELSE COALESCE(ca.name, a.country_id, '') END AS country_b,
       CASE WHEN a.id < b.id THEN COALESCE(a.badge, '') ELSE COALESCE(b.badge, '') END AS badge_a,
       CASE WHEN a.id < b.id THEN COALESCE(b.badge, '') ELSE COALESCE(a.badge, '') END AS badge_b,
-      similarity(unaccent(a.name), unaccent(b.name)) AS name_sim,
+      similarity(immutable_unaccent(a.name), immutable_unaccent(b.name)) AS name_sim,
       (a.country_id IS NOT NULL AND a.country_id = b.country_id) AS same_country
     FROM clubs a
     JOIN clubs b ON a.id < b.id
-      AND unaccent(a.name) % unaccent(b.name)
+      AND immutable_unaccent(a.name) % immutable_unaccent(b.name)
+      AND similarity(immutable_unaccent(a.name), immutable_unaccent(b.name)) >= 0.45
     LEFT JOIN countries ca ON ca.id = a.country_id
     LEFT JOIN countries cb ON cb.id = b.country_id
   ),
@@ -225,6 +251,8 @@ $$;
 --------------------------------------------------------------------
 -- Dismiss a duplicate pair
 --------------------------------------------------------------------
+DROP FUNCTION IF EXISTS dismiss_duplicate(TEXT, TEXT, TEXT, TEXT);
+
 CREATE OR REPLACE FUNCTION dismiss_duplicate(
   p_entity_type TEXT,
   p_id_a TEXT,
@@ -254,6 +282,8 @@ $$;
 --------------------------------------------------------------------
 -- Merge two players (winner absorbs loser)
 --------------------------------------------------------------------
+DROP FUNCTION IF EXISTS merge_players(TEXT, TEXT);
+
 CREATE OR REPLACE FUNCTION merge_players(
   p_winner_id TEXT,
   p_loser_id TEXT
@@ -359,6 +389,8 @@ $$;
 --------------------------------------------------------------------
 -- Merge two clubs (winner absorbs loser)
 --------------------------------------------------------------------
+DROP FUNCTION IF EXISTS merge_clubs(TEXT, TEXT);
+
 CREATE OR REPLACE FUNCTION merge_clubs(
   p_winner_id TEXT,
   p_loser_id TEXT
