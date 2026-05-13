@@ -1,7 +1,8 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useClubCandidates } from "./useMergeCandidates";
+import { findSharedPlayersForClubs } from "../../../api/dataCleanupApi";
 import { pickDefaultWinner, scoreColor, isFieldConflict } from "./helpers";
-import type { ClubCandidate, WinnerSide } from "./types";
+import type { ClubCandidate, WinnerSide, SharedPlayer } from "./types";
 
 function ScoreChips({ c }: { c: ClubCandidate }) {
   return (
@@ -57,6 +58,62 @@ function ClubSide({ c, side, selected, onSelect }: {
   );
 }
 
+function RosterOverlapPreview({ clubIdA, clubIdB, nameA, nameB }: {
+  clubIdA: string;
+  clubIdB: string;
+  nameA: string;
+  nameB: string;
+}) {
+  const [players, setPlayers] = useState<SharedPlayer[]>([]);
+  const [loaded, setLoaded] = useState(false);
+  const [expanded, setExpanded] = useState(false);
+
+  useEffect(() => {
+    if (!expanded) return;
+    let active = true;
+    findSharedPlayersForClubs(clubIdA, clubIdB).then((data) => {
+      if (active) { setPlayers(data); setLoaded(true); }
+    });
+    return () => { active = false; };
+  }, [clubIdA, clubIdB, expanded]);
+
+  return (
+    <div>
+      <button
+        type="button"
+        onClick={() => setExpanded(!expanded)}
+        className="text-xs text-blue-400 hover:text-blue-300 transition-colors"
+      >
+        {expanded ? "Hide" : "Show"} shared players
+      </button>
+      {expanded && (
+        <div className="mt-2">
+          {!loaded ? (
+            <p className="text-xs text-gray-500">Loading...</p>
+          ) : players.length === 0 ? (
+            <p className="text-xs text-gray-500">No shared players.</p>
+          ) : (
+            <div className="bg-gray-900/50 rounded-lg p-2 space-y-1 max-h-48 overflow-y-auto">
+              <div className="grid grid-cols-3 gap-2 text-xs text-gray-500 font-medium px-1">
+                <span>Player</span>
+                <span>{nameA}</span>
+                <span>{nameB}</span>
+              </div>
+              {players.map((p) => (
+                <div key={p.player_id} className="grid grid-cols-3 gap-2 text-xs text-gray-300 px-1">
+                  <span className="text-white">{p.player_name}</span>
+                  <span>{p.years_at_a}</span>
+                  <span>{p.years_at_b}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function CandidateRow({ c, onMerge, onDismiss }: {
   c: ClubCandidate;
   onMerge: (winnerId: string, loserId: string) => void;
@@ -78,6 +135,14 @@ function CandidateRow({ c, onMerge, onDismiss }: {
         <ClubSide c={c} side="a" selected={winner === "a"} onSelect={() => setWinner("a")} />
         <ClubSide c={c} side="b" selected={winner === "b"} onSelect={() => setWinner("b")} />
       </div>
+      {c.shared_player_count > 0 && (
+        <RosterOverlapPreview
+          clubIdA={c.id_a}
+          clubIdB={c.id_b}
+          nameA={c.name_a}
+          nameB={c.name_b}
+        />
+      )}
       <div className="flex gap-2 justify-end">
         <button
           type="button"

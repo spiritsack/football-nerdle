@@ -70,3 +70,16 @@ export interface OrphanClub {
   country: string;
   badge: string;
 }
+
+export interface SharedClub {
+  club_id: string;
+  club_name: string;
+  club_badge: string;
+}
+
+export interface SharedPlayer {
+  player_id: string;
+  player_name: string;
+  years_at_a: string;
+  years_at_b: string;
+}

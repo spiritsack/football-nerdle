@@ -1,5 +1,5 @@
 import { supabase } from "./supabaseClient";
-import type { PlayerCandidate, ClubCandidate, StintFragment, OrphanPlayer, OrphanClub } from "../pages/Admin/DataCleanup/types";
+import type { PlayerCandidate, ClubCandidate, StintFragment, OrphanPlayer, OrphanClub, SharedClub, SharedPlayer } from "../pages/Admin/DataCleanup/types";
 
 export async function findDuplicatePlayerCandidates(
   minScore = 0.55,
@@ -161,4 +161,36 @@ export async function deleteOrphanClub(id: string): Promise<boolean> {
     return false;
   }
   return true;
+}
+
+export async function findSharedClubsForPlayers(
+  playerIdA: string,
+  playerIdB: string,
+): Promise<SharedClub[]> {
+  if (!supabase) return [];
+  const { data, error } = await supabase.rpc("find_shared_clubs_for_players", {
+    p_player_a: playerIdA,
+    p_player_b: playerIdB,
+  });
+  if (error) {
+    console.error("findSharedClubsForPlayers failed:", error);
+    return [];
+  }
+  return data ?? [];
+}
+
+export async function findSharedPlayersForClubs(
+  clubIdA: string,
+  clubIdB: string,
+): Promise<SharedPlayer[]> {
+  if (!supabase) return [];
+  const { data, error } = await supabase.rpc("find_shared_players_for_clubs", {
+    p_club_a: clubIdA,
+    p_club_b: clubIdB,
+  });
+  if (error) {
+    console.error("findSharedPlayersForClubs failed:", error);
+    return [];
+  }
+  return data ?? [];
 }

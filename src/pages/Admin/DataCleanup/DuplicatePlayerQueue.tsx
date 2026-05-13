@@ -1,7 +1,8 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { usePlayerCandidates } from "./useMergeCandidates";
+import { findSharedClubsForPlayers } from "../../../api/dataCleanupApi";
 import { pickDefaultWinner, scoreColor, isFieldConflict } from "./helpers";
-import type { PlayerCandidate, WinnerSide } from "./types";
+import type { PlayerCandidate, WinnerSide, SharedClub } from "./types";
 
 function ScoreChips({ c }: { c: PlayerCandidate }) {
   return (
@@ -63,6 +64,33 @@ function PlayerSide({ c, side, selected, onSelect }: {
   );
 }
 
+function SharedClubs({ playerIdA, playerIdB }: { playerIdA: string; playerIdB: string }) {
+  const [clubs, setClubs] = useState<SharedClub[]>([]);
+  const [loaded, setLoaded] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+    findSharedClubsForPlayers(playerIdA, playerIdB).then((data) => {
+      if (active) { setClubs(data); setLoaded(true); }
+    });
+    return () => { active = false; };
+  }, [playerIdA, playerIdB]);
+
+  if (!loaded || clubs.length === 0) return null;
+
+  return (
+    <div className="flex flex-wrap items-center gap-2 text-xs text-gray-400">
+      <span className="text-gray-500">Shared clubs:</span>
+      {clubs.map((club) => (
+        <span key={club.club_id} className="flex items-center gap-1 bg-gray-700/50 px-2 py-0.5 rounded">
+          {club.club_badge && <img src={club.club_badge} alt="" className="w-4 h-4 object-contain" />}
+          {club.club_name}
+        </span>
+      ))}
+    </div>
+  );
+}
+
 function CandidateRow({ c, onMerge, onDismiss }: {
   c: PlayerCandidate;
   onMerge: (winnerId: string, loserId: string) => void;
@@ -84,6 +112,7 @@ function CandidateRow({ c, onMerge, onDismiss }: {
         <PlayerSide c={c} side="a" selected={winner === "a"} onSelect={() => setWinner("a")} />
         <PlayerSide c={c} side="b" selected={winner === "b"} onSelect={() => setWinner("b")} />
       </div>
+      <SharedClubs playerIdA={c.id_a} playerIdB={c.id_b} />
       <div className="flex gap-2 justify-end">
         <button
           type="button"
