@@ -99,6 +99,8 @@ AS $$
     FROM players a
     JOIN players b ON a.id < b.id
       AND unaccent(a.name) % unaccent(b.name)
+    LEFT JOIN countries ca ON ca.id = a.nationality_id
+    LEFT JOIN countries cb ON cb.id = b.nationality_id
   )
   SELECT
     p.id_a, p.id_b,
