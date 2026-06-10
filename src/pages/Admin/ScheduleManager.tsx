@@ -3,7 +3,7 @@ import { SEED_PLAYERS } from "../../data/seedPlayers";
 import { getAllScheduledDays } from "../../api/dailySchedule";
 import { upsertSchedule, deleteSchedule, getScheduleRange, getPlayerThumbnails, getPlayersByIds } from "../../api/adminApi";
 import { SCHEDULE_DAYS_AHEAD, SCHEDULE_DAYS_BACK } from "./constants";
-import { reshuffleSuggestions } from "./helpers";
+import { reshuffleSuggestions, movePlayerBetweenDays } from "./helpers";
 import type { DayState } from "./types";
 import type { Player } from "../../types";
 import PlayerSearch from "../../components/PlayerSearch";
@@ -37,6 +37,8 @@ export default function ScheduleManager() {
   const [expandedDate, setExpandedDate] = useState<string | null>(null);
   const [showPast, setShowPast] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [dragDate, setDragDate] = useState<string | null>(null);
+  const [dragOverDate, setDragOverDate] = useState<string | null>(null);
 
   const today = useMemo(() => getTodayString(), []);
 
@@ -205,6 +207,22 @@ export default function ScheduleManager() {
     setExpandedDate((prev) => (prev === date ? null : date));
   }, []);
 
+  const handleDragMove = useCallback(async (sourceDate: string, targetDate: string) => {
+    const result = movePlayerBetweenDays(days, sourceDate, targetDate, today);
+    if (!result) return;
+    for (const op of result.ops) {
+      const ok = op.type === "upsert"
+        ? await upsertSchedule(op.date, op.playerId)
+        : await deleteSchedule(op.date);
+      if (!ok) {
+        // A write failed midway — reload so state matches the DB
+        await loadSchedule();
+        return;
+      }
+    }
+    setDays(result.days);
+  }, [days, today, loadSchedule]);
+
   const handleShuffle = useCallback(() => {
     const pool = SEED_PLAYERS
       .filter((p) => !usedPlayerIds.has(p.id))
@@ -256,17 +274,33 @@ export default function ScheduleManager() {
           const player = day.assignedPlayer ?? day.suggestion;
           const isSuggestion = !day.assignedPlayer && !!day.suggestion;
           const isExpanded = expandedDate === day.date;
+          const canDrag = !!player && day.date > today;
 
           return (
             <div
               key={day.date}
+              onDragOver={(e) => {
+                if (!dragDate || !movePlayerBetweenDays(days, dragDate, day.date, today)) return;
+                e.preventDefault();
+                e.dataTransfer.dropEffect = "move";
+                setDragOverDate(day.date);
+              }}
+              onDragLeave={() => setDragOverDate((prev) => (prev === day.date ? null : prev))}
+              onDrop={(e) => {
+                if (!dragDate) return;
+                e.preventDefault();
+                const source = dragDate;
+                setDragDate(null);
+                setDragOverDate(null);
+                handleDragMove(source, day.date);
+              }}
               className={`rounded-lg border ${
                 isToday
                   ? "border-green-600 bg-gray-800"
                   : isPast
                     ? "border-gray-700 bg-gray-800/50 opacity-60"
                     : "border-gray-700 bg-gray-800"
-              }`}
+              } ${dragOverDate === day.date && dragDate !== day.date ? "ring-2 ring-blue-500/70" : ""}`}
             >
               {/* Day row */}
               <div className="flex items-center gap-3 px-4 py-3">
@@ -283,7 +317,20 @@ export default function ScheduleManager() {
                 {player ? (
                   <button
                     onClick={() => toggleExpand(day.date)}
-                    className="flex items-center gap-3 flex-1 text-left hover:bg-gray-700/50 rounded-lg px-2 py-1 -mx-2 -my-1 transition-colors"
+                    draggable={canDrag}
+                    onDragStart={(e) => {
+                      e.dataTransfer.effectAllowed = "move";
+                      e.dataTransfer.setData("text/plain", day.date);
+                      setDragDate(day.date);
+                    }}
+                    onDragEnd={() => {
+                      setDragDate(null);
+                      setDragOverDate(null);
+                    }}
+                    title={canDrag ? "Drag to move to another day" : undefined}
+                    className={`flex items-center gap-3 flex-1 text-left hover:bg-gray-700/50 rounded-lg px-2 py-1 -mx-2 -my-1 transition-colors ${
+                      canDrag ? "cursor-grab active:cursor-grabbing" : ""
+                    }`}
                   >
                     {player.thumbnail && (
                       <img
