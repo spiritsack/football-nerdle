@@ -1,5 +1,11 @@
 import type { Player } from "../../types";
 
+export interface DayState {
+  date: string;
+  assignedPlayer: Player | null;
+  suggestion: Player | null;
+}
+
 export interface ScheduleEntry {
   date: string;
   player: Player | null;

@@ -312,7 +312,7 @@ async function main() {
       }
       // Then player_clubs
       pcInserted += pcBatch.length;
-      await upsertBatch("player_clubs", pcBatch, "player_id,club_id,year_joined");
+      await upsertBatch("player_clubs", pcBatch, "player_id,club_id,year_joined,is_loan");
       pcBatch.length = 0;
     }
 
@@ -329,7 +329,7 @@ async function main() {
       await upsertBatch("clubs", newClubs, undefined, true);
     }
     pcInserted += pcBatch.length;
-    await upsertBatch("player_clubs", pcBatch, "player_id,club_id,year_joined");
+    await upsertBatch("player_clubs", pcBatch, "player_id,club_id,year_joined,is_loan");
   }
 
   console.log(`\n=== Results ===`);

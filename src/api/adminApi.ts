@@ -198,6 +198,7 @@ export async function addPlayerClub(
   clubId: string,
   yearJoined: string,
   yearDeparted: string,
+  isLoan = false,
 ): Promise<AdminClubRow | null> {
   if (!supabase) return null;
 
@@ -227,6 +228,7 @@ export async function addPlayerClub(
       club_id: clubId,
       year_joined: yearJoined,
       year_departed: yearDeparted,
+      is_loan: isLoan,
       sort_order: nextSortOrder,
     })
     .select("id, club_id, year_joined, year_departed, is_hidden, is_youth_team, is_loan, sort_order, clubs(name, badge)")
