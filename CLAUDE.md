@@ -49,7 +49,7 @@ src/
     dailySchedule.ts    — Daily player selection (Supabase daily_schedule table)
     dailyLeaderboard.ts — Community leaderboard: submit results, fetch distribution
     multiplayerRoom.ts  — Room CRUD: createRoom, joinRoom, updateTurn, subscribeToRoom
-    adminApi.ts         — Admin write operations: schedule, clubs, crests, player lookup
+    adminApi.ts         — Admin write operations: schedule, clubs, crests, player thumbnails
     useAdminAuth.ts     — Supabase Auth hook for admin sign-in/sign-out
   pages/
     Home/               — Landing page with game mode selection
@@ -68,7 +68,7 @@ src/
       index.tsx, types.ts, constants.ts
       ScheduleManager.tsx — Daily schedule curation with search
       PlayerClubList.tsx  — Club history editor (reorder, hide, loan/youth flags, crests)
-      CrestDropZone.tsx   — Drag-and-drop crest upload
+      ImageDropZone.tsx   — Drag-and-drop image upload (club crests, player photos)
   components/
     PlayerSearch/       — Reusable player autocomplete (searches Supabase)
       index.tsx, types.ts
