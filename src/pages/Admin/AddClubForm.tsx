@@ -21,6 +21,7 @@ export default function AddClubForm({ playerId, onAdded }: Props) {
   const [yearJoined, setYearJoined] = useState("");
   const [yearDeparted, setYearDeparted] = useState("");
   const [isPresent, setIsPresent] = useState(false);
+  const [isLoan, setIsLoan] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout>>(null);
@@ -65,6 +66,7 @@ export default function AddClubForm({ playerId, onAdded }: Props) {
     setYearJoined("");
     setYearDeparted("");
     setIsPresent(false);
+    setIsLoan(false);
     setError(null);
   }
 
@@ -84,10 +86,10 @@ export default function AddClubForm({ playerId, onAdded }: Props) {
       return;
     }
     setSaving(true);
-    const row = await addPlayerClub(playerId, selected.id, yearJoined, departed);
+    const row = await addPlayerClub(playerId, selected.id, yearJoined, departed, isLoan);
     setSaving(false);
     if (!row) {
-      setError("Failed to add club. It may already exist for this player+year.");
+      setError("Failed to add club. A stint at this club with the same joined year and loan status may already exist.");
       return;
     }
     onAdded(row);
@@ -158,6 +160,15 @@ export default function AddClubForm({ playerId, onAdded }: Props) {
             className="accent-green-500 w-3.5 h-3.5"
           />
           <span className="text-xs text-gray-300">Present</span>
+        </label>
+        <label className="flex items-center gap-1.5 cursor-pointer" title="Loan spell">
+          <input
+            type="checkbox"
+            checked={isLoan}
+            onChange={(e) => setIsLoan(e.target.checked)}
+            className="accent-blue-500 w-3.5 h-3.5"
+          />
+          <span className={`text-xs ${isLoan ? "text-blue-400" : "text-gray-300"}`}>Loan</span>
         </label>
         <button
           type="button"

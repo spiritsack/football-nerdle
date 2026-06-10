@@ -3,6 +3,8 @@ import { SEED_PLAYERS } from "../../data/seedPlayers";
 import { getAllScheduledDays } from "../../api/dailySchedule";
 import { upsertSchedule, deleteSchedule, getScheduleRange, getPlayerThumbnails, getPlayersByIds } from "../../api/adminApi";
 import { SCHEDULE_DAYS_AHEAD, SCHEDULE_DAYS_BACK } from "./constants";
+import { reshuffleSuggestions } from "./helpers";
+import type { DayState } from "./types";
 import type { Player } from "../../types";
 import PlayerSearch from "../../components/PlayerSearch";
 import PlayerClubList from "./PlayerClubList";
@@ -27,15 +29,10 @@ function getDateRange(daysBack: number, daysAhead: number): string[] {
   return dates;
 }
 
-interface DayState {
-  date: string;
-  assignedPlayer: Player | null;
-  suggestion: Player | null;
-}
-
 export default function ScheduleManager() {
   const [days, setDays] = useState<DayState[]>([]);
   const [usedPlayerIds, setUsedPlayerIds] = useState<Set<string>>(new Set());
+  const [thumbnails, setThumbnails] = useState<Map<string, string>>(new Map());
   const [scheduledPlayerLabels, setScheduledPlayerLabels] = useState<Map<string, string>>(new Map());
   const [expandedDate, setExpandedDate] = useState<string | null>(null);
   const [showPast, setShowPast] = useState(false);
@@ -77,6 +74,7 @@ export default function ScheduleManager() {
 
     // Fetch fresh thumbnails from the database (seed data may have stale URLs)
     const thumbnails = await getPlayerThumbnails(SEED_PLAYERS.map((p) => p.id));
+    setThumbnails(thumbnails);
     const withFreshThumbs = (p: Player): Player =>
       thumbnails.has(p.id) ? { ...p, thumbnail: thumbnails.get(p.id)! } : p;
 
@@ -207,18 +205,38 @@ export default function ScheduleManager() {
     setExpandedDate((prev) => (prev === date ? null : date));
   }, []);
 
+  const handleShuffle = useCallback(() => {
+    const pool = SEED_PLAYERS
+      .filter((p) => !usedPlayerIds.has(p.id))
+      .map((p) => (thumbnails.has(p.id) ? { ...p, thumbnail: thumbnails.get(p.id)! } : p));
+    setDays((prev) => reshuffleSuggestions(prev, pool, today));
+  }, [usedPlayerIds, thumbnails, today]);
+
   if (loading) {
     return <p className="text-gray-400 text-center py-8">Loading schedule...</p>;
   }
 
   return (
     <div className="space-y-2">
-      <h2 className="text-lg font-semibold mb-4">
-        Daily Schedule
-        <span className="text-gray-400 text-sm font-normal ml-2">
-          {SEED_PLAYERS.length - usedPlayerIds.size} seed players remaining
-        </span>
-      </h2>
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="text-lg font-semibold">
+          Daily Schedule
+          <span className="text-gray-400 text-sm font-normal ml-2">
+            {SEED_PLAYERS.length - usedPlayerIds.size} seed players remaining
+          </span>
+        </h2>
+        <button
+          onClick={handleShuffle}
+          className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-700 hover:bg-gray-600 text-gray-300 hover:text-white text-sm font-medium rounded-lg transition-colors"
+          title="Re-roll the suggested players for all open days"
+        >
+          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+              d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+          </svg>
+          Shuffle suggestions
+        </button>
+      </div>
 
       <div className="mb-4">
         <PlayerSearch

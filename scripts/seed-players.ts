@@ -215,7 +215,7 @@ async function seedPlayer(player: { id: string; name: string; thumbnail: string;
     }));
     const { error } = await supabase
       .from("player_clubs")
-      .upsert(rows, { onConflict: "player_id,club_id,year_joined" });
+      .upsert(rows, { onConflict: "player_id,club_id,year_joined,is_loan" });
     if (error) {
       console.warn(`    Failed to upsert clubs: ${error.message}`);
     } else {

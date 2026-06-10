@@ -299,13 +299,13 @@ async function main() {
       pcTotal++;
 
       if (pcBatch.length >= 500) {
-        await upsertBatch("player_clubs", pcBatch, "player_id,club_id,year_joined");
+        await upsertBatch("player_clubs", pcBatch, "player_id,club_id,year_joined,is_loan");
         pcBatch.length = 0;
       }
     }
   }
   if (pcBatch.length > 0) {
-    await upsertBatch("player_clubs", pcBatch, "player_id,club_id,year_joined");
+    await upsertBatch("player_clubs", pcBatch, "player_id,club_id,year_joined,is_loan");
   }
   console.log(`  Inserted ${pcTotal} player-club records`);
 
