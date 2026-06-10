@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { reshuffleSuggestions } from "../pages/Admin/helpers";
+import { reshuffleSuggestions, reorderList, movePlayerBetweenDays } from "../pages/Admin/helpers";
 import type { DayState } from "../pages/Admin/types";
 import type { Player } from "../types";
 
@@ -55,5 +55,105 @@ describe("reshuffleSuggestions", () => {
     reshuffleSuggestions(days, pool, TODAY);
     expect(days[0].suggestion).toBeNull();
     expect(pool).toEqual(poolCopy);
+  });
+});
+
+describe("reorderList", () => {
+  const list = ["a", "b", "c", "d"];
+
+  it("moves an item down the list", () => {
+    expect(reorderList(list, 0, 2)).toEqual(["b", "c", "a", "d"]);
+  });
+
+  it("moves an item up the list", () => {
+    expect(reorderList(list, 3, 1)).toEqual(["a", "d", "b", "c"]);
+  });
+
+  it("returns the input unchanged for no-op or out-of-range moves", () => {
+    expect(reorderList(list, 1, 1)).toBe(list);
+    expect(reorderList(list, -1, 2)).toBe(list);
+    expect(reorderList(list, 0, 4)).toBe(list);
+  });
+
+  it("does not mutate the input", () => {
+    reorderList(list, 0, 3);
+    expect(list).toEqual(["a", "b", "c", "d"]);
+  });
+});
+
+describe("movePlayerBetweenDays", () => {
+  it("swaps two assigned players and emits two upserts", () => {
+    const days = [
+      day("2026-06-11", player("a")),
+      day("2026-06-12", player("b")),
+    ];
+    const result = movePlayerBetweenDays(days, "2026-06-11", "2026-06-12", TODAY);
+    expect(result).not.toBeNull();
+    expect(result!.days[0].assignedPlayer?.id).toBe("b");
+    expect(result!.days[1].assignedPlayer?.id).toBe("a");
+    expect(result!.ops).toEqual([
+      { type: "upsert", date: "2026-06-12", playerId: "a" },
+      { type: "upsert", date: "2026-06-11", playerId: "b" },
+    ]);
+  });
+
+  it("moves an assigned player to an open day and backfills the source with the target's suggestion", () => {
+    const days = [
+      day("2026-06-11", player("a")),
+      day("2026-06-12", null, player("s")),
+    ];
+    const result = movePlayerBetweenDays(days, "2026-06-11", "2026-06-12", TODAY);
+    expect(result!.days[0].assignedPlayer).toBeNull();
+    expect(result!.days[0].suggestion?.id).toBe("s");
+    expect(result!.days[1].assignedPlayer?.id).toBe("a");
+    expect(result!.days[1].suggestion).toBeNull();
+    expect(result!.ops).toEqual([
+      { type: "upsert", date: "2026-06-12", playerId: "a" },
+      { type: "delete", date: "2026-06-11" },
+    ]);
+  });
+
+  it("swaps suggestions locally with no DB writes", () => {
+    const days = [
+      day("2026-06-11", null, player("s1")),
+      day("2026-06-12", null, player("s2")),
+    ];
+    const result = movePlayerBetweenDays(days, "2026-06-11", "2026-06-12", TODAY);
+    expect(result!.days[0].suggestion?.id).toBe("s2");
+    expect(result!.days[1].suggestion?.id).toBe("s1");
+    expect(result!.ops).toEqual([]);
+  });
+
+  it("rejects dropping a suggestion onto an assigned day", () => {
+    const days = [
+      day("2026-06-11", null, player("s")),
+      day("2026-06-12", player("a")),
+    ];
+    expect(movePlayerBetweenDays(days, "2026-06-11", "2026-06-12", TODAY)).toBeNull();
+  });
+
+  it("rejects moves involving today or past days", () => {
+    const days = [
+      day("2026-06-09", player("past")),
+      day("2026-06-10", player("today")),
+      day("2026-06-11", player("future")),
+    ];
+    expect(movePlayerBetweenDays(days, "2026-06-09", "2026-06-11", TODAY)).toBeNull();
+    expect(movePlayerBetweenDays(days, "2026-06-10", "2026-06-11", TODAY)).toBeNull();
+    expect(movePlayerBetweenDays(days, "2026-06-11", "2026-06-10", TODAY)).toBeNull();
+  });
+
+  it("rejects same-day drops, unknown dates, and empty source days", () => {
+    const days = [day("2026-06-11", player("a")), day("2026-06-12")];
+    expect(movePlayerBetweenDays(days, "2026-06-11", "2026-06-11", TODAY)).toBeNull();
+    expect(movePlayerBetweenDays(days, "2026-06-11", "2026-06-20", TODAY)).toBeNull();
+    expect(movePlayerBetweenDays(days, "2026-06-12", "2026-06-11", TODAY)).toBeNull();
+  });
+
+  it("does not mutate the input days", () => {
+    const days = [day("2026-06-11", player("a")), day("2026-06-12", player("b"))];
+    movePlayerBetweenDays(days, "2026-06-11", "2026-06-12", TODAY);
+    expect(days[0].assignedPlayer?.id).toBe("a");
+    expect(days[1].assignedPlayer?.id).toBe("b");
   });
 });

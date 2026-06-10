@@ -31,7 +31,10 @@ export default function CrestDropZone({ clubId, currentBadge, clubName, onUpdate
   );
 
   function handleDragOver(e: React.DragEvent) {
+    // Only react to file drags — row-reorder drags pass through to the row
+    if (!e.dataTransfer.types.includes("Files")) return;
     e.preventDefault();
+    e.stopPropagation();
     setDragging(true);
   }
 
@@ -41,7 +44,9 @@ export default function CrestDropZone({ clubId, currentBadge, clubName, onUpdate
   }
 
   function handleDrop(e: React.DragEvent) {
+    if (!e.dataTransfer.types.includes("Files")) return;
     e.preventDefault();
+    e.stopPropagation();
     setDragging(false);
     const file = e.dataTransfer.files[0];
     if (file) handleFile(file);

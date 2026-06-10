@@ -6,6 +6,10 @@ export interface DayState {
   suggestion: Player | null;
 }
 
+export type ScheduleOp =
+  | { type: "upsert"; date: string; playerId: string }
+  | { type: "delete"; date: string };
+
 export interface ScheduleEntry {
   date: string;
   player: Player | null;

@@ -11,6 +11,7 @@ import {
   updateClubSortOrders,
   updateClubName,
 } from "../../api/adminApi";
+import { reorderList } from "./helpers";
 import type { AdminClubRow } from "./types";
 import CrestDropZone from "./CrestDropZone";
 import AddClubForm from "./AddClubForm";
@@ -28,6 +29,8 @@ export default function PlayerClubList({ playerId }: Props) {
   const [editYearJoined, setEditYearJoined] = useState("");
   const [editYearDeparted, setEditYearDeparted] = useState("");
   const [legacyOverride, setLegacyOverride] = useState<boolean | null>(null);
+  const [dragIndex, setDragIndex] = useState<number | null>(null);
+  const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -101,6 +104,17 @@ export default function PlayerClubList({ playerId }: Props) {
     setClubs(updatedClubs);
     await updateClubSortOrders(updates);
   }, [clubs]);
+
+  const handleReorderDrop = useCallback(async (targetIndex: number) => {
+    const from = dragIndex;
+    setDragIndex(null);
+    setDragOverIndex(null);
+    if (from === null || from === targetIndex) return;
+
+    const newClubs = reorderList(clubs, from, targetIndex).map((c, i) => ({ ...c, sort_order: i }));
+    setClubs(newClubs);
+    await updateClubSortOrders(newClubs.map((c) => ({ id: c.id, sort_order: c.sort_order! })));
+  }, [clubs, dragIndex]);
 
   function startEditName(club: AdminClubRow) {
     setEditingNameId(club.id);
@@ -208,7 +222,7 @@ export default function PlayerClubList({ playerId }: Props) {
     <div className="space-y-1.5">
       <div className="flex items-center justify-between mb-2">
         <p className="text-xs text-gray-500">
-          Drag badge to upload crest. Click name to edit. Arrows to reorder.
+          Drag badge to upload crest. Click name to edit. Drag handle to reorder.
         </p>
         <button
           onClick={cycleLegacy}
@@ -226,10 +240,47 @@ export default function PlayerClubList({ playerId }: Props) {
       {clubs.map((club, index) => (
         <div
           key={club.id}
+          onDragOver={(e) => {
+            if (dragIndex === null) return;
+            e.preventDefault();
+            e.dataTransfer.dropEffect = "move";
+            setDragOverIndex(index);
+          }}
+          onDragLeave={() => setDragOverIndex((prev) => (prev === index ? null : prev))}
+          onDrop={(e) => {
+            if (dragIndex === null) return;
+            e.preventDefault();
+            handleReorderDrop(index);
+          }}
           className={`flex items-center gap-3 px-3 py-2 rounded-lg transition-opacity ${
             club.is_hidden || club.is_youth_team ? "opacity-40" : ""
-          }`}
+          } ${dragOverIndex === index && dragIndex !== index ? "ring-2 ring-green-500/60 bg-green-900/10" : ""}`}
         >
+          {/* Drag handle for reordering */}
+          <div
+            draggable
+            onDragStart={(e) => {
+              e.dataTransfer.effectAllowed = "move";
+              e.dataTransfer.setData("text/plain", String(club.id));
+              setDragIndex(index);
+            }}
+            onDragEnd={() => {
+              setDragIndex(null);
+              setDragOverIndex(null);
+            }}
+            className="shrink-0 px-0.5 text-gray-600 hover:text-gray-300 cursor-grab active:cursor-grabbing"
+            title="Drag to reorder"
+          >
+            <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24">
+              <circle cx="9" cy="6" r="1.5" />
+              <circle cx="15" cy="6" r="1.5" />
+              <circle cx="9" cy="12" r="1.5" />
+              <circle cx="15" cy="12" r="1.5" />
+              <circle cx="9" cy="18" r="1.5" />
+              <circle cx="15" cy="18" r="1.5" />
+            </svg>
+          </div>
+
           {/* Reorder buttons */}
           <div className="flex flex-col shrink-0">
             <button
