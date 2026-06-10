@@ -10,10 +10,11 @@ import {
   updatePlayerLegacy,
   updateClubSortOrders,
   updateClubName,
+  uploadClubCrest,
 } from "../../api/adminApi";
 import { reorderList } from "./helpers";
 import type { AdminClubRow } from "./types";
-import CrestDropZone from "./CrestDropZone";
+import ImageDropZone from "./ImageDropZone";
 import AddClubForm from "./AddClubForm";
 
 interface Props {
@@ -306,10 +307,12 @@ export default function PlayerClubList({ playerId }: Props) {
           </div>
 
           {/* Badge with drop zone */}
-          <CrestDropZone
-            clubId={club.club_id}
-            currentBadge={club.badge}
-            clubName={club.club_name}
+          <ImageDropZone
+            currentImage={club.badge}
+            alt={club.club_name}
+            fallbackText={club.club_name.slice(0, 2).toUpperCase()}
+            title={`Click or drag to upload crest for ${club.club_name}`}
+            upload={(file) => uploadClubCrest(club.club_id, file)}
             onUpdated={(url) => handleCrestUpdated(club.club_id, url)}
           />
 

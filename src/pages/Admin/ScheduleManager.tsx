@@ -1,13 +1,14 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { SEED_PLAYERS } from "../../data/seedPlayers";
 import { getAllScheduledDays } from "../../api/dailySchedule";
-import { upsertSchedule, deleteSchedule, getScheduleRange, getPlayerThumbnails, getPlayersByIds } from "../../api/adminApi";
+import { upsertSchedule, deleteSchedule, getScheduleRange, getPlayerThumbnails, getPlayersByIds, uploadPlayerThumbnail } from "../../api/adminApi";
 import { SCHEDULE_DAYS_AHEAD, SCHEDULE_DAYS_BACK } from "./constants";
 import { reshuffleSuggestions, movePlayerBetweenDays } from "./helpers";
 import type { DayState } from "./types";
 import type { Player } from "../../types";
 import PlayerSearch from "../../components/PlayerSearch";
 import PlayerClubList from "./PlayerClubList";
+import ImageDropZone from "./ImageDropZone";
 
 function formatDate(dateStr: string): string {
   const d = new Date(dateStr + "T12:00:00");
@@ -223,6 +224,19 @@ export default function ScheduleManager() {
     setDays(result.days);
   }, [days, today, loadSchedule]);
 
+  const handleThumbnailUpdated = useCallback((playerId: string, url: string) => {
+    setThumbnails((prev) => new Map(prev).set(playerId, url));
+    setDays((prev) =>
+      prev.map((d) => ({
+        ...d,
+        assignedPlayer:
+          d.assignedPlayer?.id === playerId ? { ...d.assignedPlayer, thumbnail: url } : d.assignedPlayer,
+        suggestion:
+          d.suggestion?.id === playerId ? { ...d.suggestion, thumbnail: url } : d.suggestion,
+      })),
+    );
+  }, []);
+
   const handleShuffle = useCallback(() => {
     const pool = SEED_PLAYERS
       .filter((p) => !usedPlayerIds.has(p.id))
@@ -401,9 +415,23 @@ export default function ScheduleManager() {
                 </div>
               </div>
 
-              {/* Expanded: club history */}
+              {/* Expanded: player photo + club history */}
               {isExpanded && player && (
-                <div className="border-t border-gray-700 px-4 py-3">
+                <div className="border-t border-gray-700 px-4 py-3 space-y-3">
+                  <div className="flex items-center gap-3">
+                    <ImageDropZone
+                      currentImage={player.thumbnail}
+                      alt={player.name}
+                      fallbackText={player.name.slice(0, 2).toUpperCase()}
+                      title={`Click or drag to upload a photo for ${player.name}`}
+                      shape="circle"
+                      upload={(file) => uploadPlayerThumbnail(player.id, file)}
+                      onUpdated={(url) => handleThumbnailUpdated(player.id, url)}
+                    />
+                    <p className="text-xs text-gray-500">
+                      Drag an image onto the photo (or click it) to replace the thumbnail.
+                    </p>
+                  </div>
                   <PlayerClubList playerId={player.id} />
                 </div>
               )}

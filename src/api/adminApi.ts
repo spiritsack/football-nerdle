@@ -335,6 +335,41 @@ export async function uploadClubCrest(clubId: string, file: File): Promise<strin
   return publicUrl;
 }
 
+// --- Player thumbnail operations ---
+
+export async function uploadPlayerThumbnail(playerId: string, file: File): Promise<string | null> {
+  if (!supabase) return null;
+  const ext = file.name.split(".").pop() ?? "png";
+  const path = `${playerId}.${ext}`;
+
+  const { error: uploadError } = await supabase.storage
+    .from("player-thumbnails")
+    .upload(path, file, { upsert: true });
+  if (uploadError) {
+    console.error("uploadPlayerThumbnail upload failed:", uploadError);
+    return null;
+  }
+
+  const { data: urlData } = supabase.storage
+    .from("player-thumbnails")
+    .getPublicUrl(path);
+
+  // Cache-bust: re-uploads keep the same path, so the URL must change for
+  // browsers (and the players row) to pick up the new image
+  const publicUrl = `${urlData.publicUrl}?v=${Date.now()}`;
+
+  const { error: updateError } = await supabase
+    .from("players")
+    .update({ thumbnail: publicUrl })
+    .eq("id", playerId);
+  if (updateError) {
+    console.error("uploadPlayerThumbnail update failed:", updateError);
+    return null;
+  }
+
+  return publicUrl;
+}
+
 export async function updateClubBadge(clubId: string, badgeUrl: string): Promise<boolean> {
   if (!supabase) return false;
   const { error } = await supabase
