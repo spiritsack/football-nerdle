@@ -3,7 +3,9 @@ import type { Player } from "../types";
 // Ordered list of curated seed players for the daily Guess the Player game.
 // Players are shown sequentially by day number — no repeats.
 // First 19 are the original seeds (kept for backwards compatibility with existing day assignments).
-// Followed by Guardian Top 100 (2025) players and players with 3+ top club appearances.
+// Followed by Guardian Top 100 (2025) players, players with 3+ top club appearances,
+// and retired legacy legends. Only append to this list — never reorder or remove,
+// or past daily puzzles would change.
 
 export const SEED_PLAYERS: Player[] = [
   // --- Original 19 seeds (days 1–19) ---
@@ -118,4 +120,45 @@ export const SEED_PLAYERS: Player[] = [
   { id: "tm_80444", name: "Philippe Coutinho", thumbnail: "https://img.a.transfermarkt.technology/portrait/header/80444-1694011081.jpg?lm=1", nationality: "Brazil" },
   { id: "tm_134425", name: "Raheem Sterling", thumbnail: "https://img.a.transfermarkt.technology/portrait/header/134425-1694011680.jpg?lm=1", nationality: "England" },
   { id: "tm_82442", name: "Olivier Giroud", thumbnail: "https://img.a.transfermarkt.technology/portrait/header/82442-1694011484.jpg?lm=1", nationality: "France" },
+
+  // --- Legacy legends (retired players, verified against production DB) ---
+  { id: "tm_31909", name: "Toni Kroos", thumbnail: "https://img.a.transfermarkt.technology/portrait/header/31909-1700638741.jpg?lm=1", nationality: "Germany" },
+  { id: "tm_190185", name: "Marcelo", thumbnail: "https://img.a.transfermarkt.technology/portrait/header/190185-1705662897.png?lm=1", nationality: "Brazil" },
+  { id: "tm_32467", name: "Ivan Rakitic", thumbnail: "https://img.a.transfermarkt.technology/portrait/header/32467-1688726103.jpg?lm=1", nationality: "Croatia" },
+  { id: "tm_39728", name: "Mats Hummels", thumbnail: "https://img.a.transfermarkt.technology/portrait/header/39728-1709560545.jpg?lm=1", nationality: "Germany" },
+  { id: "tm_48280", name: "Edinson Cavani", thumbnail: "https://img.a.transfermarkt.technology/portrait/header/48280-1739899618.jpg?lm=1", nationality: "Uruguay" },
+  { id: "tm_44068", name: "Juan Mata", thumbnail: "https://img.a.transfermarkt.technology/portrait/header/44068-1671102342.png?lm=1", nationality: "Spain" },
+  { id: "tm_3366", name: "Kaká", thumbnail: "https://img.a.transfermarkt.technology/portrait/header/3366-1683638749.jpg?lm=1", nationality: "Brazil" },
+  { id: "tm_5958", name: "Francesco Totti", thumbnail: "https://img.a.transfermarkt.technology/portrait/header/5958-1448466835.jpg?lm=1", nationality: "Italy" },
+  { id: "tm_5023", name: "Gianluigi Buffon", thumbnail: "https://img.a.transfermarkt.technology/portrait/header/5023-1448530267.jpg?lm=1", nationality: "Italy" },
+  { id: "tm_3979", name: "Iker Casillas", thumbnail: "https://img.a.transfermarkt.technology/portrait/header/3979-1542105569.png?lm=1", nationality: "Spain" },
+  { id: "tm_7594", name: "Carles Puyol", thumbnail: "https://img.a.transfermarkt.technology/portrait/header/7594-1684225860.jpeg?lm=1", nationality: "Spain" },
+  { id: "tm_18944", name: "Gerard Piqué", thumbnail: "https://img.a.transfermarkt.technology/portrait/header/18944-1667548226.jpg?lm=1", nationality: "Spain" },
+  { id: "tm_65230", name: "Sergio Busquets", thumbnail: "https://img.a.transfermarkt.technology/portrait/header/65230-1740775050.jpg?lm=1", nationality: "Spain" },
+  { id: "tm_5658", name: "Petr Cech", thumbnail: "https://img.a.transfermarkt.technology/portrait/header/5658-1464946835.jpg?lm=1", nationality: "Czech Republic" },
+  { id: "tm_3406", name: "Ryan Giggs", thumbnail: "https://img.a.transfermarkt.technology/portrait/header/3406-1589198838.jpg?lm=1", nationality: "Wales" },
+  { id: "tm_3397", name: "Paul Scholes", thumbnail: "https://img.a.transfermarkt.technology/portrait/header/3397-1595498527.jpg?lm=1", nationality: "England" },
+  { id: "tm_8806", name: "Cesc Fàbregas", thumbnail: "https://img.a.transfermarkt.technology/portrait/header/8806-1614090062.jpg?lm=1", nationality: "Spain" },
+  { id: "tm_50202", name: "Eden Hazard", thumbnail: "https://img.a.transfermarkt.technology/portrait/header/50202-1665067742.jpg?lm=1", nationality: "Belgium" },
+  { id: "tm_4380", name: "Robin van Persie", thumbnail: "https://img.a.transfermarkt.technology/portrait/header/4380-1516382956.jpg?lm=1", nationality: "Netherlands" },
+  { id: "tm_4360", name: "Arjen Robben", thumbnail: "https://img.a.transfermarkt.technology/portrait/header/4360-1540568808.jpg?lm=1", nationality: "Netherlands" },
+  { id: "tm_22068", name: "Franck Ribéry", thumbnail: "https://img.a.transfermarkt.technology/portrait/header/22068-1663667692.jpg?lm=1", nationality: "France" },
+  { id: "tm_2514", name: "Bastian Schweinsteiger", thumbnail: "https://img.a.transfermarkt.technology/portrait/header/2514-1551256967.jpg?lm=1", nationality: "Germany" },
+  { id: "tm_2219", name: "Philipp Lahm", thumbnail: "https://img.a.transfermarkt.technology/portrait/header/2219-1471439838.JPG?lm=1", nationality: "Germany" },
+  { id: "tm_35664", name: "Mesut Özil", thumbnail: "https://img.a.transfermarkt.technology/portrait/header/35664-1483519286.jpg?lm=1", nationality: "Germany" },
+  { id: "tm_4673", name: "Wesley Sneijder", thumbnail: "https://img.a.transfermarkt.technology/portrait/header/4673-1473587409.jpeg?lm=1", nationality: "Netherlands" },
+  { id: "tm_9594", name: "Vincent Kompany", thumbnail: "https://img.a.transfermarkt.technology/portrait/header/9594-1454414462.jpg?lm=1", nationality: "Belgium" },
+  { id: "tm_39381", name: "Gareth Bale", thumbnail: "https://img.a.transfermarkt.technology/portrait/header/39381-1658665343.jpg?lm=1", nationality: "Wales" },
+  { id: "tm_19726", name: "Nemanja Vidic", thumbnail: "https://img.a.transfermarkt.technology/portrait/header/19726-1410340601.jpg?lm=1", nationality: "Serbia" },
+  { id: "tm_5285", name: "Patrice Evra", thumbnail: "https://img.a.transfermarkt.technology/portrait/header/5285-1416219199.jpg?lm=1", nationality: "France" },
+  { id: "tm_19981", name: "Javier Mascherano", thumbnail: "https://img.a.transfermarkt.technology/portrait/header/19981-1465280515.jpg?lm=1", nationality: "Argentina" },
+  { id: "tm_7980", name: "David Villa", thumbnail: "https://img.a.transfermarkt.technology/portrait/header/7980-1684165569.jpg?lm=1", nationality: "Spain" },
+  { id: "tm_7767", name: "Fernando Torres", thumbnail: "https://img.a.transfermarkt.technology/portrait/header/7767-1683642827.jpg?lm=1", nationality: "Spain" },
+  { id: "tm_35518", name: "David Silva", thumbnail: "https://img.a.transfermarkt.technology/portrait/header/35518-1683269363.jpg?lm=1", nationality: "Spain" },
+  { id: "tm_13091", name: "Yaya Touré", thumbnail: "https://img.a.transfermarkt.technology/portrait/header/13091-1544797025.jpg?lm=1", nationality: "Cote d'Ivoire" },
+  { id: "tm_15951", name: "Dani Alves", thumbnail: "https://img.a.transfermarkt.technology/portrait/header/15951-1635327520.jpg?lm=1", nationality: "Brazil" },
+  { id: "tm_4276", name: "Carlos Tevez", thumbnail: "https://img.a.transfermarkt.technology/portrait/header/4276-1644149301.jpg?lm=1", nationality: "Argentina" },
+  { id: "tm_69751", name: "Jordi Alba", thumbnail: "https://img.a.transfermarkt.technology/portrait/header/69751-1740774854.jpg?lm=1", nationality: "Spain" },
+  { id: "tm_54928", name: "Diego Godín", thumbnail: "https://img.a.transfermarkt.technology/portrait/header/54928-1547721268.jpg?lm=1", nationality: "Uruguay" },
+  { id: "tm_33923", name: "Blaise Matuidi", thumbnail: "https://img.a.transfermarkt.technology/portrait/header/33923-1618682220.jpg?lm=1", nationality: "France" },
 ];
