@@ -1,5 +1,6 @@
 import PlayerSearch from "../PlayerSearch";
 import type { PlayerCardProps } from "./types";
+import { getFlagEmoji } from "./helpers";
 
 function BadgeImg({ src, alt, size }: { src: string; alt: string; size: "sm" | "lg" }) {
   const imgClass = size === "lg" ? "w-16 h-16 object-contain" : "w-8 h-8 object-contain";
@@ -52,6 +53,8 @@ export default function PlayerCard({ player, clubs, hints, revealed, hardMode, r
     && clubs.every((c) => c.yearDeparted < lastYear);
   const isLegacy = player.isLegacy != null ? player.isLegacy : autoLegacy;
 
+  const flag = revealed ? getFlagEmoji(player.nationality ?? "") : null;
+
   const borderColor = result === "won" ? "border-green-600" : result === "lost" ? "border-red-600" : isLegacy ? "border-amber-700/60" : "border-gray-600";
 
   return (
@@ -91,7 +94,19 @@ export default function PlayerCard({ player, clubs, hints, revealed, hardMode, r
         )}
         <div className="flex-1 min-w-0">
           {revealed ? (
-            <p className="text-xl font-bold truncate">{player.name}</p>
+            <div className="flex items-center gap-2 min-w-0">
+              {flag && (
+                <span
+                  role="img"
+                  aria-label={`${player.nationality} flag`}
+                  data-testid="nationality-flag"
+                  className="text-xl shrink-0"
+                >
+                  {flag}
+                </span>
+              )}
+              <p className="text-xl font-bold truncate">{player.name}</p>
+            </div>
           ) : onGuess ? (
             <div className="flex items-center gap-2 w-full">
               <div className="flex-1 min-w-0">
