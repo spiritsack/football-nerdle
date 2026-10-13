@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { DAILY_GUESS_KEY } from "../GuessThePlayer/constants";
-import { PACK_RESULT_PREFIX } from "../Pack/constants";
 import { getTodayString } from "../../utils/dates";
 
 function isDailyCompleted(): boolean {
@@ -15,17 +14,8 @@ function isDailyCompleted(): boolean {
   }
 }
 
-function isPackCompleted(): boolean {
-  try {
-    return localStorage.getItem(PACK_RESULT_PREFIX + getTodayString()) !== null;
-  } catch {
-    return false;
-  }
-}
-
 export default function Home() {
   const [dailyDone] = useState(isDailyCompleted);
-  const [packDone] = useState(isPackCompleted);
 
   return (
     <div className="min-h-screen bg-gray-900 text-white flex flex-col">
@@ -51,14 +41,14 @@ export default function Home() {
               {dailyDone ? "Daily (Done)" : "Daily Challenge"}
             </Link>
             <Link
-              to="/guess?mode=random"
+              to="/guess/archive"
               className={`px-5 py-2.5 rounded-lg font-semibold transition-colors ${
                 dailyDone
                   ? "bg-green-600 hover:bg-green-500 text-white"
                   : "bg-gray-700 text-gray-300 hover:bg-gray-600"
               }`}
             >
-              Random
+              Archive
             </Link>
           </div>
         </div>
@@ -72,23 +62,6 @@ export default function Home() {
             Name footballers who played together to build the longest chain. 15 seconds per turn.
           </p>
         </Link>
-
-        <div className="w-full bg-gray-800 border border-gray-600 rounded-xl p-6 text-center transition-colors">
-          <h2 className="text-2xl font-bold mb-2">Pack Mode</h2>
-          <p className="text-gray-400 mb-4">
-            Name 10 players from one club. 3 guesses each. How high can you score?
-          </p>
-          <Link
-            to="/pack"
-            className={`inline-block px-5 py-2.5 rounded-lg font-semibold transition-colors ${
-              packDone
-                ? "bg-gray-700 text-gray-300 hover:bg-gray-600"
-                : "bg-green-600 hover:bg-green-500 text-white"
-            }`}
-          >
-            {packDone ? "Pack (Done)" : "Today's Pack"}
-          </Link>
-        </div>
       </main>
     </div>
   );
