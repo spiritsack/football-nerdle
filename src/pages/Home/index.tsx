@@ -2,6 +2,12 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 import { DAILY_GUESS_KEY } from "../GuessThePlayer/constants";
 import { getTodayString } from "../../utils/dates";
+import HowToPlayModal from "../../components/HowToPlayModal";
+import { HOW_TO_PLAY } from "./constants";
+import type { GameModeKey } from "./types";
+
+const HOW_TO_PLAY_BUTTON_CLASS =
+  "mt-4 text-sm text-gray-400 hover:text-white underline underline-offset-2 transition-colors";
 
 function isDailyCompleted(): boolean {
   try {
@@ -16,6 +22,7 @@ function isDailyCompleted(): boolean {
 
 export default function Home() {
   const [dailyDone] = useState(isDailyCompleted);
+  const [openRules, setOpenRules] = useState<GameModeKey | null>(null);
 
   return (
     <div className="min-h-screen bg-gray-900 text-white flex flex-col">
@@ -51,18 +58,39 @@ export default function Home() {
               Archive
             </Link>
           </div>
+          <button
+            type="button"
+            onClick={() => setOpenRules("guess")}
+            className={HOW_TO_PLAY_BUTTON_CLASS}
+          >
+            How to play
+          </button>
         </div>
 
-        <Link
-          to="/battle"
-          className="w-full bg-gray-800 border border-gray-600 hover:border-green-500 rounded-xl p-6 text-center transition-colors block"
-        >
-          <h2 className="text-2xl font-bold mb-2">Battle Mode</h2>
-          <p className="text-gray-400">
-            Name footballers who played together to build the longest chain. 15 seconds per turn.
-          </p>
-        </Link>
+        <div className="w-full bg-gray-800 border border-gray-600 hover:border-green-500 rounded-xl p-6 text-center transition-colors">
+          <Link to="/battle" className="block">
+            <h2 className="text-2xl font-bold mb-2">Battle Mode</h2>
+            <p className="text-gray-400">
+              Name footballers who played together to build the longest chain. 15 seconds per turn.
+            </p>
+          </Link>
+          <button
+            type="button"
+            onClick={() => setOpenRules("battle")}
+            className={HOW_TO_PLAY_BUTTON_CLASS}
+          >
+            How to play
+          </button>
+        </div>
       </main>
+
+      {openRules && (
+        <HowToPlayModal
+          title={HOW_TO_PLAY[openRules].title}
+          rules={HOW_TO_PLAY[openRules].rules}
+          onClose={() => setOpenRules(null)}
+        />
+      )}
     </div>
   );
 }
