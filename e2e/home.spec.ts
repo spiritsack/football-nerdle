@@ -64,3 +64,61 @@ test.describe("Home Page", () => {
     await expect(page.getByRole("link", { name: /Today's Pack|Pack \(Done\)/ })).toHaveCount(0);
   });
 });
+
+test.describe("How to play", () => {
+  test("each mode card has a How to play button", async ({ page }) => {
+    await page.goto("/#/");
+    await expect(page.getByRole("button", { name: "How to play" })).toHaveCount(2);
+  });
+
+  test("Guess card opens Guess the Player rules with focus on Got it", async ({ page }) => {
+    await page.goto("/#/");
+    await page.getByRole("button", { name: "How to play" }).first().click();
+    const dialog = page.getByRole("dialog", { name: "How to play: Guess the Player" });
+    await expect(dialog).toBeVisible();
+    await expect(dialog).toHaveAttribute("aria-modal", "true");
+    await expect(dialog).toContainText("5 attempts");
+    await expect(page.getByRole("button", { name: "Got it" })).toBeFocused();
+  });
+
+  test("Battle card opens Battle Mode rules", async ({ page }) => {
+    await page.goto("/#/");
+    await page.getByRole("button", { name: "How to play" }).nth(1).click();
+    const dialog = page.getByRole("dialog", { name: "How to play: Battle Mode" });
+    await expect(dialog).toBeVisible();
+    await expect(dialog).toHaveAttribute("aria-modal", "true");
+    await expect(dialog).toContainText("15 seconds");
+    await expect(page.getByRole("button", { name: "Got it" })).toBeFocused();
+  });
+
+  test("closes with Got it and does not navigate", async ({ page }) => {
+    await page.goto("/#/");
+    await page.getByRole("button", { name: "How to play" }).first().click();
+    await expect(page.getByRole("dialog")).toBeVisible();
+    await expect(page).toHaveURL(/#\/$/);
+    await page.getByRole("button", { name: "Got it" }).click();
+    await expect(page.getByRole("dialog")).toHaveCount(0);
+    await expect(page).toHaveURL(/#\/$/);
+  });
+
+  test("closes with Escape", async ({ page }) => {
+    await page.goto("/#/");
+    await page.getByRole("button", { name: "How to play" }).nth(1).click();
+    await expect(page.getByRole("dialog")).toBeVisible();
+    await page.keyboard.press("Escape");
+    await expect(page.getByRole("dialog")).toHaveCount(0);
+    await expect(page).toHaveURL(/#\/$/);
+  });
+
+  test("clicking inside the panel keeps it open, clicking the backdrop closes it", async ({ page }) => {
+    await page.goto("/#/");
+    await page.getByRole("button", { name: "How to play" }).first().click();
+    const dialog = page.getByRole("dialog");
+    await expect(dialog).toBeVisible();
+    await dialog.getByRole("heading").click();
+    await expect(dialog).toBeVisible();
+    await page.getByTestId("how-to-play-backdrop").click({ position: { x: 5, y: 5 } });
+    await expect(page.getByRole("dialog")).toHaveCount(0);
+    await expect(page).toHaveURL(/#\/$/);
+  });
+});
