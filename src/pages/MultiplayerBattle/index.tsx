@@ -22,6 +22,7 @@ export default function MultiplayerBattle() {
   useEffect(() => {
     if (status === "ready" && !lobbyCleanedUp) {
       cleanup();
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- gates the game mount until the lobby channel is unsubscribed
       setLobbyCleanedUp(true);
     }
   }, [status, lobbyCleanedUp, cleanup]);

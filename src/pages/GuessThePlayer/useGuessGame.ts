@@ -134,7 +134,7 @@ export function useGuessGame() {
       const message = e instanceof Error ? e.message : "Something went wrong";
       setState((s) => ({ ...s, status: "idle", error: message, dayNumber: dayNum, isArchive: true }));
     }
-  }, []);
+  }, [today]);
 
   const startRandom = useCallback(async () => {
     setState((s) => ({ ...s, status: "loading", error: null }));
@@ -211,7 +211,7 @@ export function useGuessGame() {
         }
       }
     },
-    [state.targetPlayer, state.status, state.attempts, state.isDaily, state.isArchive, state.dayNumber]
+    [state.targetPlayer, state.status, state.attempts, state.isDaily, state.isArchive, state.dayNumber, today]
   );
 
   const skipGuess = useCallback(() => {

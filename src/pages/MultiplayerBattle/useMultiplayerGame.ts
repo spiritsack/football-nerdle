@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef, useEffect } from "react";
+import { useState, useCallback, useRef, useEffect, useMemo } from "react";
 import { didPlayTogether, ApiError } from "../../utils/gameLogic";
 import { getPlayerWithTeamsCached } from "../../api/playerCache";
 import { startGame, submitTurn, endGame, subscribeToRoom, getRoom, sendHeartbeat } from "../../api/multiplayerRoom";
@@ -6,7 +6,7 @@ import type { Player, GameRoom } from "../../types";
 import { SEED_PLAYERS } from "../../data/seedPlayers";
 import { TURN_TIME } from "../../constants";
 import { HEARTBEAT_INTERVAL, DISCONNECT_THRESHOLD, DISCONNECT_GRACE } from "./constants";
-import { clearSession } from "./helpers";
+import { deriveStatus } from "./helpers";
 import type { MultiplayerGameStatus, MultiplayerGameState } from "./types";
 import type { RealtimeChannel } from "@supabase/supabase-js";
 
@@ -30,46 +30,33 @@ export function useMultiplayerGame(
 
   const opponentId = isHost ? state.room.guest_id! : state.room.host_id;
   const isMyTurn = state.room.current_turn === playerId;
-  const chain = state.room.chain ?? [];
+  const chain = useMemo(() => state.room.chain ?? [], [state.room.chain]);
   const currentPlayer = chain.length > 0
     ? chain[chain.length - 1]
     : null;
 
-  function deriveStatus(room: GameRoom, prev: MultiplayerGameStatus): MultiplayerGameStatus {
-    if (room.status === "finished") {
-      clearSession();
-      return "finished";
-    }
-    if (room.status === "playing") {
-      if (prev === "starting" || prev === "finished") return "playing";
-      if (prev === "checking" && room.current_turn === playerId) return "playing";
-      return prev;
-    }
-    return prev;
-  }
-
-  function applyRoomUpdate(incoming: GameRoom) {
-    setState((s) => {
-      const room: GameRoom = {
-        ...s.room,
-        ...incoming,
-        chain: incoming.chain ?? s.room.chain ?? [],
-        used_player_ids: incoming.used_player_ids ?? s.room.used_player_ids ?? [],
-        last_shared_clubs: incoming.last_shared_clubs ?? s.room.last_shared_clubs ?? [],
-      };
-      const newStatus = deriveStatus(room, s.status);
-      const clearWrong = s.status === "finished" && newStatus === "playing";
-      return {
-        ...s,
-        room,
-        status: newStatus,
-        wrongResult: clearWrong ? null : s.wrongResult,
-        error: clearWrong ? null : s.error,
-      };
-    });
-  }
-
   useEffect(() => {
+    function applyRoomUpdate(incoming: GameRoom) {
+      setState((s) => {
+        const room: GameRoom = {
+          ...s.room,
+          ...incoming,
+          chain: incoming.chain ?? s.room.chain ?? [],
+          used_player_ids: incoming.used_player_ids ?? s.room.used_player_ids ?? [],
+          last_shared_clubs: incoming.last_shared_clubs ?? s.room.last_shared_clubs ?? [],
+        };
+        const newStatus = deriveStatus(room, s.status, playerId);
+        const clearWrong = s.status === "finished" && newStatus === "playing";
+        return {
+          ...s,
+          room,
+          status: newStatus,
+          wrongResult: clearWrong ? null : s.wrongResult,
+          error: clearWrong ? null : s.error,
+        };
+      });
+    }
+
     channelRef.current = subscribeToRoom(state.room.id, applyRoomUpdate);
     return () => {
       channelRef.current?.unsubscribe();
@@ -149,7 +136,7 @@ export function useMultiplayerGame(
             used_player_ids: room.used_player_ids ?? s.room.used_player_ids ?? [],
             last_shared_clubs: room.last_shared_clubs ?? s.room.last_shared_clubs ?? [],
           };
-          const newStatus = deriveStatus(merged, s.status);
+          const newStatus = deriveStatus(merged, s.status, playerId);
           const clearWrong = s.status === "finished" && newStatus === "playing";
           return {
             ...s,
@@ -197,6 +184,7 @@ export function useMultiplayerGame(
     const remaining = Math.max(0, TURN_TIME - elapsed);
 
     if (remaining <= 0) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- syncs the countdown to the server's turn_started_at
       setTimeLeft(0);
       return;
     }

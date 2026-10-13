@@ -12,14 +12,11 @@ interface UseAdminAuth {
 
 export function useAdminAuth(): UseAdminAuth {
   const [session, setSession] = useState<Session | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(() => !!supabase);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!supabase) {
-      setLoading(false);
-      return;
-    }
+    if (!supabase) return;
 
     supabase.auth.getSession().then(({ data: { session: s } }) => {
       setSession(s);
