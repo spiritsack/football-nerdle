@@ -8,7 +8,7 @@ import type { GuessGameState, GuessStats, RevealedHints } from "./types";
 import {
   getTodayString, getDailyPlayerIndex, getDayNumber, getDateForDay,
   getDailyResult, getDailyResultForDate, saveDailyResult, saveDailyResultForDate,
-  loadStats, recordResult
+  loadStats, recordResult, getGuessAnnouncement
 } from "./helpers";
 
 const NO_HINTS: RevealedHints = { nationality: false, age: false, position: false, photo: false, initials: false };
@@ -41,10 +41,11 @@ export function useGuessGame() {
     dayNumber: null,
     dailyCompleted: !!alreadyPlayedToday,
     hints: NO_HINTS,
+    announcement: "",
   }));
 
   const startDaily = useCallback(async () => {
-    setState((s) => ({ ...s, status: "loading", error: null }));
+    setState((s) => ({ ...s, status: "loading", error: null, announcement: "" }));
     try {
       const seed = await getOrCreateDailyPlayer(today);
       const playerWithTeams = await getPlayerWithTeamsCached(seed);
@@ -62,6 +63,7 @@ export function useGuessGame() {
           isArchive: false,
           dayNumber: dayNum,
           dailyCompleted: true,
+          announcement: "",
         }));
       } else {
         setState({
@@ -76,21 +78,22 @@ export function useGuessGame() {
           dayNumber: dayNum,
           dailyCompleted: false,
           hints: NO_HINTS,
+          announcement: "",
         });
       }
     } catch (e) {
       const message = e instanceof Error ? e.message : "Something went wrong";
-      setState((s) => ({ ...s, status: "idle", error: message }));
+      setState((s) => ({ ...s, status: "idle", error: message, announcement: "" }));
     }
   }, [today]);
 
   const loadArchiveDay = useCallback(async (dayNum: number) => {
     const todayNum = getDayNumber(today);
     if (dayNum > todayNum || dayNum < 1) {
-      setState((s) => ({ ...s, status: "idle", error: "This day hasn't happened yet.", isArchive: true, dayNumber: dayNum }));
+      setState((s) => ({ ...s, status: "idle", error: "This day hasn't happened yet.", announcement: "", isArchive: true, dayNumber: dayNum }));
       return;
     }
-    setState((s) => ({ ...s, status: "loading", error: null }));
+    setState((s) => ({ ...s, status: "loading", error: null, announcement: "" }));
     try {
       const date = getDateForDay(dayNum);
       const seed = await getScheduledPlayerForDate(date);
@@ -112,6 +115,7 @@ export function useGuessGame() {
           dayNumber: dayNum,
           dailyCompleted: !!stored,
           hints: NO_HINTS,
+          announcement: "",
         });
         return;
       }
@@ -129,15 +133,16 @@ export function useGuessGame() {
         dayNumber: dayNum,
         dailyCompleted: !!stored,
         hints: NO_HINTS,
+        announcement: "",
       });
     } catch (e) {
       const message = e instanceof Error ? e.message : "Something went wrong";
-      setState((s) => ({ ...s, status: "idle", error: message, dayNumber: dayNum, isArchive: true }));
+      setState((s) => ({ ...s, status: "idle", error: message, announcement: "", dayNumber: dayNum, isArchive: true }));
     }
   }, [today]);
 
   const startRandom = useCallback(async () => {
-    setState((s) => ({ ...s, status: "loading", error: null }));
+    setState((s) => ({ ...s, status: "loading", error: null, announcement: "" }));
     try {
       const playerWithTeams = await getRandomCachedPlayer();
       if (!playerWithTeams) throw new Error("No players available");
@@ -153,10 +158,11 @@ export function useGuessGame() {
         dayNumber: null,
         dailyCompleted: false,
         hints: NO_HINTS,
+        announcement: "",
       });
     } catch (e) {
       const message = e instanceof Error ? e.message : "Something went wrong";
-      setState((s) => ({ ...s, status: "idle", error: message }));
+      setState((s) => ({ ...s, status: "idle", error: message, announcement: "" }));
     }
   }, []);
 
@@ -179,11 +185,13 @@ export function useGuessGame() {
           saveDailyResultForDate(archiveDate, "won", finalAttempts);
           submitDailyResult(archiveDate, true, finalAttempts);
         }
-        setState((s) => ({ ...s, status: "won", attempts: finalAttempts, dailyCompleted: s.isDaily }));
+        const announcement = getGuessAnnouncement({ kind: "won", targetName: state.targetPlayer.name, attempts: finalAttempts });
+        setState((s) => ({ ...s, status: "won", attempts: finalAttempts, dailyCompleted: s.isDaily, announcement }));
       } else {
         const newAttempts = state.attempts + 1;
         const newHints = hintsForWrongCount(newAttempts);
         if (newAttempts >= MAX_ATTEMPTS) {
+          const lostAnnouncement = getGuessAnnouncement({ kind: "lost", targetName: state.targetPlayer.name });
           if (state.isDaily) {
             saveDailyResult("lost", newAttempts);
             setStats(recordResult(false, today));
@@ -200,6 +208,7 @@ export function useGuessGame() {
             status: "lost",
             dailyCompleted: s.isDaily,
             hints: newHints,
+            announcement: lostAnnouncement,
           }));
         } else {
           setState((s) => ({
@@ -207,6 +216,7 @@ export function useGuessGame() {
             attempts: newAttempts,
             wrongGuesses: [...s.wrongGuesses, player],
             hints: newHints,
+            announcement: getGuessAnnouncement({ kind: "wrong", guessName: player.name, attemptsLeft: MAX_ATTEMPTS - newAttempts }),
           }));
         }
       }
@@ -219,6 +229,7 @@ export function useGuessGame() {
     const newAttempts = state.attempts + 1;
     const newHints = hintsForWrongCount(newAttempts);
     if (newAttempts >= MAX_ATTEMPTS) {
+      const lostAnnouncement = getGuessAnnouncement({ kind: "lost", targetName: state.targetPlayer.name });
       if (state.isDaily) {
         saveDailyResult("lost", newAttempts);
         setStats(recordResult(false, today));
@@ -234,12 +245,14 @@ export function useGuessGame() {
         status: "lost",
         dailyCompleted: s.isDaily,
         hints: newHints,
+        announcement: lostAnnouncement,
       }));
     } else {
       setState((s) => ({
         ...s,
         attempts: newAttempts,
         hints: newHints,
+        announcement: getGuessAnnouncement({ kind: "skip", attemptsLeft: MAX_ATTEMPTS - newAttempts }),
       }));
     }
   }, [state.targetPlayer, state.status, state.attempts, state.isDaily, state.isArchive, state.dayNumber, today]);
@@ -263,7 +276,7 @@ export function useGuessGame() {
 
   // Debug: start specific player by ID
   const startById = useCallback(async (id: string) => {
-    setState((s) => ({ ...s, status: "loading", error: null }));
+    setState((s) => ({ ...s, status: "loading", error: null, announcement: "" }));
     try {
       const playerWithTeams = await getFromCacheById(id);
       if (!playerWithTeams) throw new Error(`Player ${id} not found in cache`);
@@ -279,10 +292,11 @@ export function useGuessGame() {
         dayNumber: null,
         dailyCompleted: false,
         hints: NO_HINTS,
+        announcement: "",
       });
     } catch (e) {
       const message = e instanceof Error ? e.message : "Something went wrong";
-      setState((s) => ({ ...s, status: "idle", error: message }));
+      setState((s) => ({ ...s, status: "idle", error: message, announcement: "" }));
     }
   }, []);
 

@@ -22,7 +22,14 @@ export interface GuessGameState {
   dayNumber: number | null;
   dailyCompleted: boolean;
   hints: RevealedHints;
+  announcement: string;
 }
+
+export type GuessOutcome =
+  | { kind: "wrong"; guessName: string; attemptsLeft: number }
+  | { kind: "skip"; attemptsLeft: number }
+  | { kind: "won"; targetName: string; attempts: number }
+  | { kind: "lost"; targetName: string };
 
 export interface ArchiveEntry {
   date: string;

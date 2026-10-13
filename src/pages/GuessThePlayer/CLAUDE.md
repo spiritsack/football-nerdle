@@ -10,6 +10,7 @@ Route: `/guess` — Page: `index.tsx` — Hook: `useGuessGame.ts`
 4. User has 5 attempts to guess who it is
 5. Wrong guesses are listed; correct guess or 5 failures ends the game
 6. Result can be shared as emoji grid text (penalty-style circles)
+7. A visually hidden `role="status"` live region (`data-testid="guess-announcer"`) announces each wrong guess, skip, win or loss to screen readers; text comes from `getGuessAnnouncement` in `helpers.ts` and is cleared whenever a new puzzle loads
 
 ## Backwards Compatibility
 

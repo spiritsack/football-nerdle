@@ -54,6 +54,35 @@ test.describe("Daily Guess the Player", () => {
     await expect(page.getByText(/Attempts:.*1.*\/.*5/)).toBeVisible();
   });
 
+  test("announces a wrong guess to screen readers", async ({ page }) => {
+    await expect(page.getByText("Club History")).toBeVisible({ timeout: 10_000 });
+    const announcer = page.getByTestId("guess-announcer");
+    await expect(announcer).toHaveAttribute("role", "status");
+    await expect(announcer).toHaveAttribute("aria-live", "polite");
+    await expect(announcer).toHaveClass(/sr-only/);
+    await expect(announcer).toHaveText("");
+
+    const searchInput = page.getByPlaceholder("Player name");
+    await searchInput.fill("lewandowski");
+    await page.getByRole("button", { name: /Lewandowski/ }).first().click();
+
+    await expect(announcer).toHaveText(/Wrong guess: .*Lewandowski.*4 attempts left\./);
+  });
+
+  test("does not announce anything for an already completed daily", async ({ page }) => {
+    await page.evaluate(() => {
+      const d = new Date();
+      const today = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+      localStorage.setItem(
+        `football-nerdle-daily-${today}`,
+        JSON.stringify({ date: today, status: "lost", attempts: 5 }),
+      );
+    });
+    await page.reload();
+    await expect(page.getByRole("heading", { name: "Game Over!" })).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByTestId("guess-announcer")).toHaveText("");
+  });
+
   test("shows data updated timestamp", async ({ page }) => {
     await expect(page.getByText("Club History")).toBeVisible({ timeout: 10_000 });
     await expect(page.getByText(/Data updated:/)).toBeVisible();

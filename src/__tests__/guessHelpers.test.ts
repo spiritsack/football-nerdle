@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { getDailyPlayerIndex, getDayNumber, getDateForDay } from "../pages/GuessThePlayer/helpers";
+import { getDailyPlayerIndex, getDayNumber, getDateForDay, getGuessAnnouncement } from "../pages/GuessThePlayer/helpers";
 import { SEED_PLAYERS } from "../data/seedPlayers";
 
 describe("getDailyPlayerIndex (fallback sequential algorithm)", () => {
@@ -81,5 +81,40 @@ describe("getDateForDay", () => {
       const date = getDateForDay(day);
       expect(getDayNumber(date)).toBe(day);
     }
+  });
+});
+
+describe("getGuessAnnouncement", () => {
+  it("announces a wrong guess with plural attempts left", () => {
+    expect(getGuessAnnouncement({ kind: "wrong", guessName: "Robert Lewandowski", attemptsLeft: 4 }))
+      .toBe("Wrong guess: Robert Lewandowski. 4 attempts left.");
+  });
+
+  it("announces a wrong guess with a single attempt left", () => {
+    expect(getGuessAnnouncement({ kind: "wrong", guessName: "Kaka", attemptsLeft: 1 }))
+      .toBe("Wrong guess: Kaka. 1 attempt left.");
+  });
+
+  it("announces a skip with plural attempts left", () => {
+    expect(getGuessAnnouncement({ kind: "skip", attemptsLeft: 3 })).toBe("Skipped. 3 attempts left.");
+  });
+
+  it("announces a skip with a single attempt left", () => {
+    expect(getGuessAnnouncement({ kind: "skip", attemptsLeft: 1 })).toBe("Skipped. 1 attempt left.");
+  });
+
+  it("announces a win in multiple attempts", () => {
+    expect(getGuessAnnouncement({ kind: "won", targetName: "Lionel Messi", attempts: 3 }))
+      .toBe("Correct! It was Lionel Messi. Guessed in 3 attempts.");
+  });
+
+  it("announces a win in a single attempt", () => {
+    expect(getGuessAnnouncement({ kind: "won", targetName: "Lionel Messi", attempts: 1 }))
+      .toBe("Correct! It was Lionel Messi. Guessed in 1 attempt.");
+  });
+
+  it("announces a loss with the target name", () => {
+    expect(getGuessAnnouncement({ kind: "lost", targetName: "Thierry Henry" }))
+      .toBe("Out of attempts. The player was Thierry Henry.");
   });
 });

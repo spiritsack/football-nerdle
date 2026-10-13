@@ -2,7 +2,7 @@ import { SEED_PLAYERS } from "../../data/seedPlayers";
 import { DAILY_GUESS_KEY, DAILY_RESULT_PREFIX, DAY_ONE_DATE, STATS_KEY } from "./constants";
 
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
-import type { DailyResult, GuessStats } from "./types";
+import type { DailyResult, GuessOutcome, GuessStats } from "./types";
 import type { FormerTeam } from "../../types";
 import type { MergedClub } from "../../components/PlayerCard/types";
 import { getBaseClubName } from "../../utils/clubNames";
@@ -174,4 +174,22 @@ export function recordResult(won: boolean, today: string = getTodayString()): Gu
   stats.lastPlayedDate = today;
   localStorage.setItem(STATS_KEY, JSON.stringify(stats));
   return stats;
+}
+
+function pluralAttempts(n: number): string {
+  return `${n} attempt${n === 1 ? "" : "s"}`;
+}
+
+/** Builds the screen-reader announcement for the result of a guess or skip. */
+export function getGuessAnnouncement(outcome: GuessOutcome): string {
+  switch (outcome.kind) {
+    case "wrong":
+      return `Wrong guess: ${outcome.guessName}. ${pluralAttempts(outcome.attemptsLeft)} left.`;
+    case "skip":
+      return `Skipped. ${pluralAttempts(outcome.attemptsLeft)} left.`;
+    case "won":
+      return `Correct! It was ${outcome.targetName}. Guessed in ${pluralAttempts(outcome.attempts)}.`;
+    case "lost":
+      return `Out of attempts. The player was ${outcome.targetName}.`;
+  }
 }
