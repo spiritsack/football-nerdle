@@ -23,6 +23,7 @@ export default function GuessThePlayer() {
     today,
     stats,
     hints,
+    announcement,
     startDaily,
     startRandom,
     loadArchiveDay,
@@ -110,6 +111,9 @@ export default function GuessThePlayer() {
       </header>
 
       <main className="flex-1 flex flex-col items-center px-4 py-8 gap-6">
+        <div role="status" aria-live="polite" aria-atomic="true" className="sr-only" data-testid="guess-announcer">
+          {announcement}
+        </div>
         {isArchive && (
           <div className="w-full max-w-md bg-amber-900/40 border border-amber-600 rounded-lg px-4 py-3 text-center">
             <p className="text-amber-300 text-sm font-medium">
