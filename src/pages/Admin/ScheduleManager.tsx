@@ -112,11 +112,10 @@ export default function ScheduleManager() {
 
     setDays(dayStates);
     setLoading(false);
-  }, []);
+  }, [today]);
 
   useEffect(() => {
-    // Load initial schedule data — setState inside loadSchedule is expected
-    loadSchedule(); // eslint-disable-line react-hooks/set-state-in-effect
+    loadSchedule();
   }, [loadSchedule]);
 
   const handleApprove = useCallback(async (_date: string, player: Player) => {

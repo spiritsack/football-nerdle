@@ -49,6 +49,7 @@ export function useGame() {
   useEffect(() => {
     if (timeLeft === 0 && state.status === "playing") {
       saveBestStreak(state.score, loadBestStreak(), setBestStreak);
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- the countdown reaching 0 ends the game; it runs once per timeout
       setState((s) => ({ ...s, status: "gameover", timedOut: true }));
     }
   }, [timeLeft, state.status, state.score]);
