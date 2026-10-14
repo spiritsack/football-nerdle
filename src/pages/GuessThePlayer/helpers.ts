@@ -1,9 +1,9 @@
 import { SEED_PLAYERS } from "../../data/seedPlayers";
-import { DAILY_GUESS_KEY, DAILY_RESULT_PREFIX, DAY_ONE_DATE, STATS_KEY } from "./constants";
+import { ALREADY_GUESSED_LABEL, DAILY_GUESS_KEY, DAILY_RESULT_PREFIX, DAY_ONE_DATE, STATS_KEY } from "./constants";
 
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
 import type { DailyResult, GuessOutcome, GuessStats } from "./types";
-import type { FormerTeam } from "../../types";
+import type { FormerTeam, Player } from "../../types";
 import type { MergedClub } from "../../components/PlayerCard/types";
 import { getBaseClubName } from "../../utils/clubNames";
 
@@ -202,6 +202,11 @@ export function getGuessAnnouncement(outcome: GuessOutcome): string {
     case "lost":
       return `Out of attempts. The player was ${outcome.targetName}.`;
   }
+}
+
+/** Maps each wrong guess's id to the "Already guessed" label, for PlayerSearch's disabledPlayerIds. */
+export function getAlreadyGuessedMap(wrongGuesses: Player[]): Map<string, string> {
+  return new Map(wrongGuesses.map((p) => [p.id, ALREADY_GUESSED_LABEL]));
 }
 
 /** Formats a duration as zero-padded HH:MM:SS, rounding up to whole seconds. */

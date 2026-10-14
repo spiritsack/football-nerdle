@@ -183,6 +183,8 @@ export function useGuessGame() {
   const submitGuess = useCallback(
     (player: Player) => {
       if (!state.targetPlayer || state.status !== "playing") return;
+      // A repeated wrong guess tells the player nothing new, so don't spend an attempt on it.
+      if (state.wrongGuesses.some((g) => g.id === player.id)) return;
 
       const isCorrect = player.id === state.targetPlayer.id ||
         player.name.toLowerCase() === state.targetPlayer.name.toLowerCase();
@@ -235,7 +237,7 @@ export function useGuessGame() {
         }
       }
     },
-    [state.targetPlayer, state.status, state.attempts, state.isDaily, state.isArchive, state.dayNumber, today]
+    [state.targetPlayer, state.status, state.attempts, state.wrongGuesses, state.isDaily, state.isArchive, state.dayNumber, today]
   );
 
   const skipGuess = useCallback(() => {
