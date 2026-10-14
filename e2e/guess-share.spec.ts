@@ -1,5 +1,4 @@
-import { test, expect, type Page } from "@playwright/test";
-import { mockTheSportsDB } from "./fixtures";
+import { test, expect, mockTheSportsDB, type Page } from "./fixtures";
 
 const SHARE_URL_RE = /https:\/\/spiritsack\.github\.io\/football-nerdle\/#\/guess$/;
 
