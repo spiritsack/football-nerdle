@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { getDailyPlayerIndex, getDayNumber, getDateForDay, getGuessAnnouncement } from "../pages/GuessThePlayer/helpers";
+import { getDailyPlayerIndex, getDayNumber, getDateForDay, getGuessAnnouncement, formatWrongGuesses } from "../pages/GuessThePlayer/helpers";
 import { SEED_PLAYERS } from "../data/seedPlayers";
 
 describe("getDailyPlayerIndex (fallback sequential algorithm)", () => {
@@ -116,5 +116,20 @@ describe("getGuessAnnouncement", () => {
   it("announces a loss with the target name", () => {
     expect(getGuessAnnouncement({ kind: "lost", targetName: "Thierry Henry" }))
       .toBe("Out of attempts. The player was Thierry Henry.");
+  });
+});
+
+describe("formatWrongGuesses", () => {
+  it("returns an empty string when there are no wrong guesses", () => {
+    expect(formatWrongGuesses([])).toBe("");
+  });
+
+  it("formats a single wrong guess", () => {
+    expect(formatWrongGuesses([{ name: "Robert Lewandowski" }])).toBe("Wrong: Robert Lewandowski");
+  });
+
+  it("joins multiple wrong guesses in the order they were made", () => {
+    expect(formatWrongGuesses([{ name: "A" }, { name: "B" }])).toBe("Wrong: A, B");
+    expect(formatWrongGuesses([{ name: "C" }, { name: "A" }, { name: "B" }])).toBe("Wrong: C, A, B");
   });
 });

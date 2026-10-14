@@ -44,6 +44,8 @@ test.describe("Random Guess the Player", () => {
       }
     }
     await expect(announcer).toHaveText(/^Out of attempts\. The player was .+\.$/);
+    // Skips are not guesses: no empty "Wrong:" line on the result screen
+    await expect(page.getByTestId("wrong-guesses")).toHaveCount(0);
 
     // Starting a new puzzle clears the region
     await page.getByRole("button", { name: "Random Game" }).click();

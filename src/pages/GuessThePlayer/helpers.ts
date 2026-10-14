@@ -3,7 +3,7 @@ import { DAILY_GUESS_KEY, DAILY_RESULT_PREFIX, DAY_ONE_DATE, STATS_KEY } from ".
 
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
 import type { DailyResult, GuessOutcome, GuessStats } from "./types";
-import type { FormerTeam } from "../../types";
+import type { FormerTeam, Player } from "../../types";
 import type { MergedClub } from "../../components/PlayerCard/types";
 import { getBaseClubName } from "../../utils/clubNames";
 
@@ -192,4 +192,10 @@ export function getGuessAnnouncement(outcome: GuessOutcome): string {
     case "lost":
       return `Out of attempts. The player was ${outcome.targetName}.`;
   }
+}
+
+/** Formats the wrong-guess line ("Wrong: A, B"), keeping guess order. Returns "" when there are none. */
+export function formatWrongGuesses(guesses: Pick<Player, "name">[]): string {
+  if (guesses.length === 0) return "";
+  return `Wrong: ${guesses.map((p) => p.name).join(", ")}`;
 }

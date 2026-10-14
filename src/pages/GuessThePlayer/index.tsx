@@ -2,7 +2,7 @@ import { useState, useMemo, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useGuessGame } from "./useGuessGame";
 import { HARD_MODE_KEY } from "./constants";
-import { mergeConsecutiveClubs, getTodayString, getDateForDay } from "./helpers";
+import { mergeConsecutiveClubs, getTodayString, getDateForDay, formatWrongGuesses } from "./helpers";
 import PlayerCard from "../../components/PlayerCard";
 import DailyLeaderboard from "../../components/DailyLeaderboard";
 import { getLastRefresh } from "../../api/playerCache";
@@ -72,6 +72,7 @@ export default function GuessThePlayer() {
 
   const mergedClubs = useMemo(() => mergeConsecutiveClubs(clubs), [clubs]);
   const resultScreen = (status === "won" || status === "lost") && targetPlayer;
+  const wrongGuessesText = formatWrongGuesses(wrongGuesses);
 
   const todayDayNum = Math.floor((new Date(today).getTime() - new Date("2026-03-24").getTime()) / 86400000) + 1;
 
@@ -204,9 +205,9 @@ export default function GuessThePlayer() {
               maxAttempts={maxAttempts}
             />
 
-            {wrongGuesses.length > 0 && (
-              <div className="text-sm text-gray-400">
-                Wrong: {wrongGuesses.map((p) => p.name).join(", ")}
+            {wrongGuessesText && (
+              <div data-testid="wrong-guesses" className="text-sm text-gray-400">
+                {wrongGuessesText}
               </div>
             )}
 
@@ -234,6 +235,12 @@ export default function GuessThePlayer() {
               hardMode={false}
               result={status === "won" ? "won" : "lost"}
             />
+
+            {wrongGuessesText && (
+              <div data-testid="wrong-guesses" className="text-sm text-gray-400">
+                {wrongGuessesText}
+              </div>
+            )}
 
             <p className="text-gray-300">
               {status === "won" ? (
