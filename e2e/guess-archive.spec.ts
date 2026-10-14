@@ -34,6 +34,21 @@ test.describe("Guess the Player Archive", () => {
     await expect(page.getByText(/Archive — Daily #1/)).toBeVisible({ timeout: 10_000 });
   });
 
+  test("completed archive day does not show the next-puzzle countdown", async ({ page }) => {
+    await page.goto("/");
+    await page.evaluate(() => {
+      localStorage.setItem(
+        "football-nerdle-daily-2026-03-24",
+        JSON.stringify({ date: "2026-03-24", status: "won", attempts: 2 }),
+      );
+    });
+    await page.goto("/#/guess?day=1");
+    await expect(page.getByText(/Archive — Daily #1/)).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByRole("heading", { name: "Correct!" })).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByTestId("next-puzzle-countdown")).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "Play new daily" })).toHaveCount(0);
+  });
+
   test("archive game shows Previous day button", async ({ page }) => {
     await page.goto("/#/guess?day=3");
     await expect(page.getByText("Club History")).toBeVisible({ timeout: 10_000 });
