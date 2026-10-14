@@ -30,6 +30,16 @@ export function getDateForDay(dayNum: number): string {
   return start.toISOString().split("T")[0];
 }
 
+/**
+ * Validates an archive day number against today's day number.
+ * Returns the error message to show, or null when the day can be loaded.
+ */
+export function getArchiveDayError(dayNum: number, todayNum: number): string | null {
+  if (!Number.isInteger(dayNum)) return "That isn't a valid day.";
+  if (dayNum < 1 || dayNum > todayNum) return "This day hasn't happened yet.";
+  return null;
+}
+
 // Per-date result storage (replaces single DAILY_GUESS_KEY)
 export function getDailyResultForDate(date: string): DailyResult | null {
   try {
