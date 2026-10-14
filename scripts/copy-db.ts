@@ -1,5 +1,5 @@
 /**
- * Copy data between Supabase instances (e.g. production → staging).
+ * Copy data between Supabase instances (e.g. production to a new or local project).
  *
  * Usage:
  *   npx tsx scripts/copy-db.ts
