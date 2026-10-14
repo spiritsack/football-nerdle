@@ -2,7 +2,7 @@ import { useState, useMemo, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useGuessGame } from "./useGuessGame";
 import { HARD_MODE_KEY } from "./constants";
-import { mergeConsecutiveClubs, getTodayString, getDateForDay, formatWrongGuesses } from "./helpers";
+import { mergeConsecutiveClubs, getTodayString, getDateForDay, getDayNumber, getAlreadyGuessedMap, formatWrongGuesses } from "./helpers";
 import PlayerCard from "../../components/PlayerCard";
 import DailyLeaderboard from "../../components/DailyLeaderboard";
 import NextPuzzleCountdown from "./NextPuzzleCountdown";
@@ -27,6 +27,7 @@ export default function GuessThePlayer() {
     announcement,
     startDaily,
     startRandom,
+    retry,
     loadArchiveDay,
     submitGuess,
     skipGuess,
@@ -72,10 +73,11 @@ export default function GuessThePlayer() {
   }
 
   const mergedClubs = useMemo(() => mergeConsecutiveClubs(clubs), [clubs]);
+  const alreadyGuessed = useMemo(() => getAlreadyGuessedMap(wrongGuesses), [wrongGuesses]);
   const resultScreen = (status === "won" || status === "lost") && targetPlayer;
   const wrongGuessesText = formatWrongGuesses(wrongGuesses);
 
-  const todayDayNum = Math.floor((new Date(today).getTime() - new Date("2026-03-24").getTime()) / 86400000) + 1;
+  const todayDayNum = getDayNumber(today);
 
   const dayNavigation = (isDaily || isArchive) && dayNumber ? (
     <div className="flex items-center gap-6 text-sm text-gray-500">
@@ -100,7 +102,9 @@ export default function GuessThePlayer() {
       <header className="py-6 border-b border-gray-700">
         <h1 className="text-3xl font-bold text-center">Football Nerdle</h1>
         <p className="text-gray-400 text-center mt-1">
-          {isArchive ? `Archive — Daily #${dayNumber}` : isDaily ? `Guess the Player — Daily #${dayNumber}` : "Guess the Player"}
+          {isArchive
+            ? dayNumber !== null ? `Archive — Daily #${dayNumber}` : "Archive"
+            : isDaily && dayNumber !== null ? `Guess the Player — Daily #${dayNumber}` : "Guess the Player"}
         </p>
         <div className="flex items-center justify-center gap-4 mt-2">
           <Link to="/" className="text-green-400 hover:text-green-300 text-sm">
@@ -119,7 +123,7 @@ export default function GuessThePlayer() {
         {isArchive && (
           <div className="w-full max-w-md bg-amber-900/40 border border-amber-600 rounded-lg px-4 py-3 text-center">
             <p className="text-amber-300 text-sm font-medium">
-              This is an archived puzzle (Daily #{dayNumber})
+              {dayNumber !== null ? `This is an archived puzzle (Daily #${dayNumber})` : "This is an archived puzzle"}
             </p>
             <button
               onClick={handlePlayToday}
@@ -177,7 +181,7 @@ export default function GuessThePlayer() {
               </div>
             )}
             <button
-              onClick={startDaily}
+              onClick={retry}
               className="px-6 py-3 bg-green-600 hover:bg-green-500 rounded-lg font-semibold transition-colors"
             >
               Try Again
@@ -204,6 +208,7 @@ export default function GuessThePlayer() {
               onSkip={skipGuess}
               attempts={attempts}
               maxAttempts={maxAttempts}
+              disabledPlayerIds={alreadyGuessed}
             />
 
             {wrongGuessesText && (

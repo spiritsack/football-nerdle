@@ -1,5 +1,5 @@
 import { SEED_PLAYERS } from "../../data/seedPlayers";
-import { DAILY_GUESS_KEY, DAILY_RESULT_PREFIX, DAY_ONE_DATE, STATS_KEY } from "./constants";
+import { ALREADY_GUESSED_LABEL, DAILY_GUESS_KEY, DAILY_RESULT_PREFIX, DAY_ONE_DATE, STATS_KEY } from "./constants";
 
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
 import type { DailyResult, GuessOutcome, GuessStats } from "./types";
@@ -28,6 +28,16 @@ export function getDateForDay(dayNum: number): string {
   const start = new Date(DAY_ONE_DATE + "T12:00:00Z");
   start.setUTCDate(start.getUTCDate() + (dayNum - 1));
   return start.toISOString().split("T")[0];
+}
+
+/**
+ * Validates an archive day number against today's day number.
+ * Returns the error message to show, or null when the day can be loaded.
+ */
+export function getArchiveDayError(dayNum: number, todayNum: number): string | null {
+  if (!Number.isInteger(dayNum)) return "That isn't a valid day.";
+  if (dayNum < 1 || dayNum > todayNum) return "This day hasn't happened yet.";
+  return null;
 }
 
 // Per-date result storage (replaces single DAILY_GUESS_KEY)
@@ -198,6 +208,11 @@ export function getGuessAnnouncement(outcome: GuessOutcome): string {
 export function formatWrongGuesses(guesses: Pick<Player, "name">[]): string {
   if (guesses.length === 0) return "";
   return `Wrong: ${guesses.map((p) => p.name).join(", ")}`;
+}
+
+/** Maps each wrong guess's id to the "Already guessed" label, for PlayerSearch's disabledPlayerIds. */
+export function getAlreadyGuessedMap(wrongGuesses: Player[]): Map<string, string> {
+  return new Map(wrongGuesses.map((p) => [p.id, ALREADY_GUESSED_LABEL]));
 }
 
 /** Formats a duration as zero-padded HH:MM:SS, rounding up to whole seconds. */
