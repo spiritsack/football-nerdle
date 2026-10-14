@@ -71,7 +71,7 @@ src/
       ImageDropZone.tsx   — Drag-and-drop image upload (club crests, player photos)
   components/
     PlayerSearch/       — Reusable player autocomplete (searches Supabase)
-      index.tsx, types.ts
+      index.tsx, types.ts, constants.ts, helpers.ts (debounced search that drops stale responses)
     PlayerCard/         — Player card with club history, hints, legacy styling, and guess input
       index.tsx, types.ts
     DailyLeaderboard/   — Community result distribution bar chart
