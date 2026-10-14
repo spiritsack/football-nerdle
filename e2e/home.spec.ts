@@ -122,3 +122,38 @@ test.describe("How to play", () => {
     await expect(page).toHaveURL(/#\/$/);
   });
 });
+
+test.describe("Meta tags", () => {
+  const SITE_URL = "https://spiritsack.github.io/football-nerdle/";
+  const OG_IMAGE_URL = `${SITE_URL}og-image.png`;
+
+  test("has SEO and social meta tags", async ({ page }) => {
+    await page.goto("/");
+    const nonEmpty = /\S/;
+
+    await expect(page.locator('meta[name="description"]')).toHaveAttribute("content", nonEmpty);
+    for (const property of ["og:title", "og:description", "og:url", "og:type"]) {
+      await expect(page.locator(`meta[property="${property}"]`)).toHaveAttribute("content", nonEmpty);
+    }
+    for (const name of ["twitter:card", "twitter:title", "twitter:description"]) {
+      await expect(page.locator(`meta[name="${name}"]`)).toHaveAttribute("content", nonEmpty);
+    }
+
+    await expect(page.locator('meta[name="twitter:card"]')).toHaveAttribute("content", "summary_large_image");
+    await expect(page.locator('meta[property="og:url"]')).toHaveAttribute("content", SITE_URL);
+    await expect(page.locator('meta[property="og:image"]')).toHaveAttribute("content", OG_IMAGE_URL);
+    await expect(page.locator('meta[name="twitter:image"]')).toHaveAttribute("content", OG_IMAGE_URL);
+    await expect(page.locator('meta[property="og:image:width"]')).toHaveAttribute("content", "1200");
+    await expect(page.locator('meta[property="og:image:height"]')).toHaveAttribute("content", "630");
+    await expect(page.locator('meta[name="theme-color"]')).toHaveAttribute("content", "#111827");
+  });
+
+  test("serves the social preview image under the base path", async ({ page, baseURL }) => {
+    const res = await page.request.get(new URL("og-image.png", baseURL).href);
+    expect(res.status()).toBe(200);
+    expect(res.headers()["content-type"]).toContain("image/png");
+
+    const rootRes = await page.request.get(new URL("/og-image.png", baseURL).href, { maxRedirects: 0 });
+    expect(rootRes.ok() && (rootRes.headers()["content-type"] ?? "").includes("image/png")).toBe(false);
+  });
+});
