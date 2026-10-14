@@ -7,6 +7,7 @@ export default defineConfig({
   use: {
     baseURL: "http://localhost:5173/football-nerdle/",
     headless: true,
+    trace: "on-first-retry",
   },
   projects: [
     {
