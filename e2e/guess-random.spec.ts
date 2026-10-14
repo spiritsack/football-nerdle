@@ -21,6 +21,20 @@ test.describe("Random Guess the Player", () => {
     await expect(page.getByText(/Daily #/)).not.toBeVisible();
   });
 
+  test("Try Again retries a random game after a failed load", async ({ page }) => {
+    await page.route("**/rest/v1/**", (route) => route.abort());
+    await page.goto("/#/guess?mode=random");
+    await expect(page.getByRole("alert")).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByRole("button", { name: "Try Again" })).toBeVisible();
+    await expect(page.getByText(/Daily #/)).not.toBeVisible();
+
+    await page.unroute("**/rest/v1/**");
+    await page.getByRole("button", { name: "Try Again" }).click();
+    await expect(page.getByText("Club History")).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByText("Guess the Player", { exact: true })).toBeVisible();
+    await expect(page.getByText(/Daily #/)).not.toBeVisible();
+  });
+
   test("announces a skip to screen readers", async ({ page }) => {
     await page.goto("/#/guess?mode=random");
     await expect(page.getByText("Club History")).toBeVisible({ timeout: 10_000 });

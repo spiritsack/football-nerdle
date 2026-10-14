@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { getDailyPlayerIndex, getDayNumber, getDateForDay, getGuessAnnouncement, formatCountdown } from "../pages/GuessThePlayer/helpers";
+import { getDailyPlayerIndex, getDayNumber, getDateForDay, getGuessAnnouncement, getArchiveDayError, formatCountdown } from "../pages/GuessThePlayer/helpers";
 import { SEED_PLAYERS } from "../data/seedPlayers";
 
 describe("getDailyPlayerIndex (fallback sequential algorithm)", () => {
@@ -116,6 +116,28 @@ describe("getGuessAnnouncement", () => {
   it("announces a loss with the target name", () => {
     expect(getGuessAnnouncement({ kind: "lost", targetName: "Thierry Henry" }))
       .toBe("Out of attempts. The player was Thierry Henry.");
+  });
+});
+
+describe("getArchiveDayError", () => {
+  const todayNum = 200;
+  const invalid = "That isn't a valid day.";
+  const future = "This day hasn't happened yet.";
+
+  it("rejects non-integer days as invalid", () => {
+    expect(getArchiveDayError(NaN, todayNum)).toBe(invalid);
+    expect(getArchiveDayError(1.5, todayNum)).toBe(invalid);
+  });
+
+  it("rejects days before day 1 or after today as not yet happened", () => {
+    expect(getArchiveDayError(0, todayNum)).toBe(future);
+    expect(getArchiveDayError(-1, todayNum)).toBe(future);
+    expect(getArchiveDayError(todayNum + 1, todayNum)).toBe(future);
+  });
+
+  it("accepts day 1 and today", () => {
+    expect(getArchiveDayError(1, todayNum)).toBeNull();
+    expect(getArchiveDayError(todayNum, todayNum)).toBeNull();
   });
 });
 
