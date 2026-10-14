@@ -2,7 +2,7 @@ import { SEED_PLAYERS } from "../../data/seedPlayers";
 import { ALREADY_GUESSED_LABEL, DAILY_GUESS_KEY, DAILY_RESULT_PREFIX, DAY_ONE_DATE, GUESS_DISTRIBUTION_KEY, MAX_ATTEMPTS, STATS_KEY } from "./constants";
 
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
-import type { DailyResult, GuessDistribution, GuessOutcome, GuessStats, ShareNavigator, ShareOutcome } from "./types";
+import type { DailyResult, GuessDistribution, GuessOutcome, GuessStats, LoadGuard, ShareNavigator, ShareOutcome } from "./types";
 import type { FormerTeam, Player } from "../../types";
 import type { MergedClub } from "../../components/PlayerCard/types";
 import { getBaseClubName } from "../../utils/clubNames";
@@ -302,4 +302,20 @@ export function formatCountdown(ms: number): string {
   const m = Math.floor((total % 3600) / 60);
   const s = total % 60;
   return [h, m, s].map((n) => String(n).padStart(2, "0")).join(":");
+}
+
+/**
+ * Guarantees that only the most recently started load may write its outcome.
+ * Each `begin()` bumps a request id and returns an `isCurrent` check; once a
+ * later `begin()` has happened, the older check returns false and its result
+ * (success or error) should be dropped. Requests themselves are not cancelled.
+ */
+export function createLoadGuard(): LoadGuard {
+  let latestId = 0;
+  return {
+    begin() {
+      const id = ++latestId;
+      return () => id === latestId;
+    },
+  };
 }

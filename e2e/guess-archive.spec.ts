@@ -99,6 +99,55 @@ test.describe("Guess the Player Archive", () => {
     await expect(page.getByText(/Archive — Daily #2/)).toBeVisible();
   });
 
+  // Overlapping loads: the Previous button is hidden while a puzzle loads, so the
+  // newer load is started from the archive banner's "Play Today's Daily" button.
+  test("a slow archive load does not overwrite a newer puzzle", async ({ page }) => {
+    const day2 = "2026-03-25";
+    const day3 = "2026-03-26";
+    const stalePlayerId = "tm_28003";
+    await mockDailySchedule(page, { date: [todayString(), day3] });
+    await mockDailySchedule(page, { date: day2, playerId: stalePlayerId });
+
+    // Hold back Daily #2's player row until the newer puzzle is on screen, so the
+    // stale load resolves last (after its schedule read, right before it writes state)
+    let release!: () => void;
+    const released = new Promise<void>((resolve) => { release = resolve; });
+    const isStalePlayer = (url: string) => url.includes("player_clubs") && url.includes(stalePlayerId);
+    await page.route("**/rest/v1/players*", async (route) => {
+      if (route.request().method() !== "GET" || !isStalePlayer(route.request().url())) return route.fallback();
+      await released;
+      await route.fallback();
+    });
+
+    await loadPuzzle(page, () => page.goto("/#/guess?day=3"), page.getByText(/Archive — Daily #3/));
+
+    const heldRequest = page.waitForRequest(
+      (r) => r.url().includes("/rest/v1/players") && isStalePlayer(r.url()),
+      { timeout: DATA_TIMEOUT },
+    );
+    await page.getByRole("button", { name: /Previous day/ }).first().click();
+    await heldRequest;
+
+    await loadPuzzle(
+      page,
+      () => page.getByRole("button", { name: "Play Today's Daily" }).click(),
+      page.getByText(/Guess the Player — Daily #\d+/),
+    );
+
+    // Let the stale Daily #2 load finish, then give React a frame to apply it
+    const staleResponse = page.waitForResponse(
+      (r) => r.url().includes("/rest/v1/players") && isStalePlayer(r.url()),
+      { timeout: DATA_TIMEOUT },
+    );
+    release();
+    await (await staleResponse).finished();
+    await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => setTimeout(resolve, 0))));
+
+    await expect(page.locator("header p")).toHaveText(/Guess the Player — Daily #\d+/);
+    await expect(page.getByText(/This is an archived puzzle/)).toHaveCount(0);
+    await expect(page.getByText("Club History")).toBeVisible();
+  });
+
   test("daily game shows Archive link but no navigation arrows by default", async ({ page }) => {
     await mockDailySchedule(page, { date: todayString() });
     await loadPuzzle(page, () => page.goto("/#/guess"));
