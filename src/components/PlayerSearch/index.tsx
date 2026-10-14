@@ -2,6 +2,8 @@ import { useState, useRef, useEffect } from "react";
 import { searchPlayers } from "../../api/playerCache";
 import type { Player } from "../../types";
 import type { PlayerSearchProps } from "./types";
+import { createDebouncedSearch, type DebouncedSearch } from "./helpers";
+import { MIN_QUERY_LENGTH, SEARCH_DEBOUNCE_MS } from "./constants";
 
 export default function PlayerSearch({ onSelect, disabled, usedPlayerIds, disabledPlayerIds, placeholder, hideThumbnails }: PlayerSearchProps) {
   const [query, setQuery] = useState("");
@@ -10,10 +12,53 @@ export default function PlayerSearch({ onSelect, disabled, usedPlayerIds, disabl
   const [loading, setLoading] = useState(false);
   const [highlightIndex, setHighlightIndex] = useState(-1);
   const [dropUp, setDropUp] = useState(false);
-  const debounceRef = useRef<ReturnType<typeof setTimeout>>(null);
+  const searchRef = useRef<DebouncedSearch | null>(null);
+  const mountedRef = useRef(false);
+  const usedPlayerIdsRef = useRef(usedPlayerIds);
   const containerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLUListElement>(null);
+
+  useEffect(() => {
+    usedPlayerIdsRef.current = usedPlayerIds;
+  }, [usedPlayerIds]);
+
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      // Invalidate pending/in-flight searches; handlers ignore calls after unmount.
+      mountedRef.current = false;
+      searchRef.current?.cancel();
+    };
+  }, []);
+
+  function getSearch(): DebouncedSearch {
+    if (!searchRef.current) {
+      searchRef.current = createDebouncedSearch(searchPlayers, SEARCH_DEBOUNCE_MS, {
+        onLoading(value) {
+          if (mountedRef.current) setLoading(value);
+        },
+        onResults(players) {
+          if (!mountedRef.current) return;
+          const used = usedPlayerIdsRef.current;
+          const filtered = used ? players.filter((p) => !used.has(p.id)) : players;
+          setResults(filtered);
+          if (filtered.length > 0 && inputRef.current) {
+            const rect = inputRef.current.getBoundingClientRect();
+            const spaceBelow = window.innerHeight - rect.bottom;
+            setDropUp(spaceBelow < 320);
+          }
+          setIsOpen(true);
+        },
+        onError() {
+          if (!mountedRef.current) return;
+          setResults([]);
+          setIsOpen(false);
+        },
+      });
+    }
+    return searchRef.current;
+  }
 
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
@@ -34,34 +79,13 @@ export default function PlayerSearch({ onSelect, disabled, usedPlayerIds, disabl
   function handleChange(value: string) {
     setQuery(value);
     setHighlightIndex(-1);
-    if (debounceRef.current) clearTimeout(debounceRef.current);
 
-    if (value.trim().length < 2) {
+    if (value.trim().length < MIN_QUERY_LENGTH) {
       setResults([]);
       setIsOpen(false);
-      return;
     }
 
-    setLoading(true);
-    debounceRef.current = setTimeout(async () => {
-      try {
-        const players = await searchPlayers(value.trim());
-        const filtered = usedPlayerIds
-          ? players.filter((p) => !usedPlayerIds.has(p.id))
-          : players;
-        setResults(filtered);
-        if (filtered.length > 0 && inputRef.current) {
-          const rect = inputRef.current.getBoundingClientRect();
-          const spaceBelow = window.innerHeight - rect.bottom;
-          setDropUp(spaceBelow < 320);
-        }
-        setIsOpen(true);
-      } catch {
-        setResults([]);
-        setIsOpen(false);
-      }
-      setLoading(false);
-    }, 300);
+    getSearch().update(value);
   }
 
   function isPlayerDisabled(player: Player): boolean {
@@ -70,6 +94,7 @@ export default function PlayerSearch({ onSelect, disabled, usedPlayerIds, disabl
 
   function handleSelect(player: Player) {
     if (isPlayerDisabled(player)) return;
+    searchRef.current?.cancel();
     setQuery("");
     setResults([]);
     setIsOpen(false);
