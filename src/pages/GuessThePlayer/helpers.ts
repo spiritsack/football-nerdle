@@ -2,7 +2,7 @@ import { SEED_PLAYERS } from "../../data/seedPlayers";
 import { ALREADY_GUESSED_LABEL, DAILY_GUESS_KEY, DAILY_RESULT_PREFIX, DAY_ONE_DATE, STATS_KEY } from "./constants";
 
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
-import type { DailyResult, GuessOutcome, GuessStats } from "./types";
+import type { DailyResult, GuessOutcome, GuessStats, ShareNavigator, ShareOutcome } from "./types";
 import type { FormerTeam, Player } from "../../types";
 import type { MergedClub } from "../../components/PlayerCard/types";
 import { getBaseClubName } from "../../utils/clubNames";
@@ -201,6 +201,44 @@ export function getGuessAnnouncement(outcome: GuessOutcome): string {
       return `Correct! It was ${outcome.targetName}. Guessed in ${pluralAttempts(outcome.attempts)}.`;
     case "lost":
       return `Out of attempts. The player was ${outcome.targetName}.`;
+  }
+}
+
+// Assumes nav.share exists; only consults canShare when the browser provides it.
+function canUseShareSheet(text: string, nav: ShareNavigator): boolean {
+  if (typeof nav.canShare === "function") {
+    try {
+      return nav.canShare({ text });
+    } catch {
+      return false;
+    }
+  }
+  return true;
+}
+
+function isAbortError(err: unknown): boolean {
+  return typeof err === "object" && err !== null && (err as { name?: unknown }).name === "AbortError";
+}
+
+/**
+ * Share result text: native share sheet if available, else clipboard.
+ * A dismissed share sheet (AbortError) counts as cancelled. Never throws.
+ */
+export async function shareResult(text: string, nav: ShareNavigator): Promise<ShareOutcome> {
+  if (typeof nav.share === "function" && canUseShareSheet(text, nav)) {
+    try {
+      await nav.share({ text });
+      return "shared";
+    } catch (err) {
+      if (isAbortError(err)) return "cancelled";
+    }
+  }
+  if (typeof nav.clipboard?.writeText !== "function") return "failed";
+  try {
+    await nav.clipboard.writeText(text);
+    return "copied";
+  } catch {
+    return "failed";
   }
 }
 
