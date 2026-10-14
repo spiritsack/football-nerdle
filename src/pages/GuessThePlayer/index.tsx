@@ -324,36 +324,38 @@ export default function GuessThePlayer() {
 
             {dayNavigation}
 
-            <div className="bg-gray-800 border border-gray-600 rounded-xl p-6 max-w-md w-full">
-              <h3 className="text-lg font-semibold text-center text-gray-300 mb-4">Your Stats</h3>
-              <div className="grid grid-cols-5 gap-2 text-center">
-                <div>
-                  <div className="text-2xl font-bold">{stats.played}</div>
-                  <div className="text-gray-400 text-xs">Played</div>
+            {(isDaily || isArchive) && (
+              <div data-testid="guess-stats" className="bg-gray-800 border border-gray-600 rounded-xl p-6 max-w-md w-full">
+                <h3 className="text-lg font-semibold text-center text-gray-300 mb-4">Your Stats</h3>
+                <div className="grid grid-cols-5 gap-2 text-center">
+                  <div>
+                    <div className="text-2xl font-bold">{stats.played}</div>
+                    <div className="text-gray-400 text-xs">Played</div>
+                  </div>
+                  <div>
+                    <div className="text-2xl font-bold text-green-400">{stats.won}</div>
+                    <div className="text-gray-400 text-xs">Won</div>
+                  </div>
+                  <div>
+                    <div className="text-2xl font-bold text-red-400">{stats.lost}</div>
+                    <div className="text-gray-400 text-xs">Lost</div>
+                  </div>
+                  <div>
+                    <div className="text-2xl font-bold text-yellow-400">{stats.streak}</div>
+                    <div className="text-gray-400 text-xs">Streak</div>
+                  </div>
+                  <div>
+                    <div className="text-2xl font-bold text-yellow-400">{stats.longestStreak}</div>
+                    <div className="text-gray-400 text-xs">Best</div>
+                  </div>
                 </div>
-                <div>
-                  <div className="text-2xl font-bold text-green-400">{stats.won}</div>
-                  <div className="text-gray-400 text-xs">Won</div>
-                </div>
-                <div>
-                  <div className="text-2xl font-bold text-red-400">{stats.lost}</div>
-                  <div className="text-gray-400 text-xs">Lost</div>
-                </div>
-                <div>
-                  <div className="text-2xl font-bold text-yellow-400">{stats.streak}</div>
-                  <div className="text-gray-400 text-xs">Streak</div>
-                </div>
-                <div>
-                  <div className="text-2xl font-bold text-yellow-400">{stats.longestStreak}</div>
-                  <div className="text-gray-400 text-xs">Best</div>
-                </div>
+                {stats.played > 0 && (
+                  <div className="mt-3 text-center text-gray-400 text-sm">
+                    Win rate: {Math.round((stats.won / stats.played) * 100)}%
+                  </div>
+                )}
               </div>
-              {stats.played > 0 && (
-                <div className="mt-3 text-center text-gray-400 text-sm">
-                  Win rate: {Math.round((stats.won / stats.played) * 100)}%
-                </div>
-              )}
-            </div>
+            )}
 
             {(isDaily || isArchive) && (
               <DailyLeaderboard
