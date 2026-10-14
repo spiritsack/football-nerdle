@@ -1,4 +1,4 @@
-import { test, expect, mockTheSportsDB, loadPuzzle, searchFor, type Page } from "./fixtures";
+import { test, expect, loadPuzzle, searchFor, type Page } from "./fixtures";
 
 const search = (page: Page) => page.getByRole("combobox");
 const option = (page: Page, name: RegExp) => page.getByRole("option", { name });
@@ -11,7 +11,6 @@ async function guess(page: Page, query: string, name: RegExp) {
 
 test.describe("Guess the Player already guessed players", () => {
   test.beforeEach(async ({ page }) => {
-    await mockTheSportsDB(page);
     // Mbappé
     await loadPuzzle(page, () => page.goto("/#/guess?id=tm_342229"));
   });

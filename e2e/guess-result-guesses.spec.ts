@@ -1,8 +1,7 @@
-import { test, expect, mockTheSportsDB, loadPuzzle, searchFor } from "./fixtures";
+import { test, expect, loadPuzzle, searchFor } from "./fixtures";
 
 test.describe("Guess the Player result screen wrong guesses", () => {
   test.beforeEach(async ({ page }) => {
-    await mockTheSportsDB(page);
     await loadPuzzle(page, () => page.goto("/#/guess?id=tm_349066"));
   });
 

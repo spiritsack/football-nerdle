@@ -1,5 +1,5 @@
 import {
-  test, expect, mockTheSportsDB, mockDailySchedule, loadPuzzle, searchFor, seedStorage, todayString, type Page,
+  test, expect, mockDailySchedule, loadPuzzle, searchFor, seedStorage, todayString, type Page,
 } from "./fixtures";
 
 const openDaily = (page: Page) => loadPuzzle(page, () => page.goto("/#/guess"));
@@ -14,7 +14,6 @@ async function guessLewandowski(page: Page) {
 
 test.describe("Daily Guess the Player", () => {
   test.beforeEach(async ({ page }) => {
-    await mockTheSportsDB(page);
     // Fixed daily puzzle (Mbappé) for today and the clock tests' dates, so no
     // test depends on, or creates, a shared daily_schedule row
     await mockDailySchedule(page, { date: [todayString(), "2026-10-01", "2026-10-02"] });

@@ -1,12 +1,8 @@
 import {
-  test, expect, mockTheSportsDB, mockDailySchedule, loadPuzzle, seedStorage, todayString, DATA_TIMEOUT,
+  test, expect, mockDailySchedule, loadPuzzle, seedStorage, todayString, DATA_TIMEOUT,
 } from "./fixtures";
 
 test.describe("Guess the Player Archive", () => {
-  test.beforeEach(async ({ page }) => {
-    await mockTheSportsDB(page);
-  });
-
   test("archive page is accessible from the daily game", async ({ page }) => {
     await mockDailySchedule(page, { date: todayString() });
     await page.goto("/#/guess");
