@@ -8,7 +8,7 @@ import type { GuessGameState, GuessStats, RevealedHints } from "./types";
 import {
   getTodayString, getDailyPlayerIndex, getDayNumber, getDateForDay,
   getDailyResult, getDailyResultForDate, saveDailyResult, saveDailyResultForDate,
-  loadStats, recordResult, getGuessAnnouncement, getArchiveDayError
+  loadStats, recordResult, loadDistribution, recordWin, getGuessAnnouncement, getArchiveDayError
 } from "./helpers";
 
 const NO_HINTS: RevealedHints = { nationality: false, age: false, position: false, photo: false, initials: false };
@@ -28,6 +28,7 @@ export function useGuessGame() {
   const [dailyResult] = useState(getDailyResult);
   const alreadyPlayedToday = dailyResult?.date === today;
   const [stats, setStats] = useState<GuessStats>(() => loadStats(today));
+  const [distribution, setDistribution] = useState(loadDistribution);
 
   const [state, setState] = useState<GuessGameState>(() => ({
     targetPlayer: null,
@@ -67,6 +68,9 @@ export function useGuessGame() {
           isArchive: false,
           dayNumber: dayNum,
           dailyCompleted: true,
+          // Guess history isn't persisted; never carry over another game's guesses or hints
+          wrongGuesses: [],
+          hints: NO_HINTS,
           announcement: "",
         }));
       } else {
@@ -194,6 +198,7 @@ export function useGuessGame() {
         if (state.isDaily) {
           saveDailyResult("won", finalAttempts);
           setStats(recordResult(true, today));
+          setDistribution(recordWin(finalAttempts));
           submitDailyResult(today, true, finalAttempts);
         } else if (state.isArchive && state.dayNumber) {
           // Save archive result per-date but don't affect stats/streak
@@ -339,6 +344,7 @@ export function useGuessGame() {
   return {
     ...state,
     stats,
+    distribution,
     maxAttempts: MAX_ATTEMPTS,
     today,
     loadArchiveDay,

@@ -1,8 +1,8 @@
 import { SEED_PLAYERS } from "../../data/seedPlayers";
-import { ALREADY_GUESSED_LABEL, DAILY_GUESS_KEY, DAILY_RESULT_PREFIX, DAY_ONE_DATE, STATS_KEY } from "./constants";
+import { ALREADY_GUESSED_LABEL, DAILY_GUESS_KEY, DAILY_RESULT_PREFIX, DAY_ONE_DATE, GUESS_DISTRIBUTION_KEY, MAX_ATTEMPTS, STATS_KEY } from "./constants";
 
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
-import type { DailyResult, GuessOutcome, GuessStats } from "./types";
+import type { DailyResult, GuessDistribution, GuessOutcome, GuessStats, ShareNavigator, ShareOutcome } from "./types";
 import type { FormerTeam, Player } from "../../types";
 import type { MergedClub } from "../../components/PlayerCard/types";
 import { getBaseClubName } from "../../utils/clubNames";
@@ -186,6 +186,48 @@ export function recordResult(won: boolean, today: string = getTodayString()): Gu
   return stats;
 }
 
+function emptyDistribution(): GuessDistribution {
+  return { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
+}
+
+function isBucket(n: number): n is keyof GuessDistribution {
+  return Number.isInteger(n) && n >= 1 && n <= MAX_ATTEMPTS;
+}
+
+/** Loads the daily-win guess distribution, sanitising anything malformed to 0. */
+export function loadDistribution(): GuessDistribution {
+  const dist = emptyDistribution();
+  try {
+    const stored = localStorage.getItem(GUESS_DISTRIBUTION_KEY);
+    if (!stored) return dist;
+    const parsed: unknown = JSON.parse(stored);
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return dist;
+    const record = parsed as Record<string, unknown>;
+    for (let n = 1; n <= MAX_ATTEMPTS; n++) {
+      const value = record[String(n)];
+      if (isBucket(n) && typeof value === "number" && Number.isFinite(value) && value >= 0) {
+        dist[n] = value;
+      }
+    }
+    return dist;
+  } catch {
+    return dist;
+  }
+}
+
+/** Records a daily win in `attempts` attempts. Ignores out-of-range values. */
+export function recordWin(attempts: number): GuessDistribution {
+  const dist = loadDistribution();
+  if (!isBucket(attempts)) return dist;
+  dist[attempts]++;
+  try {
+    localStorage.setItem(GUESS_DISTRIBUTION_KEY, JSON.stringify(dist));
+  } catch {
+    // storage full or unavailable: keep the in-memory value
+  }
+  return dist;
+}
+
 function pluralAttempts(n: number): string {
   return `${n} attempt${n === 1 ? "" : "s"}`;
 }
@@ -202,6 +244,50 @@ export function getGuessAnnouncement(outcome: GuessOutcome): string {
     case "lost":
       return `Out of attempts. The player was ${outcome.targetName}.`;
   }
+}
+
+// Assumes nav.share exists; only consults canShare when the browser provides it.
+function canUseShareSheet(text: string, nav: ShareNavigator): boolean {
+  if (typeof nav.canShare === "function") {
+    try {
+      return nav.canShare({ text });
+    } catch {
+      return false;
+    }
+  }
+  return true;
+}
+
+function isAbortError(err: unknown): boolean {
+  return typeof err === "object" && err !== null && (err as { name?: unknown }).name === "AbortError";
+}
+
+/**
+ * Share result text: native share sheet if available, else clipboard.
+ * A dismissed share sheet (AbortError) counts as cancelled. Never throws.
+ */
+export async function shareResult(text: string, nav: ShareNavigator): Promise<ShareOutcome> {
+  if (typeof nav.share === "function" && canUseShareSheet(text, nav)) {
+    try {
+      await nav.share({ text });
+      return "shared";
+    } catch (err) {
+      if (isAbortError(err)) return "cancelled";
+    }
+  }
+  if (typeof nav.clipboard?.writeText !== "function") return "failed";
+  try {
+    await nav.clipboard.writeText(text);
+    return "copied";
+  } catch {
+    return "failed";
+  }
+}
+
+/** Formats the wrong-guess line ("Wrong: A, B"), keeping guess order. Returns "" when there are none. */
+export function formatWrongGuesses(guesses: Pick<Player, "name">[]): string {
+  if (guesses.length === 0) return "";
+  return `Wrong: ${guesses.map((p) => p.name).join(", ")}`;
 }
 
 /** Maps each wrong guess's id to the "Already guessed" label, for PlayerSearch's disabledPlayerIds. */

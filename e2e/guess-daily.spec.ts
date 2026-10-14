@@ -10,6 +10,7 @@ test.describe("Daily Guess the Player", () => {
       localStorage.removeItem("football-nerdle-daily-guess");
       localStorage.removeItem("football-nerdle-hard-mode-disabled");
       localStorage.removeItem("football-nerdle-guess-stats");
+      localStorage.removeItem("football-nerdle-guess-distribution");
     });
     await page.goto("/#/guess");
   });
@@ -81,6 +82,48 @@ test.describe("Daily Guess the Player", () => {
     await page.reload();
     await expect(page.getByRole("heading", { name: "Game Over!" })).toBeVisible({ timeout: 10_000 });
     await expect(page.getByTestId("guess-announcer")).toHaveText("");
+    // Guess history isn't persisted, so no guess line on a re-opened result
+    await expect(page.getByTestId("wrong-guesses")).toHaveCount(0);
+  });
+
+  test("shows the guess distribution empty state when nothing is recorded", async ({ page }) => {
+    await page.evaluate(() => {
+      const d = new Date();
+      const today = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+      localStorage.setItem(
+        `football-nerdle-daily-${today}`,
+        JSON.stringify({ date: today, status: "lost", attempts: 5 }),
+      );
+      localStorage.removeItem("football-nerdle-guess-distribution");
+    });
+    await page.reload();
+    await expect(page.getByRole("heading", { name: "Game Over!" })).toBeVisible({ timeout: 10_000 });
+    const chart = page.getByTestId("guess-distribution");
+    await expect(chart).toContainText("No daily wins recorded yet");
+    await expect(chart.getByTestId("guess-distribution-count")).toHaveCount(0);
+  });
+
+  test("shows seeded guess distribution counts", async ({ page }) => {
+    await page.evaluate(() => {
+      const d = new Date();
+      const today = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+      localStorage.setItem(
+        `football-nerdle-daily-${today}`,
+        JSON.stringify({ date: today, status: "won", attempts: 3 }),
+      );
+      localStorage.setItem(
+        "football-nerdle-guess-distribution",
+        JSON.stringify({ 1: 1, 2: 0, 3: 4, 4: 0, 5: 2 }),
+      );
+    });
+    await page.reload();
+    await expect(page.getByRole("heading", { name: "Correct!" })).toBeVisible({ timeout: 10_000 });
+    const chart = page.getByTestId("guess-distribution");
+    await expect(chart).not.toContainText("No daily wins recorded yet");
+    await expect(chart.getByTestId("guess-distribution-count")).toHaveText(["1", "0", "4", "0", "2"]);
+    // Today's daily was won in 3 attempts, so row 3 is highlighted
+    await expect(chart.getByTestId("guess-distribution-row-3").locator(".bg-green-500")).toHaveCount(1);
+    await expect(chart.locator(".bg-green-500")).toHaveCount(1);
   });
 
   test("does not show the next-puzzle countdown while playing", async ({ page }) => {
@@ -137,6 +180,24 @@ test.describe("Daily Guess the Player", () => {
     await expect(page.getByText(/Attempts:.*0.*\/.*5/)).toBeVisible();
     await expect(page.getByRole("heading", { name: "Game Over!" })).toHaveCount(0);
     await expect(page.getByTestId("next-puzzle-countdown")).toHaveCount(0);
+  });
+
+  test("shows the stats panel on the daily result screen", async ({ page }) => {
+    // beforeEach cleared football-nerdle-guess-stats, so the panel shows zeros
+    await page.evaluate(() => {
+      const d = new Date();
+      const today = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+      localStorage.setItem(
+        `football-nerdle-daily-${today}`,
+        JSON.stringify({ date: today, status: "lost", attempts: 5 }),
+      );
+    });
+    await page.reload();
+    await expect(page.getByRole("heading", { name: "Game Over!" })).toBeVisible({ timeout: 10_000 });
+    const stats = page.getByTestId("guess-stats");
+    await expect(stats).toBeVisible();
+    await expect(stats).toContainText("Your Stats");
+    await expect(stats.getByText("Win rate")).toHaveCount(0);
   });
 
   test("shows data updated timestamp", async ({ page }) => {
