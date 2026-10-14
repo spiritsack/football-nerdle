@@ -1,6 +1,5 @@
-import type { Page } from "@playwright/test";
 import {
-  test, expect, mockTheSportsDB, mockDailySchedule, loadPuzzle, seedStorage, todayString,
+  test, expect, mockTheSportsDB, mockDailySchedule, loadPuzzle, seedStorage, todayString, type Page,
 } from "./fixtures";
 
 const SHARE_URL_RE = /https:\/\/spiritsack\.github\.io\/football-nerdle\/#\/guess$/;

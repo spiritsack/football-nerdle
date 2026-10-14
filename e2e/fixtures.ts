@@ -1,5 +1,8 @@
 import { test as base, expect, type Locator, type Page, type Response } from "@playwright/test";
 
+export { expect };
+export type { Page };
+
 /**
  * One timeout for every wait on Supabase data (puzzle load, search results,
  * result screens). Cold CI runners plus sequential Supabase calls regularly
@@ -7,24 +10,87 @@ import { test as base, expect, type Locator, type Page, type Response } from "@p
  */
 export const DATA_TIMEOUT = 30_000;
 
+export interface BlockedWrite {
+  method: string;
+  url: string;
+}
+
 /**
- * Every test gets a guard that aborts writes to `daily_schedule`, so no test
- * can auto-insert a schedule row (the app does that when today has none).
- * Tests that need a daily puzzle use `mockDailySchedule` instead.
+ * PostgREST tables the E2E suite must never write to. The CI dev server may
+ * point at the production database, so inserts here would skew the live
+ * leaderboard (`daily_results`) or pick/create real daily puzzles
+ * (`daily_schedule`).
  */
-export const test = base.extend<{ blockDailyScheduleWrites: void }>({
-  blockDailyScheduleWrites: [
-    async ({ page }, use) => {
-      await page.route("**/rest/v1/daily_schedule*", (route) =>
-        route.request().method() === "GET" ? route.fallback() : route.abort(),
-      );
-      await use();
+export const BLOCKED_WRITE_TABLES = ["daily_results", "daily_schedule"] as const;
+
+/** Multiplayer rooms table; stubbed separately so "Create Room" gets a row back. */
+export const GAME_ROOMS_TABLE = "game_rooms";
+
+type Route = Parameters<Parameters<Page["route"]>[1]>[0];
+
+/**
+ * Lets reads through and records any write. Returns `true` when the caller
+ * must answer the request locally, `false` once it has been passed on.
+ */
+async function recordWrite(route: Route, blockedWrites: BlockedWrite[]): Promise<boolean> {
+  const request = route.request();
+  const method = request.method();
+  if (method === "GET" || method === "HEAD" || method === "OPTIONS") {
+    await route.fallback();
+    return false;
+  }
+  blockedWrites.push({ method, url: request.url() });
+  return true;
+}
+
+/**
+ * Shared `test` for every spec. An auto fixture stubs non-GET requests to the
+ * tables above with an empty 201 (supabase-js treats that as a successful
+ * `.insert()` without `.select()`) and records them in `blockedWrites`.
+ * `game_rooms` writes are recorded too: a POST gets the inserted row echoed
+ * back with a fake id (so `createRoom`'s `.select().single()` reaches the
+ * waiting screen) and other writes get an empty 204. Reads and RPCs still
+ * reach the real database. Page-level routes (e.g. a spec that aborts all
+ * `rest/v1` traffic) are matched first and still win.
+ */
+export const test = base.extend<{ blockedWrites: BlockedWrite[]; blockDbWrites: void }>({
+  // Playwright requires an object pattern here, even with no dependencies
+  // eslint-disable-next-line no-empty-pattern
+  blockedWrites: async ({}, provide) => {
+    await provide([]);
+  },
+  blockDbWrites: [
+    async ({ context, blockedWrites }, provide) => {
+      for (const table of BLOCKED_WRITE_TABLES) {
+        await context.route(`**/rest/v1/${table}*`, async (route) => {
+          if (!(await recordWrite(route, blockedWrites))) return;
+          await route.fulfill({ status: 201, body: "" });
+        });
+      }
+      await context.route(`**/rest/v1/${GAME_ROOMS_TABLE}*`, async (route) => {
+        if (!(await recordWrite(route, blockedWrites))) return;
+        if (route.request().method() === "POST") {
+          const body = route.request().postDataJSON() as Record<string, unknown>;
+          await route.fulfill({
+            status: 201,
+            contentType: "application/json",
+            body: JSON.stringify({
+              id: crypto.randomUUID(),
+              created_at: new Date().toISOString(),
+              guest_id: null,
+              ...body,
+            }),
+          });
+          return;
+        }
+        // Updates resolve with data: null; a future turn-flow spec must add its own route.
+        await route.fulfill({ status: 204, body: "" });
+      });
+      await provide();
     },
     { auto: true },
   ],
 });
-
-export { expect };
 
 /** Today's date as the app computes it (local time, YYYY-MM-DD). */
 export function todayString(d = new Date()): string {
@@ -53,7 +119,7 @@ export async function seedStorage(page: Page, items: Record<string, unknown>) {
  * Serve the daily puzzle for `date` (one or more) from a fixed player instead
  * of the shared `daily_schedule` table. The client reads it with `.single()`,
  * so the body is one object. Other schedule reads (archive list, other dates)
- * go to Supabase; writes are aborted by the auto guard on `test`.
+ * go to Supabase; writes are stubbed by the `blockDbWrites` auto fixture.
  */
 export async function mockDailySchedule(
   page: Page,

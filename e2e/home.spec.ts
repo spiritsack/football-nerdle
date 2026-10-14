@@ -1,5 +1,4 @@
-import type { Page } from "@playwright/test";
-import { test, expect, seedStorage } from "./fixtures";
+import { test, expect, seedStorage, type Page } from "./fixtures";
 
 test.describe("Home Page", () => {
   test("shows the title", async ({ page }) => {

@@ -1,5 +1,4 @@
-import type { Page } from "@playwright/test";
-import { test, expect, mockTheSportsDB, loadPuzzle, DATA_TIMEOUT } from "./fixtures";
+import { test, expect, mockTheSportsDB, loadPuzzle, DATA_TIMEOUT, type Page } from "./fixtures";
 
 const openRandom = (page: Page) => loadPuzzle(page, () => page.goto("/#/guess?mode=random"));
 const attempts = (page: Page, n: number) => page.getByText(new RegExp(`Attempts:.*${n}.*/.*5`));

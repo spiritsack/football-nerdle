@@ -1,6 +1,5 @@
-import type { Page } from "@playwright/test";
 import {
-  test, expect, mockTheSportsDB, mockDailySchedule, loadPuzzle, searchFor, seedStorage, todayString,
+  test, expect, mockTheSportsDB, mockDailySchedule, loadPuzzle, searchFor, seedStorage, todayString, type Page,
 } from "./fixtures";
 
 const openDaily = (page: Page) => loadPuzzle(page, () => page.goto("/#/guess"));

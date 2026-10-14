@@ -13,10 +13,13 @@ export default defineConfig({
   // Data waits use DATA_TIMEOUT (30s, e2e/fixtures.ts); leave room for a
   // test that loads more than one puzzle.
   timeout: 60_000,
-  retries: 0,
+  // CI safety net only (job 019). The suite is meant to pass without one:
+  // a test that needed a retry shows up as "flaky" in the report.
+  retries: process.env.CI ? 2 : 0,
   use: {
     baseURL: BASE_URL,
     headless: true,
+    trace: "on-first-retry",
   },
   projects: [
     {
