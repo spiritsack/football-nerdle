@@ -5,3 +5,4 @@ export const DAY_ONE_DATE = "2026-03-24";
 export const SHARE_URL = "https://spiritsack.github.io/football-nerdle/#/guess";
 export const STATS_KEY = "football-nerdle-guess-stats";
 export const DAILY_RESULT_PREFIX = "football-nerdle-daily-";
+export const GUESS_DISTRIBUTION_KEY = "football-nerdle-guess-distribution";

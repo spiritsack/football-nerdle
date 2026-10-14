@@ -41,7 +41,8 @@ The daily game must remain backwards compatible. Changing day numbering, share t
 - `useGuessGame.ts` — Hook: daily/archive/random logic, guess submission, hints, stats
 - `types.ts` — GuessStatus, GuessGameState, DailyResult, GuessStats, RevealedHints
 - `constants.ts` — MAX_ATTEMPTS, localStorage keys, DAY_ONE_DATE, SHARE_URL, STATS_KEY
-- `helpers.ts` — Date helpers, daily result persistence, club merging, stats recording
+- `helpers.ts` — Date helpers, daily result persistence, club merging, stats recording, guess distribution (`loadDistribution`/`recordWin`)
+- `GuessDistribution/index.tsx` — "Guess Distribution" bar chart (daily wins by attempts) inside the "Your Stats" panel
 - `Archive/index.tsx` — Archive page listing past daily puzzles with results
 
 ## Supabase Tables
@@ -58,3 +59,4 @@ The daily game must remain backwards compatible. Changing day numbering, share t
 | `football-nerdle-daily-YYYY-MM-DD` | `{ date, status, attempts }` — per-date result (daily + archive) |
 | `football-nerdle-hard-mode-disabled` | `{ date }` if disabled today |
 | `football-nerdle-guess-stats` | `{ played, won, lost, streak, longestStreak }` (daily only, archive doesn't affect) |
+| `football-nerdle-guess-distribution` | `{ "1": n, ..., "5": n }` — daily wins by attempts; only updated by daily wins (not losses, archive or random), started empty on release (no backfill). Must not use the `football-nerdle-daily-` prefix |

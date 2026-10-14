@@ -5,6 +5,7 @@ import { HARD_MODE_KEY } from "./constants";
 import { mergeConsecutiveClubs, getTodayString, getDateForDay } from "./helpers";
 import PlayerCard from "../../components/PlayerCard";
 import DailyLeaderboard from "../../components/DailyLeaderboard";
+import GuessDistribution from "./GuessDistribution";
 import { getLastRefresh } from "../../api/playerCache";
 
 export default function GuessThePlayer() {
@@ -22,6 +23,7 @@ export default function GuessThePlayer() {
     dayNumber,
     today,
     stats,
+    distribution,
     hints,
     announcement,
     startDaily,
@@ -298,6 +300,10 @@ export default function GuessThePlayer() {
                   Win rate: {Math.round((stats.won / stats.played) * 100)}%
                 </div>
               )}
+              <GuessDistribution
+                distribution={distribution}
+                highlight={isDaily && status === "won" ? attempts : undefined}
+              />
             </div>
 
             {(isDaily || isArchive) && (

@@ -52,3 +52,6 @@ export interface GuessStats {
   longestStreak: number;
   lastPlayedDate?: string;
 }
+
+/** Daily wins bucketed by number of attempts (1..MAX_ATTEMPTS). */
+export type GuessDistribution = Record<1 | 2 | 3 | 4 | 5, number>;
