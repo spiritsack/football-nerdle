@@ -146,7 +146,7 @@ async function getFromCache(playerId: string, playerName?: string): Promise<Play
   }
 
   // If no result or no clubs, try finding a TransferMarkt-sourced player by name
-  // This handles the case where search returns a TheSportsDB ID but we have better TM data
+  // Fallback for a player row with no club history: use the TransferMarkt-sourced row with the same name
   if (playerName) {
     const { data: tmData } = await supabase
       .from("players")
