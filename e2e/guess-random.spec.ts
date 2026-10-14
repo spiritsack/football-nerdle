@@ -21,6 +21,20 @@ test.describe("Random Guess the Player", () => {
     await expect(page.getByText(/Daily #/)).not.toBeVisible();
   });
 
+  test("Try Again retries a random game after a failed load", async ({ page }) => {
+    await page.route("**/rest/v1/**", (route) => route.abort());
+    await page.goto("/#/guess?mode=random");
+    await expect(page.getByRole("alert")).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByRole("button", { name: "Try Again" })).toBeVisible();
+    await expect(page.getByText(/Daily #/)).not.toBeVisible();
+
+    await page.unroute("**/rest/v1/**");
+    await page.getByRole("button", { name: "Try Again" }).click();
+    await expect(page.getByText("Club History")).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByText("Guess the Player", { exact: true })).toBeVisible();
+    await expect(page.getByText(/Daily #/)).not.toBeVisible();
+  });
+
   test("announces a skip to screen readers", async ({ page }) => {
     await page.goto("/#/guess?mode=random");
     await expect(page.getByText("Club History")).toBeVisible({ timeout: 10_000 });
@@ -44,10 +58,28 @@ test.describe("Random Guess the Player", () => {
       }
     }
     await expect(announcer).toHaveText(/^Out of attempts\. The player was .+\.$/);
+    // Skips are not guesses: no empty "Wrong:" line on the result screen
+    await expect(page.getByTestId("wrong-guesses")).toHaveCount(0);
+    // Random result screens have no next-puzzle countdown
+    await expect(page.getByTestId("next-puzzle-countdown")).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "Play new daily" })).toHaveCount(0);
 
     // Starting a new puzzle clears the region
     await page.getByRole("button", { name: "Random Game" }).click();
     await expect(page.getByText("Club History")).toBeVisible({ timeout: 10_000 });
     await expect(announcer).toHaveText("");
+  });
+
+  test("hides the stats panel on the random result screen", async ({ page }) => {
+    await page.goto("/#/guess?mode=random");
+    await expect(page.getByText("Club History")).toBeVisible({ timeout: 10_000 });
+
+    for (let i = 0; i < 5; i++) {
+      await page.getByRole("button", { name: "Skip", exact: true }).click();
+    }
+    await expect(page.getByRole("heading", { name: "Game Over!" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Random Game" })).toBeVisible();
+    await expect(page.getByTestId("guess-stats")).toHaveCount(0);
+    await expect(page.getByText("Your Stats")).toHaveCount(0);
   });
 });

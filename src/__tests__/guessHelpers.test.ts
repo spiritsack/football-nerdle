@@ -1,5 +1,6 @@
-import { describe, it, expect } from "vitest";
-import { getDailyPlayerIndex, getDayNumber, getDateForDay, getGuessAnnouncement } from "../pages/GuessThePlayer/helpers";
+import { describe, it, expect, vi } from "vitest";
+import { getDailyPlayerIndex, getDayNumber, getDateForDay, getGuessAnnouncement, getAlreadyGuessedMap, getArchiveDayError, formatCountdown, formatWrongGuesses, shareResult } from "../pages/GuessThePlayer/helpers";
+import type { ShareNavigator } from "../pages/GuessThePlayer/types";
 import { SEED_PLAYERS } from "../data/seedPlayers";
 
 describe("getDailyPlayerIndex (fallback sequential algorithm)", () => {
@@ -116,5 +117,170 @@ describe("getGuessAnnouncement", () => {
   it("announces a loss with the target name", () => {
     expect(getGuessAnnouncement({ kind: "lost", targetName: "Thierry Henry" }))
       .toBe("Out of attempts. The player was Thierry Henry.");
+  });
+});
+
+describe("shareResult", () => {
+  const TEXT = "Football Nerdle #1\n🔴🔴🔴🔴🔴\nhttps://spiritsack.github.io/football-nerdle/#/guess";
+
+  function domError(name: string): Error {
+    const err = new Error(name);
+    err.name = name;
+    return err;
+  }
+
+  function fakeNav(opts: {
+    share?: ReturnType<typeof vi.fn>;
+    canShare?: ReturnType<typeof vi.fn>;
+    writeText?: ReturnType<typeof vi.fn>;
+  }): ShareNavigator {
+    const nav: Record<string, unknown> = {};
+    if (opts.share) nav.share = opts.share;
+    if (opts.canShare) nav.canShare = opts.canShare;
+    if (opts.writeText) nav.clipboard = { writeText: opts.writeText };
+    return nav as ShareNavigator;
+  }
+
+  it("uses navigator.share when available", async () => {
+    const share = vi.fn().mockResolvedValue(undefined);
+    const canShare = vi.fn().mockReturnValue(true);
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    const result = await shareResult(TEXT, fakeNav({ share, canShare, writeText }));
+    expect(result).toBe("shared");
+    expect(share).toHaveBeenCalledTimes(1);
+    expect(share).toHaveBeenCalledWith({ text: TEXT });
+    expect(canShare).toHaveBeenCalledWith({ text: TEXT });
+    expect(writeText).not.toHaveBeenCalled();
+  });
+
+  it("uses navigator.share when canShare is absent", async () => {
+    const share = vi.fn().mockResolvedValue(undefined);
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    expect(await shareResult(TEXT, fakeNav({ share, writeText }))).toBe("shared");
+    expect(writeText).not.toHaveBeenCalled();
+  });
+
+  it("skips share when canShare is false", async () => {
+    const share = vi.fn().mockResolvedValue(undefined);
+    const canShare = vi.fn().mockReturnValue(false);
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    const result = await shareResult(TEXT, fakeNav({ share, canShare, writeText }));
+    expect(result).toBe("copied");
+    expect(share).not.toHaveBeenCalled();
+    expect(writeText).toHaveBeenCalledWith(TEXT);
+  });
+
+  it("treats AbortError as cancelled", async () => {
+    const share = vi.fn().mockRejectedValue(domError("AbortError"));
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    const result = await shareResult(TEXT, fakeNav({ share, writeText }));
+    expect(result).toBe("cancelled");
+    expect(writeText).not.toHaveBeenCalled();
+  });
+
+  it("falls back to clipboard when share fails", async () => {
+    const share = vi.fn().mockRejectedValue(domError("NotAllowedError"));
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    const result = await shareResult(TEXT, fakeNav({ share, writeText }));
+    expect(result).toBe("copied");
+    expect(share).toHaveBeenCalledTimes(1);
+    expect(writeText).toHaveBeenCalledWith(TEXT);
+  });
+
+  it("copies when share unavailable", async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    expect(await shareResult(TEXT, fakeNav({ writeText }))).toBe("copied");
+    expect(writeText).toHaveBeenCalledTimes(1);
+    expect(writeText).toHaveBeenCalledWith(TEXT);
+  });
+
+  it("returns failed when clipboard rejects", async () => {
+    const writeText = vi.fn().mockRejectedValue(domError("NotAllowedError"));
+    await expect(shareResult(TEXT, fakeNav({ writeText }))).resolves.toBe("failed");
+  });
+
+  it("returns failed when clipboard missing", async () => {
+    await expect(shareResult(TEXT, fakeNav({}))).resolves.toBe("failed");
+  });
+
+  it("returns failed when share fails and clipboard is missing", async () => {
+    const share = vi.fn().mockRejectedValue(new TypeError("boom"));
+    await expect(shareResult(TEXT, fakeNav({ share }))).resolves.toBe("failed");
+  });
+});
+
+describe("formatWrongGuesses", () => {
+  it("returns an empty string when there are no wrong guesses", () => {
+    expect(formatWrongGuesses([])).toBe("");
+  });
+
+  it("formats a single wrong guess", () => {
+    expect(formatWrongGuesses([{ name: "Robert Lewandowski" }])).toBe("Wrong: Robert Lewandowski");
+  });
+
+  it("joins multiple wrong guesses in the order they were made", () => {
+    expect(formatWrongGuesses([{ name: "A" }, { name: "B" }])).toBe("Wrong: A, B");
+    expect(formatWrongGuesses([{ name: "C" }, { name: "A" }, { name: "B" }])).toBe("Wrong: C, A, B");
+  });
+});
+
+describe("getAlreadyGuessedMap", () => {
+  const messi = { id: "tm_28003", name: "Lionel Messi", thumbnail: "", nationality: "Argentina" };
+  const haaland = { id: "tm_418560", name: "Erling Haaland", thumbnail: "", nationality: "Norway" };
+
+  it("returns an empty map for no wrong guesses", () => {
+    expect(getAlreadyGuessedMap([]).size).toBe(0);
+  });
+
+  it("maps each wrong guess id to the Already guessed label", () => {
+    const map = getAlreadyGuessedMap([messi, haaland]);
+    expect(map.size).toBe(2);
+    expect(map.get("tm_28003")).toBe("Already guessed");
+    expect(map.get("tm_418560")).toBe("Already guessed");
+  });
+
+  it("does not create extra entries for duplicates", () => {
+    const map = getAlreadyGuessedMap([messi, messi]);
+    expect(map.size).toBe(1);
+    expect(map.get("tm_28003")).toBe("Already guessed");
+  });
+});
+
+describe("getArchiveDayError", () => {
+  const todayNum = 200;
+  const invalid = "That isn't a valid day.";
+  const future = "This day hasn't happened yet.";
+
+  it("rejects non-integer days as invalid", () => {
+    expect(getArchiveDayError(NaN, todayNum)).toBe(invalid);
+    expect(getArchiveDayError(1.5, todayNum)).toBe(invalid);
+  });
+
+  it("rejects days before day 1 or after today as not yet happened", () => {
+    expect(getArchiveDayError(0, todayNum)).toBe(future);
+    expect(getArchiveDayError(-1, todayNum)).toBe(future);
+    expect(getArchiveDayError(todayNum + 1, todayNum)).toBe(future);
+  });
+
+  it("accepts day 1 and today", () => {
+    expect(getArchiveDayError(1, todayNum)).toBeNull();
+    expect(getArchiveDayError(todayNum, todayNum)).toBeNull();
+  });
+});
+
+describe("formatCountdown", () => {
+  it("returns 00:00:00 for zero and negative durations", () => {
+    expect(formatCountdown(0)).toBe("00:00:00");
+    expect(formatCountdown(-5000)).toBe("00:00:00");
+  });
+
+  it("rounds partial seconds up", () => {
+    expect(formatCountdown(1)).toBe("00:00:01");
+    expect(formatCountdown(1001)).toBe("00:00:02");
+  });
+
+  it("formats hours, minutes and seconds zero-padded", () => {
+    expect(formatCountdown(3_661_000)).toBe("01:01:01");
+    expect(formatCountdown(86_399_000)).toBe("23:59:59");
   });
 });

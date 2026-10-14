@@ -6,6 +6,7 @@ import GuessThePlayer from "./pages/GuessThePlayer";
 import GuessArchive from "./pages/GuessThePlayer/Archive";
 import MultiplayerBattle from "./pages/MultiplayerBattle";
 import Pack from "./pages/Pack";
+import NotFound from "./pages/NotFound";
 
 const Admin = lazy(() => import("./pages/Admin"));
 
@@ -20,6 +21,7 @@ function App() {
         <Route path="/guess/archive" element={<GuessArchive />} />
         <Route path="/pack" element={<Pack />} />
         <Route path="/admin" element={<Suspense fallback={null}><Admin /></Suspense>} />
+        <Route path="*" element={<NotFound />} />
       </Routes>
     </HashRouter>
   );

@@ -41,7 +41,7 @@ function RevealedField({ label, value }: { label: string; value: string }) {
   );
 }
 
-export default function PlayerCard({ player, clubs, hints, revealed, hardMode, result, onGuess, onSkip, attempts, maxAttempts }: PlayerCardProps) {
+export default function PlayerCard({ player, clubs, hints, revealed, hardMode, result, onGuess, onSkip, attempts, maxAttempts, disabledPlayerIds }: PlayerCardProps) {
   const age = player.dateBorn ? new Date().getFullYear() - parseInt(player.dateBorn, 10) : null;
 
   // A player is considered "legacy" (potentially retired) if all their clubs have a departure year
@@ -112,6 +112,7 @@ export default function PlayerCard({ player, clubs, hints, revealed, hardMode, r
               <div className="flex-1 min-w-0">
                 <PlayerSearch
                   onSelect={onGuess}
+                  disabledPlayerIds={disabledPlayerIds}
                   placeholder={hints.initials
                     ? player.name.split(" ").map((part) => part[0] + ".".repeat(part.length - 1)).join(" ")
                     : "Player name"}

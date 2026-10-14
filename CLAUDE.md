@@ -39,7 +39,7 @@ A football (soccer) trivia web app with multiple game modes, deployed to GitHub 
 ```
 src/
   main.tsx              — Entry point
-  App.tsx               — Routes: /, /battle, /guess, /guess/archive, /battle/multiplayer, /admin
+  App.tsx               — Routes: /, /battle, /guess, /guess/archive, /battle/multiplayer, /admin, * (NotFound)
   types.ts              — Shared types: Player, FormerTeam, PlayerWithTeams, GameRoom
   constants.ts          — Shared constants (TURN_TIME)
   index.css             — Global styles (Tailwind imports)
@@ -69,6 +69,8 @@ src/
       ScheduleManager.tsx — Daily schedule curation with search
       PlayerClubList.tsx  — Club history editor (reorder, hide, loan/youth flags, crests)
       ImageDropZone.tsx   — Drag-and-drop image upload (club crests, player photos)
+    NotFound/           — Catch-all "Page not found" screen with a link back to Home
+      index.tsx, types.ts
   components/
     PlayerSearch/       — Reusable player autocomplete (searches Supabase)
       index.tsx, types.ts, constants.ts, helpers.ts (debounced search that drops stale responses)
