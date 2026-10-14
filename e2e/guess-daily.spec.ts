@@ -158,6 +158,9 @@ test.describe("Daily Guess the Player", () => {
     await expect(stats).toBeVisible();
     await expect(stats).toContainText("Your Stats");
     await expect(stats.getByText("Win rate")).toHaveCount(0);
+    // Random mode is deprecated: the daily result screen does not offer it
+    await expect(page.getByRole("button", { name: "Share Result" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Random Game" })).toHaveCount(0);
   });
 
   test("shows data updated timestamp", async ({ page }) => {
