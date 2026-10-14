@@ -1,12 +1,11 @@
 import {
-  test, expect, mockTheSportsDB, mockDailySchedule, loadPuzzle, seedStorage, todayString, type Page,
+  test, expect, mockDailySchedule, loadPuzzle, seedStorage, todayString, type Page,
 } from "./fixtures";
 
 const SHARE_URL_RE = /https:\/\/spiritsack\.github\.io\/football-nerdle\/#\/guess$/;
 
 // Seed a lost daily for today and land on the "Game Over!" result screen.
 async function openCompletedDaily(page: Page) {
-  await mockTheSportsDB(page);
   await mockDailySchedule(page, { date: todayString() });
   await seedStorage(page, {
     "football-nerdle-daily-{today}": { date: "{today}", status: "lost", attempts: 5 },

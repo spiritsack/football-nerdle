@@ -1,13 +1,9 @@
-import { test, expect, mockTheSportsDB, loadPuzzle, DATA_TIMEOUT, type Page } from "./fixtures";
+import { test, expect, loadPuzzle, DATA_TIMEOUT, type Page } from "./fixtures";
 
 const openRandom = (page: Page) => loadPuzzle(page, () => page.goto("/#/guess?mode=random"));
 const attempts = (page: Page, n: number) => page.getByText(new RegExp(`Attempts:.*${n}.*/.*5`));
 
 test.describe("Random Guess the Player", () => {
-  test.beforeEach(async ({ page }) => {
-    await mockTheSportsDB(page);
-  });
-
   test("loads a random player via ?mode=random", async ({ page }) => {
     await openRandom(page);
   });

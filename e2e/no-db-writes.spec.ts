@@ -1,10 +1,9 @@
 import {
-  test, expect, mockTheSportsDB, mockDailySchedule, loadPuzzle, todayString, DATA_TIMEOUT,
+  test, expect, mockDailySchedule, loadPuzzle, todayString, DATA_TIMEOUT,
 } from "./fixtures";
 
 test.describe("E2E suite does not write to the database", () => {
   test("finishing a daily game does not write daily_results", async ({ page, blockedWrites }) => {
-    await mockTheSportsDB(page);
     await mockDailySchedule(page, { date: todayString() });
     await loadPuzzle(page, () => page.goto("/#/guess"));
 
