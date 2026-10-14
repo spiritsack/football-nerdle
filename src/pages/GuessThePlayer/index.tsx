@@ -1,10 +1,11 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useGuessGame } from "./useGuessGame";
 import { HARD_MODE_KEY } from "./constants";
-import { mergeConsecutiveClubs, getTodayString, getDateForDay } from "./helpers";
+import { mergeConsecutiveClubs, getTodayString, getDateForDay, getDayNumber, getAlreadyGuessedMap, formatWrongGuesses, shareResult } from "./helpers";
 import PlayerCard from "../../components/PlayerCard";
 import DailyLeaderboard from "../../components/DailyLeaderboard";
+import NextPuzzleCountdown from "./NextPuzzleCountdown";
 import { getLastRefresh } from "../../api/playerCache";
 
 export default function GuessThePlayer() {
@@ -26,6 +27,7 @@ export default function GuessThePlayer() {
     announcement,
     startDaily,
     startRandom,
+    retry,
     loadArchiveDay,
     submitGuess,
     skipGuess,
@@ -43,11 +45,27 @@ export default function GuessThePlayer() {
     }
   });
   const [hardMode, setHardMode] = useState(!hardModeDisabled);
-  const [copied, setCopied] = useState(false);
+  const [shareFeedback, setShareFeedback] = useState<"idle" | "copied" | "error">("idle");
+  const shareFeedbackTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const isMounted = useRef(true);
+  // Drop stale share feedback (e.g. an error) when a different puzzle loads
+  const [shareFeedbackPlayer, setShareFeedbackPlayer] = useState(targetPlayer);
+  if (shareFeedbackPlayer !== targetPlayer) {
+    setShareFeedbackPlayer(targetPlayer);
+    setShareFeedback("idle");
+  }
   const [lastRefresh, setLastRefresh] = useState<string | null>(null);
 
   useEffect(() => {
     getLastRefresh().then(setLastRefresh);
+  }, []);
+
+  useEffect(() => {
+    isMounted.current = true;
+    return () => {
+      isMounted.current = false;
+      if (shareFeedbackTimer.current) clearTimeout(shareFeedbackTimer.current);
+    };
   }, []);
 
   function toggleHardMode() {
@@ -62,18 +80,35 @@ export default function GuessThePlayer() {
     startDaily();
   }
 
-  function handleShare() {
-    const text = getShareText(hardMode);
-    navigator.clipboard.writeText(text).then(() => {
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    });
+  async function handleShare() {
+    if (shareFeedbackTimer.current) {
+      clearTimeout(shareFeedbackTimer.current);
+      shareFeedbackTimer.current = null;
+    }
+    setShareFeedback("idle");
+    const outcome = await shareResult(getShareText(hardMode), navigator);
+    if (!isMounted.current) return;
+    if (outcome === "failed") {
+      // Stays visible until the next click so the player can copy the text by hand
+      setShareFeedback("error");
+      return;
+    }
+    // "shared" / "cancelled": the OS share sheet is its own feedback
+    if (outcome !== "copied") return;
+    if (shareFeedbackTimer.current) clearTimeout(shareFeedbackTimer.current);
+    setShareFeedback("copied");
+    shareFeedbackTimer.current = setTimeout(() => {
+      shareFeedbackTimer.current = null;
+      setShareFeedback("idle");
+    }, 2000);
   }
 
   const mergedClubs = useMemo(() => mergeConsecutiveClubs(clubs), [clubs]);
+  const alreadyGuessed = useMemo(() => getAlreadyGuessedMap(wrongGuesses), [wrongGuesses]);
   const resultScreen = (status === "won" || status === "lost") && targetPlayer;
+  const wrongGuessesText = formatWrongGuesses(wrongGuesses);
 
-  const todayDayNum = Math.floor((new Date(today).getTime() - new Date("2026-03-24").getTime()) / 86400000) + 1;
+  const todayDayNum = getDayNumber(today);
 
   const dayNavigation = (isDaily || isArchive) && dayNumber ? (
     <div className="flex items-center gap-6 text-sm text-gray-500">
@@ -98,7 +133,9 @@ export default function GuessThePlayer() {
       <header className="py-6 border-b border-gray-700">
         <h1 className="text-3xl font-bold text-center">Football Nerdle</h1>
         <p className="text-gray-400 text-center mt-1">
-          {isArchive ? `Archive — Daily #${dayNumber}` : isDaily ? `Guess the Player — Daily #${dayNumber}` : "Guess the Player"}
+          {isArchive
+            ? dayNumber !== null ? `Archive — Daily #${dayNumber}` : "Archive"
+            : isDaily && dayNumber !== null ? `Guess the Player — Daily #${dayNumber}` : "Guess the Player"}
         </p>
         <div className="flex items-center justify-center gap-4 mt-2">
           <Link to="/" className="text-green-400 hover:text-green-300 text-sm">
@@ -117,7 +154,7 @@ export default function GuessThePlayer() {
         {isArchive && (
           <div className="w-full max-w-md bg-amber-900/40 border border-amber-600 rounded-lg px-4 py-3 text-center">
             <p className="text-amber-300 text-sm font-medium">
-              This is an archived puzzle (Daily #{dayNumber})
+              {dayNumber !== null ? `This is an archived puzzle (Daily #${dayNumber})` : "This is an archived puzzle"}
             </p>
             <button
               onClick={handlePlayToday}
@@ -175,7 +212,7 @@ export default function GuessThePlayer() {
               </div>
             )}
             <button
-              onClick={startDaily}
+              onClick={retry}
               className="px-6 py-3 bg-green-600 hover:bg-green-500 rounded-lg font-semibold transition-colors"
             >
               Try Again
@@ -202,11 +239,12 @@ export default function GuessThePlayer() {
               onSkip={skipGuess}
               attempts={attempts}
               maxAttempts={maxAttempts}
+              disabledPlayerIds={alreadyGuessed}
             />
 
-            {wrongGuesses.length > 0 && (
-              <div className="text-sm text-gray-400">
-                Wrong: {wrongGuesses.map((p) => p.name).join(", ")}
+            {wrongGuessesText && (
+              <div data-testid="wrong-guesses" className="text-sm text-gray-400">
+                {wrongGuessesText}
               </div>
             )}
 
@@ -235,6 +273,12 @@ export default function GuessThePlayer() {
               result={status === "won" ? "won" : "lost"}
             />
 
+            {wrongGuessesText && (
+              <div data-testid="wrong-guesses" className="text-sm text-gray-400">
+                {wrongGuessesText}
+              </div>
+            )}
+
             <p className="text-gray-300">
               {status === "won" ? (
                 <>Guessed in <span className="text-green-400 font-bold">{attempts}</span> {attempts === 1 ? "attempt" : "attempts"}</>
@@ -248,7 +292,7 @@ export default function GuessThePlayer() {
                 onClick={handleShare}
                 className="px-6 py-3 bg-blue-600 hover:bg-blue-500 rounded-lg font-semibold transition-colors"
               >
-                {copied ? "Copied!" : "Share Result"}
+                {shareFeedback === "copied" ? "Copied!" : "Share Result"}
               </button>
               {isArchive ? (
                 <button
@@ -266,6 +310,17 @@ export default function GuessThePlayer() {
                 </button>
               )}
             </div>
+
+            {shareFeedback === "error" && (
+              <div role="alert" className="bg-orange-900/30 border border-orange-700 rounded-lg px-4 py-3 max-w-md w-full text-center text-orange-300 text-sm">
+                <p>Couldn't share or copy your result. Try again or copy it manually.</p>
+                <pre className="mt-2 select-all whitespace-pre-wrap break-words text-left text-gray-300 font-mono text-xs">
+                  {getShareText(hardMode)}
+                </pre>
+              </div>
+            )}
+
+            {isDaily && !isArchive && <NextPuzzleCountdown key={today} today={today} />}
 
             {dayNavigation}
 

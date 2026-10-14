@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { getPlayerWithTeamsCached, getFromCacheById, getRandomCachedPlayer } from "../../api/playerCache";
 import { getOrCreateDailyPlayer, getScheduledPlayerForDate } from "../../api/dailySchedule";
 import { submitDailyResult } from "../../api/dailyLeaderboard";
@@ -8,7 +8,7 @@ import type { GuessGameState, GuessStats, RevealedHints } from "./types";
 import {
   getTodayString, getDailyPlayerIndex, getDayNumber, getDateForDay,
   getDailyResult, getDailyResultForDate, saveDailyResult, saveDailyResultForDate,
-  loadStats, recordResult, getGuessAnnouncement
+  loadStats, recordResult, getGuessAnnouncement, getArchiveDayError
 } from "./helpers";
 
 const NO_HINTS: RevealedHints = { nationality: false, age: false, position: false, photo: false, initials: false };
@@ -44,7 +44,11 @@ export function useGuessGame() {
     announcement: "",
   }));
 
+  // The last loader that was attempted, so "Try Again" retries the same mode.
+  const lastStartRef = useRef<(() => Promise<void>) | null>(null);
+
   const startDaily = useCallback(async () => {
+    lastStartRef.current = () => startDaily();
     setState((s) => ({ ...s, status: "loading", error: null, announcement: "" }));
     try {
       const seed = await getOrCreateDailyPlayer(today);
@@ -63,6 +67,9 @@ export function useGuessGame() {
           isArchive: false,
           dayNumber: dayNum,
           dailyCompleted: true,
+          // Guess history isn't persisted; never carry over another game's guesses or hints
+          wrongGuesses: [],
+          hints: NO_HINTS,
           announcement: "",
         }));
       } else {
@@ -83,14 +90,23 @@ export function useGuessGame() {
       }
     } catch (e) {
       const message = e instanceof Error ? e.message : "Something went wrong";
-      setState((s) => ({ ...s, status: "idle", error: message, announcement: "" }));
+      setState((s) => ({ ...s, status: "idle", error: message, announcement: "", isDaily: true, isArchive: false }));
     }
   }, [today]);
 
   const loadArchiveDay = useCallback(async (dayNum: number) => {
-    const todayNum = getDayNumber(today);
-    if (dayNum > todayNum || dayNum < 1) {
-      setState((s) => ({ ...s, status: "idle", error: "This day hasn't happened yet.", announcement: "", isArchive: true, dayNumber: dayNum }));
+    lastStartRef.current = () => loadArchiveDay(dayNum);
+    const dayError = getArchiveDayError(dayNum, getDayNumber(today));
+    if (dayError) {
+      setState((s) => ({
+        ...s,
+        status: "idle",
+        error: dayError,
+        announcement: "",
+        isDaily: false,
+        isArchive: true,
+        dayNumber: Number.isInteger(dayNum) ? dayNum : null,
+      }));
       return;
     }
     setState((s) => ({ ...s, status: "loading", error: null, announcement: "" }));
@@ -137,11 +153,12 @@ export function useGuessGame() {
       });
     } catch (e) {
       const message = e instanceof Error ? e.message : "Something went wrong";
-      setState((s) => ({ ...s, status: "idle", error: message, announcement: "", dayNumber: dayNum, isArchive: true }));
+      setState((s) => ({ ...s, status: "idle", error: message, announcement: "", dayNumber: dayNum, isDaily: false, isArchive: true }));
     }
   }, [today]);
 
   const startRandom = useCallback(async () => {
+    lastStartRef.current = () => startRandom();
     setState((s) => ({ ...s, status: "loading", error: null, announcement: "" }));
     try {
       const playerWithTeams = await getRandomCachedPlayer();
@@ -162,13 +179,15 @@ export function useGuessGame() {
       });
     } catch (e) {
       const message = e instanceof Error ? e.message : "Something went wrong";
-      setState((s) => ({ ...s, status: "idle", error: message, announcement: "" }));
+      setState((s) => ({ ...s, status: "idle", error: message, announcement: "", isDaily: false, isArchive: false }));
     }
   }, []);
 
   const submitGuess = useCallback(
     (player: Player) => {
       if (!state.targetPlayer || state.status !== "playing") return;
+      // A repeated wrong guess tells the player nothing new, so don't spend an attempt on it.
+      if (state.wrongGuesses.some((g) => g.id === player.id)) return;
 
       const isCorrect = player.id === state.targetPlayer.id ||
         player.name.toLowerCase() === state.targetPlayer.name.toLowerCase();
@@ -221,7 +240,7 @@ export function useGuessGame() {
         }
       }
     },
-    [state.targetPlayer, state.status, state.attempts, state.isDaily, state.isArchive, state.dayNumber, today]
+    [state.targetPlayer, state.status, state.attempts, state.wrongGuesses, state.isDaily, state.isArchive, state.dayNumber, today]
   );
 
   const skipGuess = useCallback(() => {
@@ -276,6 +295,7 @@ export function useGuessGame() {
 
   // Debug: start specific player by ID
   const startById = useCallback(async (id: string) => {
+    lastStartRef.current = () => startById(id);
     setState((s) => ({ ...s, status: "loading", error: null, announcement: "" }));
     try {
       const playerWithTeams = await getFromCacheById(id);
@@ -296,9 +316,12 @@ export function useGuessGame() {
       });
     } catch (e) {
       const message = e instanceof Error ? e.message : "Something went wrong";
-      setState((s) => ({ ...s, status: "idle", error: message, announcement: "" }));
+      setState((s) => ({ ...s, status: "idle", error: message, announcement: "", isDaily: false, isArchive: false }));
     }
   }, []);
+
+  // Re-run whichever loader was last attempted (falls back to today's daily)
+  const retry = useCallback(() => (lastStartRef.current ?? startDaily)(), [startDaily]);
 
   // Auto-start on mount
   useEffect(() => {
@@ -324,6 +347,7 @@ export function useGuessGame() {
     loadArchiveDay,
     startDaily,
     startRandom,
+    retry,
     submitGuess,
     skipGuess,
     getShareText,

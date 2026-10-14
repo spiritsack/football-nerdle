@@ -50,6 +50,21 @@ test.describe("Guess the Player Archive", () => {
     await expect(page.getByTestId("guess-stats")).toContainText("Your Stats");
   });
 
+  test("completed archive day does not show the next-puzzle countdown", async ({ page }) => {
+    await page.goto("/");
+    await page.evaluate(() => {
+      localStorage.setItem(
+        "football-nerdle-daily-2026-03-24",
+        JSON.stringify({ date: "2026-03-24", status: "won", attempts: 2 }),
+      );
+    });
+    await page.goto("/#/guess?day=1");
+    await expect(page.getByText(/Archive — Daily #1/)).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByRole("heading", { name: "Correct!" })).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByTestId("next-puzzle-countdown")).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "Play new daily" })).toHaveCount(0);
+  });
+
   test("archive game shows Previous day button", async ({ page }) => {
     await page.goto("/#/guess?day=3");
     await expect(page.getByText("Club History")).toBeVisible({ timeout: 10_000 });
@@ -61,6 +76,33 @@ test.describe("Guess the Player Archive", () => {
     await expect(page.getByText(/Archive — Daily #3/)).toBeVisible({ timeout: 10_000 });
     await page.getByRole("button", { name: /Previous day/ }).first().click();
     await expect(page.getByText(/Archive — Daily #2/)).toBeVisible({ timeout: 10_000 });
+  });
+
+  test("?day=abc shows invalid day message", async ({ page }) => {
+    await page.goto("/#/guess?day=abc");
+    await expect(page.getByRole("alert")).toContainText("That isn't a valid day.", { timeout: 10_000 });
+    await expect(page.locator("header p")).toHaveText("Archive");
+    await expect(page.getByRole("button", { name: "Play Today's Daily" })).toBeVisible();
+    const bodyText = await page.locator("body").innerText();
+    expect(bodyText).not.toContain("NaN");
+    expect(bodyText).not.toContain("null");
+  });
+
+  test("?day=99999 shows day hasn't happened yet", async ({ page }) => {
+    await page.goto("/#/guess?day=99999");
+    await expect(page.getByRole("alert")).toContainText("This day hasn't happened yet.", { timeout: 10_000 });
+  });
+
+  test("Try Again retries the same archive day after a failed load", async ({ page }) => {
+    await page.route("**/rest/v1/**", (route) => route.abort());
+    await page.goto("/#/guess?day=2");
+    await expect(page.getByRole("alert")).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByRole("button", { name: "Try Again" })).toBeVisible();
+
+    await page.unroute("**/rest/v1/**");
+    await page.getByRole("button", { name: "Try Again" }).click();
+    await expect(page.getByText(/Archive — Daily #2/)).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByText("Club History")).toBeVisible({ timeout: 10_000 });
   });
 
   test("daily game shows Archive link but no navigation arrows by default", async ({ page }) => {
