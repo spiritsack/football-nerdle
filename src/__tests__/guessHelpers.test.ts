@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { getDailyPlayerIndex, getDayNumber, getDateForDay, getGuessAnnouncement } from "../pages/GuessThePlayer/helpers";
+import { getDailyPlayerIndex, getDayNumber, getDateForDay, getGuessAnnouncement, getArchiveDayError, formatCountdown } from "../pages/GuessThePlayer/helpers";
 import { SEED_PLAYERS } from "../data/seedPlayers";
 
 describe("getDailyPlayerIndex (fallback sequential algorithm)", () => {
@@ -116,5 +116,44 @@ describe("getGuessAnnouncement", () => {
   it("announces a loss with the target name", () => {
     expect(getGuessAnnouncement({ kind: "lost", targetName: "Thierry Henry" }))
       .toBe("Out of attempts. The player was Thierry Henry.");
+  });
+});
+
+describe("getArchiveDayError", () => {
+  const todayNum = 200;
+  const invalid = "That isn't a valid day.";
+  const future = "This day hasn't happened yet.";
+
+  it("rejects non-integer days as invalid", () => {
+    expect(getArchiveDayError(NaN, todayNum)).toBe(invalid);
+    expect(getArchiveDayError(1.5, todayNum)).toBe(invalid);
+  });
+
+  it("rejects days before day 1 or after today as not yet happened", () => {
+    expect(getArchiveDayError(0, todayNum)).toBe(future);
+    expect(getArchiveDayError(-1, todayNum)).toBe(future);
+    expect(getArchiveDayError(todayNum + 1, todayNum)).toBe(future);
+  });
+
+  it("accepts day 1 and today", () => {
+    expect(getArchiveDayError(1, todayNum)).toBeNull();
+    expect(getArchiveDayError(todayNum, todayNum)).toBeNull();
+  });
+});
+
+describe("formatCountdown", () => {
+  it("returns 00:00:00 for zero and negative durations", () => {
+    expect(formatCountdown(0)).toBe("00:00:00");
+    expect(formatCountdown(-5000)).toBe("00:00:00");
+  });
+
+  it("rounds partial seconds up", () => {
+    expect(formatCountdown(1)).toBe("00:00:01");
+    expect(formatCountdown(1001)).toBe("00:00:02");
+  });
+
+  it("formats hours, minutes and seconds zero-padded", () => {
+    expect(formatCountdown(3_661_000)).toBe("01:01:01");
+    expect(formatCountdown(86_399_000)).toBe("23:59:59");
   });
 });

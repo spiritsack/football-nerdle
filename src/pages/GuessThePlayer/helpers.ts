@@ -30,6 +30,16 @@ export function getDateForDay(dayNum: number): string {
   return start.toISOString().split("T")[0];
 }
 
+/**
+ * Validates an archive day number against today's day number.
+ * Returns the error message to show, or null when the day can be loaded.
+ */
+export function getArchiveDayError(dayNum: number, todayNum: number): string | null {
+  if (!Number.isInteger(dayNum)) return "That isn't a valid day.";
+  if (dayNum < 1 || dayNum > todayNum) return "This day hasn't happened yet.";
+  return null;
+}
+
 // Per-date result storage (replaces single DAILY_GUESS_KEY)
 export function getDailyResultForDate(date: string): DailyResult | null {
   try {
@@ -192,4 +202,13 @@ export function getGuessAnnouncement(outcome: GuessOutcome): string {
     case "lost":
       return `Out of attempts. The player was ${outcome.targetName}.`;
   }
+}
+
+/** Formats a duration as zero-padded HH:MM:SS, rounding up to whole seconds. */
+export function formatCountdown(ms: number): string {
+  const total = Math.max(0, Math.ceil(ms / 1000));
+  const h = Math.floor(total / 3600);
+  const m = Math.floor((total % 3600) / 60);
+  const s = total % 60;
+  return [h, m, s].map((n) => String(n).padStart(2, "0")).join(":");
 }
