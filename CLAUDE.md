@@ -133,6 +133,8 @@ e2e/                    — Playwright E2E tests
 - **E2E tests**: `npm run test:e2e` — Playwright, files in `e2e/`
 - Changes that affect behavior must include test updates
 - E2E tests use real Supabase data
+- E2E runs against a staging-mode production build (`vite build` + `vite preview`, port 4173, override with `E2E_PORT`), not the StrictMode dev server, so each puzzle loads once
+- In E2E specs import `test`/`expect` from `e2e/fixtures.ts` (it blocks writes to `daily_schedule`). Wait for data with `loadPuzzle`/`searchFor` and `DATA_TIMEOUT` (never `waitForTimeout`), seed localStorage with `seedStorage`, and use `mockDailySchedule` for a daily puzzle
 
 ## Conventions
 
