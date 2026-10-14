@@ -98,7 +98,7 @@ e2e/                    — Playwright E2E tests
 
 - **Player data**: All player data lives in Supabase, imported from TransferMarkt datasets (~47k players) with club history backfilled from Wikidata (~18k additional players). No runtime API calls to external services. Player search queries the Supabase `players` table directly.
 - **Legacy players**: Retired players (no current club) are auto-detected and shown with vintage-styled cards. Admin can override via `is_legacy` field.
-- **Daily leaderboard**: Anonymous result submissions to `daily_results` table. Shown as a bar chart after game completion. Deduplicated client-side via localStorage.
+- **Daily leaderboard**: Anonymous result submissions to `daily_results` table. Shown as a bar chart after game completion; counts are aggregated server-side via the `get_daily_leaderboard` RPC. Deduplicated client-side via localStorage.
 - **Admin authentication**: Supabase Auth (email/password) protects the admin interface. An `admin_users` table stores allowed emails. The `is_admin()` SQL function checks the JWT against this table. No service role key in client code.
 - **RLS policies**: Data tables allow SELECT for anyone, INSERT/UPDATE restricted to admin users. `daily_schedule` allows anon INSERT (game auto-creates daily entries). `game_rooms` allows full anon access (multiplayer).
 - **`didPlayTogether`**: Pure function in `utils/gameLogic.ts` — checks if two players overlapped at the same club. No API calls.
