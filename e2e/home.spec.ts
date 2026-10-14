@@ -1,4 +1,4 @@
-import { test, expect } from "@playwright/test";
+import { test, expect, type Page } from "./fixtures";
 
 test.describe("Home Page", () => {
   test("shows the title", async ({ page }) => {
@@ -67,7 +67,7 @@ test.describe("Home Page", () => {
 
 test.describe("Daily summary", () => {
   async function seed(
-    page: import("@playwright/test").Page,
+    page: Page,
     result: { status: "won" | "lost"; attempts: number } | null,
     streak: number,
   ) {

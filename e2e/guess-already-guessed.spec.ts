@@ -1,5 +1,4 @@
-import { test, expect, type Page } from "@playwright/test";
-import { mockTheSportsDB } from "./fixtures";
+import { test, expect, mockTheSportsDB, type Page } from "./fixtures";
 
 const search = (page: Page) => page.getByRole("combobox");
 const option = (page: Page, name: RegExp) => page.getByRole("option", { name });
