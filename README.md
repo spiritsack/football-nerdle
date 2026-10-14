@@ -35,8 +35,7 @@ See a player's club history and guess who it is in **5 attempts**.
 
 ```bash
 npm install
-npm run dev        # Staging database
-npm run dev:prod   # Production database
+npm run dev   # Production database
 ```
 
 Copy `.env.example` to `.env` and fill in your Supabase credentials:
@@ -68,7 +67,7 @@ VITE_SUPABASE_URL=... SUPABASE_SERVICE_ROLE_KEY=... npx tsx scripts/backfill-wik
 VITE_SUPABASE_URL=... SUPABASE_SERVICE_ROLE_KEY=... npx tsx scripts/backfill-wikidata.ts --player 3220
 ```
 
-Copy data between Supabase instances (e.g. production to staging):
+Copy data between Supabase instances (e.g. production to a new or local project):
 
 ```bash
 SOURCE_SUPABASE_URL=... SOURCE_SUPABASE_SERVICE_KEY=... \

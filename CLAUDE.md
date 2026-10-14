@@ -22,8 +22,7 @@ A football (soccer) trivia web app with multiple game modes, deployed to GitHub 
 
 ## Commands
 
-- `npm run dev` — Start dev server (staging database)
-- `npm run dev:prod` — Start dev server (production database)
+- `npm run dev` — Start dev server (production database)
 - `npm run build` — Type-check (`tsc -b`) then build with Vite
 - `npm run lint` — ESLint
 - `npm run preview` — Preview production build
@@ -32,7 +31,7 @@ A football (soccer) trivia web app with multiple game modes, deployed to GitHub 
 - `npx tsx scripts/import-transfermarkt.ts` — Import target league players
 - `npx tsx scripts/import-transfermarkt.ts --all` — Import all players from dataset
 - `npx tsx scripts/backfill-wikidata.ts` — Backfill missing club history from Wikidata
-- `npx tsx scripts/copy-db.ts` — Copy data between Supabase instances (e.g. prod→staging)
+- `npx tsx scripts/copy-db.ts` — Copy data between Supabase instances (e.g. production to a new or local project)
 
 ## Project Structure
 
@@ -133,7 +132,7 @@ e2e/                    — Playwright E2E tests
 - **E2E tests**: `npm run test:e2e` — Playwright, files in `e2e/`
 - Changes that affect behavior must include test updates
 - E2E tests use real Supabase data
-- E2E runs against a staging-mode production build (`vite build` + `vite preview`, port 4173, override with `E2E_PORT`), not the StrictMode dev server, so each puzzle loads once
+- E2E runs against a production build (`vite build` + `vite preview`, port 4173, override with `E2E_PORT`), not the StrictMode dev server, so each puzzle loads once
 - Playwright retries failed tests twice in CI only, as a safety net; a test that needed a retry is reported as "flaky" and should be fixed, not left to the retry
 - In E2E specs import `test`/`expect` from `e2e/fixtures.ts` (its `blockDbWrites` auto fixture stubs writes to `daily_schedule`, `daily_results` and `game_rooms`). Wait for data with `loadPuzzle`/`searchFor` and `DATA_TIMEOUT` (never `waitForTimeout`), seed localStorage with `seedStorage`, and use `mockDailySchedule` for a daily puzzle
 

@@ -28,8 +28,10 @@ export default defineConfig({
     },
   ],
   webServer: {
-    // Staging mode: the same database as `npm run dev`
-    command: `npx vite build --mode staging && npx vite preview --mode staging --port ${PORT} --strictPort`,
+    // Production mode (the `vite build` default): `.env.production` locally,
+    // the exported VITE_SUPABASE_* env vars in CI. DB writes are stubbed by
+    // the `blockDbWrites` fixture (e2e/fixtures.ts).
+    command: `npx vite build && npx vite preview --port ${PORT} --strictPort`,
     url: BASE_URL,
     // Never test against a server some other checkout left on the port
     reuseExistingServer: false,
