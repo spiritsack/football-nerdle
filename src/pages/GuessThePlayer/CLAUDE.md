@@ -23,7 +23,7 @@ The daily game must remain backwards compatible. Changing day numbering, share t
 
 - **Daily**: random player from `seedPlayers.ts` (107 players, TransferMarkt IDs), selected once per day via `daily_schedule` Supabase table. First user of the day picks randomly from unused seeds; all subsequent users see the same player. Never repeats until all 107 are used. Falls back to sequential day-number algorithm if Supabase is unavailable.
 - **Archive**: play past daily puzzles via `?day=N`. Results saved per-date in localStorage but don't affect stats/streak. Prominent amber banner distinguishes archive from today's daily.
-- **Random**: picks a random player from Supabase with at least 3 clubs, filtered to top club players. No stats tracking.
+- **Random**: picks a random player from Supabase with at least 3 clubs, filtered to top club players. No stats tracking, and the "Your Stats" panel is hidden on its result screen (also for the `?id=` debug load) so it does not look as if the game counted.
 - **Hard mode**: ON by default. Shows only club badges (no names/years). One-way disable per day.
 - **Hints**: wrong guesses progressively reveal nationality (1st), age (2nd), position (3rd), and photo (4th).
 - **Debug**: `?id=tm_349066` loads a specific player by ID.

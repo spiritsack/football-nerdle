@@ -34,6 +34,22 @@ test.describe("Guess the Player Archive", () => {
     await expect(page.getByText(/Archive — Daily #1/)).toBeVisible({ timeout: 10_000 });
   });
 
+  test("shows the stats panel on an archive result screen", async ({ page }) => {
+    // Seed a completed result for Daily #1 (2026-03-24) instead of playing it,
+    // so the test does not submit to the leaderboard
+    await page.goto("/");
+    await page.evaluate(() => {
+      localStorage.setItem(
+        "football-nerdle-daily-2026-03-24",
+        JSON.stringify({ date: "2026-03-24", status: "lost", attempts: 5 }),
+      );
+    });
+    await page.goto("/#/guess?day=1");
+    await page.reload();
+    await expect(page.getByRole("heading", { name: "Game Over!" })).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByTestId("guess-stats")).toContainText("Your Stats");
+  });
+
   test("archive game shows Previous day button", async ({ page }) => {
     await page.goto("/#/guess?day=3");
     await expect(page.getByText("Club History")).toBeVisible({ timeout: 10_000 });
