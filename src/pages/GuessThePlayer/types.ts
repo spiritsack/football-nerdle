@@ -59,3 +59,9 @@ export type GuessDistribution = Record<1 | 2 | 3 | 4 | 5, number>;
 export type ShareOutcome = "shared" | "copied" | "cancelled" | "failed";
 
 export type ShareNavigator = Partial<Pick<Navigator, "share" | "canShare" | "clipboard">>;
+
+/** Tracks which async puzzle load is the latest; see `createLoadGuard`. */
+export interface LoadGuard {
+  /** Starts a load. The returned function is true until a later `begin()`. */
+  begin(): () => boolean;
+}

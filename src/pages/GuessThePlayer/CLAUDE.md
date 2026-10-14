@@ -36,6 +36,7 @@ The daily game must remain backwards compatible. Changing day numbering, share t
 - Daily player selection via `daily_schedule` table (api/dailySchedule.ts)
 - Player search queries `players` table via `ilike`
 - Guess matching compares by player ID or name (handles TransferMarkt ID differences)
+- Loaders (`startDaily`, `loadArchiveDay`, `startRandom`, `startById`) are guarded by `createLoadGuard`: the latest started load wins, and an older load's result or error is dropped
 
 ## File Structure
 

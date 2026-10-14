@@ -4,11 +4,11 @@ import { getOrCreateDailyPlayer, getScheduledPlayerForDate } from "../../api/dai
 import { submitDailyResult } from "../../api/dailyLeaderboard";
 import type { Player } from "../../types";
 import { MAX_ATTEMPTS, SHARE_URL } from "./constants";
-import type { GuessGameState, GuessStats, RevealedHints } from "./types";
+import type { GuessGameState, GuessStats, LoadGuard, RevealedHints } from "./types";
 import {
   getTodayString, getDailyPlayerIndex, getDayNumber, getDateForDay,
   getDailyResult, getDailyResultForDate, saveDailyResult, saveDailyResultForDate,
-  loadStats, recordResult, loadDistribution, recordWin, getGuessAnnouncement, getArchiveDayError
+  loadStats, recordResult, loadDistribution, recordWin, getGuessAnnouncement, getArchiveDayError, createLoadGuard
 } from "./helpers";
 
 const NO_HINTS: RevealedHints = { nationality: false, age: false, position: false, photo: false, initials: false };
@@ -47,13 +47,20 @@ export function useGuessGame() {
 
   // The last loader that was attempted, so "Try Again" retries the same mode.
   const lastStartRef = useRef<(() => Promise<void>) | null>(null);
+  // Only the most recently started loader may write game state (latest load wins).
+  // Lazily created once and kept in a ref, so it is stable and needs no callback deps.
+  const loadGuardRef = useRef<LoadGuard | null>(null);
+  if (loadGuardRef.current === null) loadGuardRef.current = createLoadGuard();
 
   const startDaily = useCallback(async () => {
+    const isCurrent = loadGuardRef.current!.begin();
     lastStartRef.current = () => startDaily();
     setState((s) => ({ ...s, status: "loading", error: null, announcement: "" }));
     try {
       const seed = await getOrCreateDailyPlayer(today);
+      if (!isCurrent()) return;
       const playerWithTeams = await getPlayerWithTeamsCached(seed);
+      if (!isCurrent()) return;
       const stored = getDailyResult();
       const completed = stored?.date === today;
       const dayNum = getDayNumber(today);
@@ -90,12 +97,14 @@ export function useGuessGame() {
         });
       }
     } catch (e) {
+      if (!isCurrent()) return;
       const message = e instanceof Error ? e.message : "Something went wrong";
       setState((s) => ({ ...s, status: "idle", error: message, announcement: "", isDaily: true, isArchive: false }));
     }
   }, [today]);
 
   const loadArchiveDay = useCallback(async (dayNum: number) => {
+    const isCurrent = loadGuardRef.current!.begin();
     lastStartRef.current = () => loadArchiveDay(dayNum);
     const dayError = getArchiveDayError(dayNum, getDayNumber(today));
     if (dayError) {
@@ -114,11 +123,14 @@ export function useGuessGame() {
     try {
       const date = getDateForDay(dayNum);
       const seed = await getScheduledPlayerForDate(date);
+      if (!isCurrent()) return;
       if (!seed) {
         // Fallback to sequential if not in schedule
         const { SEED_PLAYERS } = await import("../../data/seedPlayers");
+        if (!isCurrent()) return;
         const fallbackSeed = SEED_PLAYERS[getDailyPlayerIndex(date)];
         const playerWithTeams = await getPlayerWithTeamsCached(fallbackSeed);
+        if (!isCurrent()) return;
         const stored = getDailyResultForDate(date);
         setState({
           targetPlayer: playerWithTeams,
@@ -137,6 +149,7 @@ export function useGuessGame() {
         return;
       }
       const playerWithTeams = await getPlayerWithTeamsCached(seed);
+      if (!isCurrent()) return;
       const stored = getDailyResultForDate(date);
       setState({
         targetPlayer: playerWithTeams,
@@ -153,16 +166,19 @@ export function useGuessGame() {
         announcement: "",
       });
     } catch (e) {
+      if (!isCurrent()) return;
       const message = e instanceof Error ? e.message : "Something went wrong";
       setState((s) => ({ ...s, status: "idle", error: message, announcement: "", dayNumber: dayNum, isDaily: false, isArchive: true }));
     }
   }, [today]);
 
   const startRandom = useCallback(async () => {
+    const isCurrent = loadGuardRef.current!.begin();
     lastStartRef.current = () => startRandom();
     setState((s) => ({ ...s, status: "loading", error: null, announcement: "" }));
     try {
       const playerWithTeams = await getRandomCachedPlayer();
+      if (!isCurrent()) return;
       if (!playerWithTeams) throw new Error("No players available");
       setState({
         targetPlayer: playerWithTeams,
@@ -179,6 +195,7 @@ export function useGuessGame() {
         announcement: "",
       });
     } catch (e) {
+      if (!isCurrent()) return;
       const message = e instanceof Error ? e.message : "Something went wrong";
       setState((s) => ({ ...s, status: "idle", error: message, announcement: "", isDaily: false, isArchive: false }));
     }
@@ -297,10 +314,12 @@ export function useGuessGame() {
 
   // Debug: start specific player by ID
   const startById = useCallback(async (id: string) => {
+    const isCurrent = loadGuardRef.current!.begin();
     lastStartRef.current = () => startById(id);
     setState((s) => ({ ...s, status: "loading", error: null, announcement: "" }));
     try {
       const playerWithTeams = await getFromCacheById(id);
+      if (!isCurrent()) return;
       if (!playerWithTeams) throw new Error(`Player ${id} not found in cache`);
       setState({
         targetPlayer: playerWithTeams,
@@ -317,6 +336,7 @@ export function useGuessGame() {
         announcement: "",
       });
     } catch (e) {
+      if (!isCurrent()) return;
       const message = e instanceof Error ? e.message : "Something went wrong";
       setState((s) => ({ ...s, status: "idle", error: message, announcement: "", isDaily: false, isArchive: false }));
     }

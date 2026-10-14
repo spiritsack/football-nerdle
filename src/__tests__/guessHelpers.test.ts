@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from "vitest";
-import { getDailyPlayerIndex, getDayNumber, getDateForDay, getGuessAnnouncement, getAlreadyGuessedMap, getArchiveDayError, formatCountdown, formatWrongGuesses, shareResult } from "../pages/GuessThePlayer/helpers";
+import { getDailyPlayerIndex, getDayNumber, getDateForDay, getGuessAnnouncement, getAlreadyGuessedMap, getArchiveDayError, formatCountdown, formatWrongGuesses, shareResult, createLoadGuard } from "../pages/GuessThePlayer/helpers";
 import type { ShareNavigator } from "../pages/GuessThePlayer/types";
 import { SEED_PLAYERS } from "../data/seedPlayers";
 
@@ -282,5 +282,40 @@ describe("formatCountdown", () => {
   it("formats hours, minutes and seconds zero-padded", () => {
     expect(formatCountdown(3_661_000)).toBe("01:01:01");
     expect(formatCountdown(86_399_000)).toBe("23:59:59");
+  });
+});
+
+describe("createLoadGuard", () => {
+  it("marks the latest load as current", () => {
+    const g = createLoadGuard();
+    const a = g.begin();
+    expect(a()).toBe(true);
+  });
+
+  it("supersedes an older load when a newer one begins", () => {
+    const g = createLoadGuard();
+    const a = g.begin();
+    const b = g.begin();
+    expect(a()).toBe(false);
+    expect(b()).toBe(true);
+  });
+
+  it("keeps an older load stale after further loads", () => {
+    const g = createLoadGuard();
+    const a = g.begin();
+    g.begin();
+    const c = g.begin();
+    expect(a()).toBe(false);
+    expect(c()).toBe(true);
+  });
+
+  it("keeps separate guards independent", () => {
+    const g1 = createLoadGuard();
+    const g2 = createLoadGuard();
+    const a = g1.begin();
+    const b = g2.begin();
+    g2.begin();
+    expect(a()).toBe(true);
+    expect(b()).toBe(false);
   });
 });
