@@ -1,27 +1,16 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { DAILY_GUESS_KEY } from "../GuessThePlayer/constants";
 import { getTodayString } from "../../utils/dates";
 import HowToPlayModal from "../../components/HowToPlayModal";
 import { HOW_TO_PLAY } from "./constants";
+import { readHomeDailyState } from "./helpers";
 import type { GameModeKey } from "./types";
 
 const HOW_TO_PLAY_BUTTON_CLASS =
   "mt-4 text-sm text-gray-400 hover:text-white underline underline-offset-2 transition-colors";
 
-function isDailyCompleted(): boolean {
-  try {
-    const stored = localStorage.getItem(DAILY_GUESS_KEY);
-    if (!stored) return false;
-    const parsed = JSON.parse(stored);
-    return parsed.date === getTodayString();
-  } catch {
-    return false;
-  }
-}
-
 export default function Home() {
-  const [dailyDone] = useState(isDailyCompleted);
+  const [{ dailyDone, summary }] = useState(() => readHomeDailyState(getTodayString()));
   const [openRules, setOpenRules] = useState<GameModeKey | null>(null);
 
   return (
@@ -58,6 +47,19 @@ export default function Home() {
               Archive
             </Link>
           </div>
+          {summary && (
+            <p data-testid="daily-summary" className="mt-3 text-sm text-gray-300">
+              <span className={summary.won ? "font-semibold text-green-400" : undefined}>
+                {summary.headline}
+              </span>
+              {summary.streak !== null && (
+                <>
+                  {" · "}
+                  <span aria-hidden="true">🔥</span> {summary.streak}-day streak
+                </>
+              )}
+            </p>
+          )}
           <button
             type="button"
             onClick={() => setOpenRules("guess")}

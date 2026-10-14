@@ -65,6 +65,50 @@ test.describe("Home Page", () => {
   });
 });
 
+test.describe("Daily summary", () => {
+  async function seed(
+    page: import("@playwright/test").Page,
+    result: { status: "won" | "lost"; attempts: number } | null,
+    streak: number,
+  ) {
+    await page.goto("/");
+    await page.evaluate(
+      ({ result, streak }) => {
+        const d = new Date();
+        const date = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+        localStorage.removeItem("football-nerdle-daily-guess");
+        localStorage.removeItem(`football-nerdle-daily-${date}`);
+        if (result) {
+          localStorage.setItem(`football-nerdle-daily-${date}`, JSON.stringify({ date, ...result }));
+        }
+        localStorage.setItem(
+          "football-nerdle-guess-stats",
+          JSON.stringify({ played: 5, won: 4, lost: 1, streak, longestStreak: 4, lastPlayedDate: date }),
+        );
+      },
+      { result, streak },
+    );
+    await page.goto("/");
+  }
+
+  test("shows solved summary with streak", async ({ page }) => {
+    await seed(page, { status: "won", attempts: 3 }, 4);
+    await expect(page.getByTestId("daily-summary")).toHaveText("Solved in 3/5 · 🔥 4-day streak");
+    await expect(page.getByRole("link", { name: "Daily (Done)" })).toBeVisible();
+  });
+
+  test("shows missed summary", async ({ page }) => {
+    await seed(page, { status: "lost", attempts: 5 }, 0);
+    await expect(page.getByTestId("daily-summary")).toHaveText("Missed today");
+  });
+
+  test("no summary when daily not played", async ({ page }) => {
+    await seed(page, null, 4);
+    await expect(page.getByRole("link", { name: "Daily Challenge" })).toBeVisible();
+    await expect(page.getByTestId("daily-summary")).toHaveCount(0);
+  });
+});
+
 test.describe("How to play", () => {
   test("each mode card has a How to play button", async ({ page }) => {
     await page.goto("/#/");
