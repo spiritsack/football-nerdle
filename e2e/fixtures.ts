@@ -29,10 +29,12 @@ export const GAME_ROOMS_TABLE = "game_rooms";
 type Route = Parameters<Parameters<Page["route"]>[1]>[0];
 
 /**
- * Lets reads through and records any write. Returns `true` when the caller
- * must answer the request locally, `false` once it has been passed on.
+ * Passes reads (GET/HEAD/OPTIONS) on to the next handler via `route.fallback()`
+ * and returns `false`. For any other method it records the write in
+ * `blockedWrites` and returns `true`: the caller must then fulfil the request
+ * itself.
  */
-async function recordWrite(route: Route, blockedWrites: BlockedWrite[]): Promise<boolean> {
+async function interceptWrite(route: Route, blockedWrites: BlockedWrite[]): Promise<boolean> {
   const request = route.request();
   const method = request.method();
   if (method === "GET" || method === "HEAD" || method === "OPTIONS") {
@@ -63,12 +65,12 @@ export const test = base.extend<{ blockedWrites: BlockedWrite[]; blockDbWrites: 
     async ({ context, blockedWrites }, provide) => {
       for (const table of BLOCKED_WRITE_TABLES) {
         await context.route(`**/rest/v1/${table}*`, async (route) => {
-          if (!(await recordWrite(route, blockedWrites))) return;
+          if (!(await interceptWrite(route, blockedWrites))) return;
           await route.fulfill({ status: 201, body: "" });
         });
       }
       await context.route(`**/rest/v1/${GAME_ROOMS_TABLE}*`, async (route) => {
-        if (!(await recordWrite(route, blockedWrites))) return;
+        if (!(await interceptWrite(route, blockedWrites))) return;
         if (route.request().method() === "POST") {
           const body = route.request().postDataJSON() as Record<string, unknown>;
           await route.fulfill({
