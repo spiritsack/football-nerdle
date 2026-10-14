@@ -1,8 +1,7 @@
-import { test, expect, mockTheSportsDB, loadPuzzle } from "./fixtures";
+import { test, expect, loadPuzzle } from "./fixtures";
 
 test.describe("Battle Mode", () => {
   test.beforeEach(async ({ page }) => {
-    await mockTheSportsDB(page);
     await page.goto("/#/battle");
   });
 
