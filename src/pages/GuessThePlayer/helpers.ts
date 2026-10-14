@@ -2,7 +2,7 @@ import { SEED_PLAYERS } from "../../data/seedPlayers";
 import { ALREADY_GUESSED_LABEL, DAILY_GUESS_KEY, DAILY_RESULT_PREFIX, DAY_ONE_DATE, GUESS_DISTRIBUTION_KEY, MAX_ATTEMPTS, STATS_KEY } from "./constants";
 
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
-import type { DailyResult, GuessDistribution, GuessOutcome, GuessStats } from "./types";
+import type { DailyResult, GuessDistribution, GuessOutcome, GuessStats, ShareNavigator, ShareOutcome } from "./types";
 import type { FormerTeam, Player } from "../../types";
 import type { MergedClub } from "../../components/PlayerCard/types";
 import { getBaseClubName } from "../../utils/clubNames";
@@ -244,6 +244,50 @@ export function getGuessAnnouncement(outcome: GuessOutcome): string {
     case "lost":
       return `Out of attempts. The player was ${outcome.targetName}.`;
   }
+}
+
+// Assumes nav.share exists; only consults canShare when the browser provides it.
+function canUseShareSheet(text: string, nav: ShareNavigator): boolean {
+  if (typeof nav.canShare === "function") {
+    try {
+      return nav.canShare({ text });
+    } catch {
+      return false;
+    }
+  }
+  return true;
+}
+
+function isAbortError(err: unknown): boolean {
+  return typeof err === "object" && err !== null && (err as { name?: unknown }).name === "AbortError";
+}
+
+/**
+ * Share result text: native share sheet if available, else clipboard.
+ * A dismissed share sheet (AbortError) counts as cancelled. Never throws.
+ */
+export async function shareResult(text: string, nav: ShareNavigator): Promise<ShareOutcome> {
+  if (typeof nav.share === "function" && canUseShareSheet(text, nav)) {
+    try {
+      await nav.share({ text });
+      return "shared";
+    } catch (err) {
+      if (isAbortError(err)) return "cancelled";
+    }
+  }
+  if (typeof nav.clipboard?.writeText !== "function") return "failed";
+  try {
+    await nav.clipboard.writeText(text);
+    return "copied";
+  } catch {
+    return "failed";
+  }
+}
+
+/** Formats the wrong-guess line ("Wrong: A, B"), keeping guess order. Returns "" when there are none. */
+export function formatWrongGuesses(guesses: Pick<Player, "name">[]): string {
+  if (guesses.length === 0) return "";
+  return `Wrong: ${guesses.map((p) => p.name).join(", ")}`;
 }
 
 /** Maps each wrong guess's id to the "Already guessed" label, for PlayerSearch's disabledPlayerIds. */

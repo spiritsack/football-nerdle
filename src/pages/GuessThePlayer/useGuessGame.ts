@@ -68,6 +68,9 @@ export function useGuessGame() {
           isArchive: false,
           dayNumber: dayNum,
           dailyCompleted: true,
+          // Guess history isn't persisted; never carry over another game's guesses or hints
+          wrongGuesses: [],
+          hints: NO_HINTS,
           announcement: "",
         }));
       } else {

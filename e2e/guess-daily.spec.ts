@@ -82,6 +82,8 @@ test.describe("Daily Guess the Player", () => {
     await page.reload();
     await expect(page.getByRole("heading", { name: "Game Over!" })).toBeVisible({ timeout: 10_000 });
     await expect(page.getByTestId("guess-announcer")).toHaveText("");
+    // Guess history isn't persisted, so no guess line on a re-opened result
+    await expect(page.getByTestId("wrong-guesses")).toHaveCount(0);
   });
 
   test("shows the guess distribution empty state when nothing is recorded", async ({ page }) => {
@@ -178,6 +180,24 @@ test.describe("Daily Guess the Player", () => {
     await expect(page.getByText(/Attempts:.*0.*\/.*5/)).toBeVisible();
     await expect(page.getByRole("heading", { name: "Game Over!" })).toHaveCount(0);
     await expect(page.getByTestId("next-puzzle-countdown")).toHaveCount(0);
+  });
+
+  test("shows the stats panel on the daily result screen", async ({ page }) => {
+    // beforeEach cleared football-nerdle-guess-stats, so the panel shows zeros
+    await page.evaluate(() => {
+      const d = new Date();
+      const today = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+      localStorage.setItem(
+        `football-nerdle-daily-${today}`,
+        JSON.stringify({ date: today, status: "lost", attempts: 5 }),
+      );
+    });
+    await page.reload();
+    await expect(page.getByRole("heading", { name: "Game Over!" })).toBeVisible({ timeout: 10_000 });
+    const stats = page.getByTestId("guess-stats");
+    await expect(stats).toBeVisible();
+    await expect(stats).toContainText("Your Stats");
+    await expect(stats.getByText("Win rate")).toHaveCount(0);
   });
 
   test("shows data updated timestamp", async ({ page }) => {

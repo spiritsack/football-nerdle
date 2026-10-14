@@ -8,8 +8,8 @@ Route: `/guess` — Page: `index.tsx` — Hook: `useGuessGame.ts`
 2. Consecutive stints at related clubs are merged (e.g. Barcelona + Barcelona B = Barcelona)
 3. National team entries are filtered out
 4. User has 5 attempts to guess who it is
-5. Wrong guesses are listed; correct guess or 5 failures ends the game
-6. Result can be shared as emoji grid text (penalty-style circles)
+5. Wrong guesses are listed (`formatWrongGuesses` in `helpers.ts`, `data-testid="wrong-guesses"`) during play and, for the session they were made in, on the won/lost result screen under the revealed card; correct guess or 5 failures ends the game. Guesses are not persisted, so a re-opened completed puzzle shows no guess line
+6. Result can be shared as emoji grid text (penalty-style circles). "Share Result" calls `shareResult` in `helpers.ts`: it opens the native share sheet (`navigator.share({ text })`) when available (and `canShare` allows it), falls back to the clipboard if there is no share sheet or it fails, and treats a dismissed sheet (`AbortError`) as cancelled. A clipboard copy shows "Copied!" for 2s; if both fail, a `role="alert"` message with the share text (for manual copying) is shown until the next click
 7. A visually hidden `role="status"` live region (`data-testid="guess-announcer"`) announces each wrong guess, skip, win or loss to screen readers; text comes from `getGuessAnnouncement` in `helpers.ts` and is cleared whenever a new puzzle loads
 8. Players already guessed wrong stay in the search dropdown but are greyed out, labelled "Already guessed" and can't be selected (`getAlreadyGuessedMap` → `PlayerSearch` `disabledPlayerIds`); `submitGuess` also ignores a repeated wrong guess, so it never costs an attempt. The list resets with each new puzzle and is not persisted
 9. Today's daily result screen (not Archive/Random/debug) shows `NextPuzzleCountdown`: "Next puzzle in HH:MM:SS" to the local midnight ending `today` (`getMsUntilNextDay` in `utils/dates.ts`, `formatCountdown` in `helpers.ts`); at zero it becomes a "Play new daily" button that reloads the page (the hook freezes `today` at mount)
@@ -25,7 +25,7 @@ The daily game must remain backwards compatible. Changing day numbering, share t
 
 - **Daily**: random player from `seedPlayers.ts` (107 players, TransferMarkt IDs), selected once per day via `daily_schedule` Supabase table. First user of the day picks randomly from unused seeds; all subsequent users see the same player. Never repeats until all 107 are used. Falls back to sequential day-number algorithm if Supabase is unavailable.
 - **Archive**: play past daily puzzles via `?day=N`. Results saved per-date in localStorage but don't affect stats/streak. Prominent amber banner distinguishes archive from today's daily.
-- **Random**: picks a random player from Supabase with at least 3 clubs, filtered to top club players. No stats tracking.
+- **Random**: picks a random player from Supabase with at least 3 clubs, filtered to top club players. No stats tracking, and the "Your Stats" panel is hidden on its result screen (also for the `?id=` debug load) so it does not look as if the game counted.
 - **Hard mode**: ON by default. Shows only club badges (no names/years). One-way disable per day.
 - **Hints**: wrong guesses progressively reveal nationality (1st), age (2nd), position (3rd), and photo (4th).
 - **Debug**: `?id=tm_349066` loads a specific player by ID.
