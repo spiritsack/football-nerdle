@@ -22,4 +22,5 @@ export interface PlayerCardProps {
   onSkip?: () => void;
   attempts?: number;
   maxAttempts?: number;
+  disabledPlayerIds?: Map<string, string>;  // id → reason label, passed to PlayerSearch
 }

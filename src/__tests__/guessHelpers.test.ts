@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from "vitest";
-import { getDailyPlayerIndex, getDayNumber, getDateForDay, getGuessAnnouncement, shareResult } from "../pages/GuessThePlayer/helpers";
+import { getDailyPlayerIndex, getDayNumber, getDateForDay, getGuessAnnouncement, getAlreadyGuessedMap, getArchiveDayError, formatCountdown, formatWrongGuesses, shareResult } from "../pages/GuessThePlayer/helpers";
 import type { ShareNavigator } from "../pages/GuessThePlayer/types";
 import { SEED_PLAYERS } from "../data/seedPlayers";
 
@@ -206,5 +206,81 @@ describe("shareResult", () => {
   it("returns failed when share fails and clipboard is missing", async () => {
     const share = vi.fn().mockRejectedValue(new TypeError("boom"));
     await expect(shareResult(TEXT, fakeNav({ share }))).resolves.toBe("failed");
+  });
+});
+
+describe("formatWrongGuesses", () => {
+  it("returns an empty string when there are no wrong guesses", () => {
+    expect(formatWrongGuesses([])).toBe("");
+  });
+
+  it("formats a single wrong guess", () => {
+    expect(formatWrongGuesses([{ name: "Robert Lewandowski" }])).toBe("Wrong: Robert Lewandowski");
+  });
+
+  it("joins multiple wrong guesses in the order they were made", () => {
+    expect(formatWrongGuesses([{ name: "A" }, { name: "B" }])).toBe("Wrong: A, B");
+    expect(formatWrongGuesses([{ name: "C" }, { name: "A" }, { name: "B" }])).toBe("Wrong: C, A, B");
+  });
+});
+
+describe("getAlreadyGuessedMap", () => {
+  const messi = { id: "tm_28003", name: "Lionel Messi", thumbnail: "", nationality: "Argentina" };
+  const haaland = { id: "tm_418560", name: "Erling Haaland", thumbnail: "", nationality: "Norway" };
+
+  it("returns an empty map for no wrong guesses", () => {
+    expect(getAlreadyGuessedMap([]).size).toBe(0);
+  });
+
+  it("maps each wrong guess id to the Already guessed label", () => {
+    const map = getAlreadyGuessedMap([messi, haaland]);
+    expect(map.size).toBe(2);
+    expect(map.get("tm_28003")).toBe("Already guessed");
+    expect(map.get("tm_418560")).toBe("Already guessed");
+  });
+
+  it("does not create extra entries for duplicates", () => {
+    const map = getAlreadyGuessedMap([messi, messi]);
+    expect(map.size).toBe(1);
+    expect(map.get("tm_28003")).toBe("Already guessed");
+  });
+});
+
+describe("getArchiveDayError", () => {
+  const todayNum = 200;
+  const invalid = "That isn't a valid day.";
+  const future = "This day hasn't happened yet.";
+
+  it("rejects non-integer days as invalid", () => {
+    expect(getArchiveDayError(NaN, todayNum)).toBe(invalid);
+    expect(getArchiveDayError(1.5, todayNum)).toBe(invalid);
+  });
+
+  it("rejects days before day 1 or after today as not yet happened", () => {
+    expect(getArchiveDayError(0, todayNum)).toBe(future);
+    expect(getArchiveDayError(-1, todayNum)).toBe(future);
+    expect(getArchiveDayError(todayNum + 1, todayNum)).toBe(future);
+  });
+
+  it("accepts day 1 and today", () => {
+    expect(getArchiveDayError(1, todayNum)).toBeNull();
+    expect(getArchiveDayError(todayNum, todayNum)).toBeNull();
+  });
+});
+
+describe("formatCountdown", () => {
+  it("returns 00:00:00 for zero and negative durations", () => {
+    expect(formatCountdown(0)).toBe("00:00:00");
+    expect(formatCountdown(-5000)).toBe("00:00:00");
+  });
+
+  it("rounds partial seconds up", () => {
+    expect(formatCountdown(1)).toBe("00:00:01");
+    expect(formatCountdown(1001)).toBe("00:00:02");
+  });
+
+  it("formats hours, minutes and seconds zero-padded", () => {
+    expect(formatCountdown(3_661_000)).toBe("01:01:01");
+    expect(formatCountdown(86_399_000)).toBe("23:59:59");
   });
 });
