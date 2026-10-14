@@ -5,6 +5,7 @@ import { HARD_MODE_KEY } from "./constants";
 import { mergeConsecutiveClubs, getTodayString, getDateForDay, formatWrongGuesses } from "./helpers";
 import PlayerCard from "../../components/PlayerCard";
 import DailyLeaderboard from "../../components/DailyLeaderboard";
+import NextPuzzleCountdown from "./NextPuzzleCountdown";
 import { getLastRefresh } from "../../api/playerCache";
 
 export default function GuessThePlayer() {
@@ -273,6 +274,8 @@ export default function GuessThePlayer() {
                 </button>
               )}
             </div>
+
+            {isDaily && !isArchive && <NextPuzzleCountdown key={today} today={today} />}
 
             {dayNavigation}
 
