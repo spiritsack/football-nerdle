@@ -29,6 +29,8 @@ test.describe("Guess the Player result screen wrong guesses", () => {
 
     // Result screen keeps the list
     await expect(page.getByRole("heading", { name: "Game Over!" })).toBeVisible();
+    // Today's daily result screen has the countdown instead of a "Play Today's Daily" button
+    await expect(page.getByRole("button", { name: "Play Today's Daily" })).toHaveCount(0);
     await expect(wrongGuesses).toBeVisible();
     await expect(wrongGuesses).toHaveText(/^Wrong: .*Lewandowski/);
 

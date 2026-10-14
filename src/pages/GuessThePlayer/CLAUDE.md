@@ -27,7 +27,7 @@ The daily game must remain backwards compatible. Changing day numbering, share t
 - **Archive**: play past daily puzzles via `?day=N`. Results saved per-date in localStorage but don't affect stats/streak. Prominent amber banner distinguishes archive from today's daily.
 - **Hard mode**: ON by default. Shows only club badges (no names/years). One-way disable per day.
 - **Hints**: wrong guesses progressively reveal nationality (1st), age (2nd), position (3rd), and photo (4th).
-- **Debug**: `?id=tm_349066` loads a specific player by ID. No stats tracking, and the "Your Stats" panel is hidden on its result screen so it does not look as if the game counted. Its share text uses the `Random` label (kept for share-format compatibility).
+- **Debug**: `?id=tm_349066` loads a specific player by ID. No stats tracking, and the "Your Stats" panel is hidden on its result screen so it does not look as if the game counted. Its share text uses the `Random` label (kept for share-format compatibility). Its result screen offers "Play Today's Daily" (same button as Archive) so the player is never stuck on the debug puzzle.
 - The removed Random mode's old `?mode` URL param is ignored: such links load today's daily.
 
 ## Data Flow

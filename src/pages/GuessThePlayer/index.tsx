@@ -295,7 +295,7 @@ export default function GuessThePlayer() {
               >
                 {shareFeedback === "copied" ? "Copied!" : "Share Result"}
               </button>
-              {isArchive && (
+              {!isDaily && (
                 <button
                   onClick={handlePlayToday}
                   className="px-6 py-3 bg-green-600 hover:bg-green-500 rounded-lg font-semibold transition-colors"
