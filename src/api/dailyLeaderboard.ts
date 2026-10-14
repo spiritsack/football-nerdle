@@ -28,23 +28,31 @@ export interface LeaderboardEntry {
   count: number;
 }
 
+/**
+ * Normalise rows returned by the `get_daily_leaderboard` RPC: coerce numeric
+ * fields (counts may arrive as strings/bigint-like values), drop malformed or
+ * empty rows, and sort by attempts ascending.
+ */
+export function toLeaderboardEntries(rows: unknown[] | null): LeaderboardEntry[] {
+  if (!rows) return [];
+  const entries: LeaderboardEntry[] = [];
+  for (const row of rows) {
+    if (!row || typeof row !== "object") continue;
+    const r = row as Record<string, unknown>;
+    const attempts = Number(r.attempts);
+    const count = Number(r.count);
+    if (!Number.isFinite(attempts) || !Number.isFinite(count) || count <= 0) continue;
+    entries.push({ attempts, count });
+  }
+  return entries.sort((a, b) => a.attempts - b.attempts);
+}
+
 export async function getDailyLeaderboard(date: string): Promise<LeaderboardEntry[]> {
   if (!supabase) return [];
 
-  const { data, error } = await supabase
-    .from("daily_results")
-    .select("attempts")
-    .eq("date", date);
+  const { data, error } = await supabase.rpc("get_daily_leaderboard", { p_date: date });
 
   if (error || !data) return [];
 
-  // Aggregate client-side (Supabase JS doesn't support GROUP BY)
-  const counts = new Map<number, number>();
-  for (const row of data) {
-    counts.set(row.attempts, (counts.get(row.attempts) ?? 0) + 1);
-  }
-
-  return Array.from(counts.entries())
-    .map(([attempts, count]) => ({ attempts, count }))
-    .sort((a, b) => a.attempts - b.attempts);
+  return toLeaderboardEntries(data as unknown[]);
 }
