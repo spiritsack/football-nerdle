@@ -16,12 +16,35 @@ export interface BlockedWrite {
  */
 export const BLOCKED_WRITE_TABLES = ["daily_results", "daily_schedule"] as const;
 
+/** Multiplayer rooms table; stubbed separately so "Create Room" gets a row back. */
+export const GAME_ROOMS_TABLE = "game_rooms";
+
+type Route = Parameters<Parameters<Page["route"]>[1]>[0];
+
+/**
+ * Lets reads through and records any write. Returns `true` when the caller
+ * must answer the request locally, `false` once it has been passed on.
+ */
+async function recordWrite(route: Route, blockedWrites: BlockedWrite[]): Promise<boolean> {
+  const request = route.request();
+  const method = request.method();
+  if (method === "GET" || method === "HEAD" || method === "OPTIONS") {
+    await route.fallback();
+    return false;
+  }
+  blockedWrites.push({ method, url: request.url() });
+  return true;
+}
+
 /**
  * Shared `test` for every spec. An auto fixture stubs non-GET requests to the
  * tables above with an empty 201 (supabase-js treats that as a successful
- * `.insert()` without `.select()`) and records them in `blockedWrites`. Reads
- * and RPCs still reach the real database. Page-level routes (e.g. a spec that
- * aborts all `rest/v1` traffic) are matched first and still win.
+ * `.insert()` without `.select()`) and records them in `blockedWrites`.
+ * `game_rooms` writes are recorded too: a POST gets the inserted row echoed
+ * back with a fake id (so `createRoom`'s `.select().single()` reaches the
+ * waiting screen) and other writes get an empty 204. Reads and RPCs still
+ * reach the real database. Page-level routes (e.g. a spec that aborts all
+ * `rest/v1` traffic) are matched first and still win.
  */
 export const test = base.extend<{ blockedWrites: BlockedWrite[]; blockDbWrites: void }>({
   // Playwright requires an object pattern here, even with no dependencies
@@ -32,16 +55,30 @@ export const test = base.extend<{ blockedWrites: BlockedWrite[]; blockDbWrites: 
   blockDbWrites: [
     async ({ context, blockedWrites }, provide) => {
       for (const table of BLOCKED_WRITE_TABLES) {
-        await context.route(`**/rest/v1/${table}*`, (route) => {
-          const request = route.request();
-          const method = request.method();
-          if (method === "GET" || method === "HEAD" || method === "OPTIONS") {
-            return route.fallback();
-          }
-          blockedWrites.push({ method, url: request.url() });
-          return route.fulfill({ status: 201, body: "" });
+        await context.route(`**/rest/v1/${table}*`, async (route) => {
+          if (!(await recordWrite(route, blockedWrites))) return;
+          await route.fulfill({ status: 201, body: "" });
         });
       }
+      await context.route(`**/rest/v1/${GAME_ROOMS_TABLE}*`, async (route) => {
+        if (!(await recordWrite(route, blockedWrites))) return;
+        if (route.request().method() === "POST") {
+          const body = route.request().postDataJSON() as Record<string, unknown>;
+          await route.fulfill({
+            status: 201,
+            contentType: "application/json",
+            body: JSON.stringify({
+              id: crypto.randomUUID(),
+              created_at: new Date().toISOString(),
+              guest_id: null,
+              ...body,
+            }),
+          });
+          return;
+        }
+        // Updates resolve with data: null; a future turn-flow spec must add its own route.
+        await route.fulfill({ status: 204, body: "" });
+      });
       await provide();
     },
     { auto: true },
