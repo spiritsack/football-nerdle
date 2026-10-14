@@ -4,7 +4,7 @@ import { getOrCreateDailyPlayer, getScheduledPlayerForDate } from "../../api/dai
 import { submitDailyResult } from "../../api/dailyLeaderboard";
 import type { Player } from "../../types";
 import { MAX_ATTEMPTS, SHARE_URL } from "./constants";
-import type { GuessGameState, GuessStats, LoadGuard, RevealedHints } from "./types";
+import type { GuessGameState, GuessStats, RevealedHints } from "./types";
 import {
   getTodayString, getDailyPlayerIndex, getDayNumber, getDateForDay,
   getDailyResult, getDailyResultForDate, saveDailyResult, saveDailyResultForDate,
@@ -47,13 +47,11 @@ export function useGuessGame() {
 
   // The last loader that was attempted, so "Try Again" retries the same mode.
   const lastStartRef = useRef<(() => Promise<void>) | null>(null);
-  // Only the most recently started loader may write game state (latest load wins).
-  // Lazily created once and kept in a ref, so it is stable and needs no callback deps.
-  const loadGuardRef = useRef<LoadGuard | null>(null);
-  if (loadGuardRef.current === null) loadGuardRef.current = createLoadGuard();
+  // Only the most recently started loader may write game state; the guard is created once.
+  const [loadGuard] = useState(createLoadGuard);
 
   const startDaily = useCallback(async () => {
-    const isCurrent = loadGuardRef.current!.begin();
+    const isCurrent = loadGuard.begin();
     lastStartRef.current = () => startDaily();
     setState((s) => ({ ...s, status: "loading", error: null, announcement: "" }));
     try {
@@ -101,10 +99,10 @@ export function useGuessGame() {
       const message = e instanceof Error ? e.message : "Something went wrong";
       setState((s) => ({ ...s, status: "idle", error: message, announcement: "", isDaily: true, isArchive: false }));
     }
-  }, [today]);
+  }, [today, loadGuard]);
 
   const loadArchiveDay = useCallback(async (dayNum: number) => {
-    const isCurrent = loadGuardRef.current!.begin();
+    const isCurrent = loadGuard.begin();
     lastStartRef.current = () => loadArchiveDay(dayNum);
     const dayError = getArchiveDayError(dayNum, getDayNumber(today));
     if (dayError) {
@@ -170,7 +168,7 @@ export function useGuessGame() {
       const message = e instanceof Error ? e.message : "Something went wrong";
       setState((s) => ({ ...s, status: "idle", error: message, announcement: "", dayNumber: dayNum, isDaily: false, isArchive: true }));
     }
-  }, [today]);
+  }, [today, loadGuard]);
 
   const submitGuess = useCallback(
     (player: Player) => {
@@ -285,7 +283,7 @@ export function useGuessGame() {
 
   // Debug: start specific player by ID
   const startById = useCallback(async (id: string) => {
-    const isCurrent = loadGuardRef.current!.begin();
+    const isCurrent = loadGuard.begin();
     lastStartRef.current = () => startById(id);
     setState((s) => ({ ...s, status: "loading", error: null, announcement: "" }));
     try {
@@ -311,7 +309,7 @@ export function useGuessGame() {
       const message = e instanceof Error ? e.message : "Something went wrong";
       setState((s) => ({ ...s, status: "idle", error: message, announcement: "", isDaily: false, isArchive: false }));
     }
-  }, []);
+  }, [loadGuard]);
 
   // Re-run whichever loader was last attempted (falls back to today's daily)
   const retry = useCallback(() => (lastStartRef.current ?? startDaily)(), [startDaily]);
