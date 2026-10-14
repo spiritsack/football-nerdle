@@ -1,16 +1,17 @@
-import { test, expect, mockTheSportsDB } from "./fixtures";
+import {
+  test, expect, mockTheSportsDB, mockDailySchedule, loadPuzzle, todayString, DATA_TIMEOUT,
+} from "./fixtures";
 
 test.describe("E2E suite does not write to the database", () => {
   test("finishing a daily game does not write daily_results", async ({ page, blockedWrites }) => {
     await mockTheSportsDB(page);
-    await page.goto("/");
-    await page.evaluate(() => localStorage.clear());
-    await page.goto("/#/guess");
-    await expect(page.getByText("Club History")).toBeVisible({ timeout: 10_000 });
+    await mockDailySchedule(page, { date: todayString() });
+    await loadPuzzle(page, () => page.goto("/#/guess"));
 
     const skip = page.getByRole("button", { name: "Skip", exact: true });
-    for (let i = 0; i < 5; i++) {
+    for (let i = 1; i <= 5; i++) {
       await skip.click();
+      if (i < 5) await expect(page.getByText(new RegExp(`Attempts:.*${i}.*/.*5`))).toBeVisible();
     }
     await expect(page.getByRole("heading", { name: "Game Over!" })).toBeVisible();
 
@@ -24,21 +25,20 @@ test.describe("E2E suite does not write to the database", () => {
       .toBe(true);
 
     // The app treated the stubbed insert as success
-    const submitted = await page.evaluate(() =>
-      Object.keys(localStorage).some((k) => k.startsWith("football-nerdle-lb-")),
-    );
-    expect(submitted).toBe(true);
+    await expect
+      .poll(() =>
+        page.evaluate(() => Object.keys(localStorage).some((k) => k.startsWith("football-nerdle-lb-"))),
+      )
+      .toBe(true);
   });
 
   test("creating a multiplayer room does not write game_rooms", async ({ page, blockedWrites }) => {
-    await page.goto("/");
-    await page.evaluate(() => localStorage.clear());
     await page.goto("/#/battle/multiplayer");
 
     await page.getByRole("button", { name: "Create Room" }).click();
 
     // The app accepted the stubbed row and moved to the waiting screen
-    await expect(page.getByText("Waiting for opponent to join...")).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByText("Waiting for opponent to join...")).toBeVisible({ timeout: DATA_TIMEOUT });
     const roomCode = page.getByText("Room Code", { exact: true }).locator("xpath=following-sibling::p[1]");
     await expect(roomCode).toHaveText(/^[A-HJ-NP-Z2-9]{6}$/);
 

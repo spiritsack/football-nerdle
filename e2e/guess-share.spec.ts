@@ -1,21 +1,17 @@
-import { test, expect, mockTheSportsDB, type Page } from "./fixtures";
+import {
+  test, expect, mockTheSportsDB, mockDailySchedule, loadPuzzle, seedStorage, todayString, type Page,
+} from "./fixtures";
 
 const SHARE_URL_RE = /https:\/\/spiritsack\.github\.io\/football-nerdle\/#\/guess$/;
 
 // Seed a lost daily for today and land on the "Game Over!" result screen.
 async function openCompletedDaily(page: Page) {
   await mockTheSportsDB(page);
-  await page.goto("/");
-  await page.evaluate(() => {
-    const d = new Date();
-    const today = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-    localStorage.setItem(
-      `football-nerdle-daily-${today}`,
-      JSON.stringify({ date: today, status: "lost", attempts: 5 }),
-    );
+  await mockDailySchedule(page, { date: todayString() });
+  await seedStorage(page, {
+    "football-nerdle-daily-{today}": { date: "{today}", status: "lost", attempts: 5 },
   });
-  await page.goto("/#/guess");
-  await expect(page.getByRole("heading", { name: "Game Over!" })).toBeVisible({ timeout: 15_000 });
+  await loadPuzzle(page, () => page.goto("/#/guess"), page.getByRole("heading", { name: "Game Over!" }));
 }
 
 // Make sure no Web Share API is exposed, whatever the browser build supports.
@@ -70,10 +66,10 @@ test.describe("Guess the Player share result", () => {
     expect(calls[0].text.startsWith("Football Nerdle ")).toBe(true);
     expect(calls[0].text).toMatch(SHARE_URL_RE);
 
-    // The OS sheet is the feedback: the button never flips to "Copied!"
-    await page.waitForTimeout(500);
-    await expect(page.getByRole("button", { name: "Copied!" })).toHaveCount(0);
+    // The OS sheet is the feedback: the button never flips to "Copied!".
+    // share() has resolved by now, so any flip would already be rendered.
     await expect(page.getByRole("button", { name: "Share Result" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Copied!" })).toHaveCount(0);
     await expect(page.getByRole("alert")).toHaveCount(0);
   });
 
