@@ -13,6 +13,12 @@ test.describe("Not found page", () => {
     await expect(page.getByRole("link", { name: "Back to Home" })).toBeVisible();
   });
 
+  test("/pack route shows not-found screen", async ({ page }) => {
+    await page.goto("/#/pack");
+    await expect(page.getByRole("heading", { name: "Page not found" })).toBeVisible();
+    await expect(page.getByRole("link", { name: "Back to Home" })).toBeVisible();
+  });
+
   test("Back to Home link returns to Home", async ({ page }) => {
     await page.goto("/#/this-does-not-exist");
     await page.getByRole("link", { name: "Back to Home" }).click();
