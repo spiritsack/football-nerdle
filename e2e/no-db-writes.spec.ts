@@ -29,4 +29,22 @@ test.describe("E2E suite does not write to the database", () => {
     );
     expect(submitted).toBe(true);
   });
+
+  test("creating a multiplayer room does not write game_rooms", async ({ page, blockedWrites }) => {
+    await page.goto("/");
+    await page.evaluate(() => localStorage.clear());
+    await page.goto("/#/battle/multiplayer");
+
+    await page.getByRole("button", { name: "Create Room" }).click();
+
+    // The app accepted the stubbed row and moved to the waiting screen
+    await expect(page.getByText("Waiting for opponent to join...")).toBeVisible({ timeout: 10_000 });
+    const roomCode = page.getByText("Room Code", { exact: true }).locator("xpath=following-sibling::p[1]");
+    await expect(roomCode).toHaveText(/^[A-HJ-NP-Z2-9]{6}$/);
+
+    // The room insert was intercepted by the fixture, never sent
+    expect(
+      blockedWrites.some((w) => w.method === "POST" && w.url.includes("/rest/v1/game_rooms")),
+    ).toBe(true);
+  });
 });
