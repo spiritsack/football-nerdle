@@ -1,5 +1,4 @@
-import { test, expect } from "@playwright/test";
-import { mockTheSportsDB } from "./fixtures";
+import { test, expect, mockTheSportsDB } from "./fixtures";
 
 test.describe("Daily Guess the Player", () => {
   test.beforeEach(async ({ page }) => {
