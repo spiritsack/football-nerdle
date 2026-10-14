@@ -11,6 +11,7 @@ Route: `/guess` — Page: `index.tsx` — Hook: `useGuessGame.ts`
 5. Wrong guesses are listed; correct guess or 5 failures ends the game
 6. Result can be shared as emoji grid text (penalty-style circles)
 7. A visually hidden `role="status"` live region (`data-testid="guess-announcer"`) announces each wrong guess, skip, win or loss to screen readers; text comes from `getGuessAnnouncement` in `helpers.ts` and is cleared whenever a new puzzle loads
+8. Today's daily result screen (not Archive/Random/debug) shows `NextPuzzleCountdown`: "Next puzzle in HH:MM:SS" to the local midnight ending `today` (`getMsUntilNextDay` in `utils/dates.ts`, `formatCountdown` in `helpers.ts`); at zero it becomes a "Play new daily" button that reloads the page (the hook freezes `today` at mount)
 
 ## Backwards Compatibility
 

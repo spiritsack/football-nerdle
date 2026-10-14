@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { getDailyPlayerIndex, getDayNumber, getDateForDay, getGuessAnnouncement, getArchiveDayError } from "../pages/GuessThePlayer/helpers";
+import { getDailyPlayerIndex, getDayNumber, getDateForDay, getGuessAnnouncement, getArchiveDayError, formatCountdown } from "../pages/GuessThePlayer/helpers";
 import { SEED_PLAYERS } from "../data/seedPlayers";
 
 describe("getDailyPlayerIndex (fallback sequential algorithm)", () => {
@@ -138,5 +138,22 @@ describe("getArchiveDayError", () => {
   it("accepts day 1 and today", () => {
     expect(getArchiveDayError(1, todayNum)).toBeNull();
     expect(getArchiveDayError(todayNum, todayNum)).toBeNull();
+  });
+});
+
+describe("formatCountdown", () => {
+  it("returns 00:00:00 for zero and negative durations", () => {
+    expect(formatCountdown(0)).toBe("00:00:00");
+    expect(formatCountdown(-5000)).toBe("00:00:00");
+  });
+
+  it("rounds partial seconds up", () => {
+    expect(formatCountdown(1)).toBe("00:00:01");
+    expect(formatCountdown(1001)).toBe("00:00:02");
+  });
+
+  it("formats hours, minutes and seconds zero-padded", () => {
+    expect(formatCountdown(3_661_000)).toBe("01:01:01");
+    expect(formatCountdown(86_399_000)).toBe("23:59:59");
   });
 });
