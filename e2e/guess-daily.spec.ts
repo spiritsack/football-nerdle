@@ -81,6 +81,8 @@ test.describe("Daily Guess the Player", () => {
     await page.reload();
     await expect(page.getByRole("heading", { name: "Game Over!" })).toBeVisible({ timeout: 10_000 });
     await expect(page.getByTestId("guess-announcer")).toHaveText("");
+    // Guess history isn't persisted, so no guess line on a re-opened result
+    await expect(page.getByTestId("wrong-guesses")).toHaveCount(0);
   });
 
   test("does not show the next-puzzle countdown while playing", async ({ page }) => {

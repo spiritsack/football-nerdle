@@ -8,7 +8,7 @@ Route: `/guess` — Page: `index.tsx` — Hook: `useGuessGame.ts`
 2. Consecutive stints at related clubs are merged (e.g. Barcelona + Barcelona B = Barcelona)
 3. National team entries are filtered out
 4. User has 5 attempts to guess who it is
-5. Wrong guesses are listed; correct guess or 5 failures ends the game
+5. Wrong guesses are listed (`formatWrongGuesses` in `helpers.ts`, `data-testid="wrong-guesses"`) during play and, for the session they were made in, on the won/lost result screen under the revealed card; correct guess or 5 failures ends the game. Guesses are not persisted, so a re-opened completed puzzle shows no guess line
 6. Result can be shared as emoji grid text (penalty-style circles)
 7. A visually hidden `role="status"` live region (`data-testid="guess-announcer"`) announces each wrong guess, skip, win or loss to screen readers; text comes from `getGuessAnnouncement` in `helpers.ts` and is cleared whenever a new puzzle loads
 8. Players already guessed wrong stay in the search dropdown but are greyed out, labelled "Already guessed" and can't be selected (`getAlreadyGuessedMap` → `PlayerSearch` `disabledPlayerIds`); `submitGuess` also ignores a repeated wrong guess, so it never costs an attempt. The list resets with each new puzzle and is not persisted

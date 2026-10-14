@@ -204,6 +204,12 @@ export function getGuessAnnouncement(outcome: GuessOutcome): string {
   }
 }
 
+/** Formats the wrong-guess line ("Wrong: A, B"), keeping guess order. Returns "" when there are none. */
+export function formatWrongGuesses(guesses: Pick<Player, "name">[]): string {
+  if (guesses.length === 0) return "";
+  return `Wrong: ${guesses.map((p) => p.name).join(", ")}`;
+}
+
 /** Maps each wrong guess's id to the "Already guessed" label, for PlayerSearch's disabledPlayerIds. */
 export function getAlreadyGuessedMap(wrongGuesses: Player[]): Map<string, string> {
   return new Map(wrongGuesses.map((p) => [p.id, ALREADY_GUESSED_LABEL]));

@@ -2,7 +2,7 @@ import { useState, useMemo, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useGuessGame } from "./useGuessGame";
 import { HARD_MODE_KEY } from "./constants";
-import { mergeConsecutiveClubs, getTodayString, getDateForDay, getDayNumber, getAlreadyGuessedMap } from "./helpers";
+import { mergeConsecutiveClubs, getTodayString, getDateForDay, getDayNumber, getAlreadyGuessedMap, formatWrongGuesses } from "./helpers";
 import PlayerCard from "../../components/PlayerCard";
 import DailyLeaderboard from "../../components/DailyLeaderboard";
 import NextPuzzleCountdown from "./NextPuzzleCountdown";
@@ -75,6 +75,7 @@ export default function GuessThePlayer() {
   const mergedClubs = useMemo(() => mergeConsecutiveClubs(clubs), [clubs]);
   const alreadyGuessed = useMemo(() => getAlreadyGuessedMap(wrongGuesses), [wrongGuesses]);
   const resultScreen = (status === "won" || status === "lost") && targetPlayer;
+  const wrongGuessesText = formatWrongGuesses(wrongGuesses);
 
   const todayDayNum = getDayNumber(today);
 
@@ -210,9 +211,9 @@ export default function GuessThePlayer() {
               disabledPlayerIds={alreadyGuessed}
             />
 
-            {wrongGuesses.length > 0 && (
-              <div className="text-sm text-gray-400">
-                Wrong: {wrongGuesses.map((p) => p.name).join(", ")}
+            {wrongGuessesText && (
+              <div data-testid="wrong-guesses" className="text-sm text-gray-400">
+                {wrongGuessesText}
               </div>
             )}
 
@@ -240,6 +241,12 @@ export default function GuessThePlayer() {
               hardMode={false}
               result={status === "won" ? "won" : "lost"}
             />
+
+            {wrongGuessesText && (
+              <div data-testid="wrong-guesses" className="text-sm text-gray-400">
+                {wrongGuessesText}
+              </div>
+            )}
 
             <p className="text-gray-300">
               {status === "won" ? (
