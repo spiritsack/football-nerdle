@@ -1,4 +1,5 @@
-import { test, expect } from "@playwright/test";
+import type { Page } from "@playwright/test";
+import { test, expect, seedStorage } from "./fixtures";
 
 test.describe("Home Page", () => {
   test("shows the title", async ({ page }) => {
@@ -37,8 +38,7 @@ test.describe("Home Page", () => {
   });
 
   test("Daily button is emphasised when daily not completed", async ({ page }) => {
-    await page.goto("/");
-    await page.evaluate(() => localStorage.removeItem("football-nerdle-daily-guess"));
+    // A fresh browser context has no daily result stored
     await page.goto("/");
     const dailyBtn = page.getByRole("link", { name: /Daily/ });
     await expect(dailyBtn).toHaveClass(/bg-green-600/);
@@ -46,12 +46,7 @@ test.describe("Home Page", () => {
   });
 
   test("Archive button is emphasised once daily is completed", async ({ page }) => {
-    await page.goto("/");
-    await page.evaluate(() => {
-      const d = new Date();
-      const date = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-      localStorage.setItem("football-nerdle-daily-guess", JSON.stringify({ date }));
-    });
+    await seedStorage(page, { "football-nerdle-daily-guess": { date: "{today}" } });
     await page.goto("/");
     await expect(page.getByRole("link", { name: "Daily (Done)" })).toHaveClass(/bg-gray-700/);
     await expect(page.getByRole("link", { name: "Archive" })).toHaveClass(/bg-green-600/);
@@ -67,27 +62,14 @@ test.describe("Home Page", () => {
 
 test.describe("Daily summary", () => {
   async function seed(
-    page: import("@playwright/test").Page,
+    page: Page,
     result: { status: "won" | "lost"; attempts: number } | null,
     streak: number,
   ) {
-    await page.goto("/");
-    await page.evaluate(
-      ({ result, streak }) => {
-        const d = new Date();
-        const date = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-        localStorage.removeItem("football-nerdle-daily-guess");
-        localStorage.removeItem(`football-nerdle-daily-${date}`);
-        if (result) {
-          localStorage.setItem(`football-nerdle-daily-${date}`, JSON.stringify({ date, ...result }));
-        }
-        localStorage.setItem(
-          "football-nerdle-guess-stats",
-          JSON.stringify({ played: 5, won: 4, lost: 1, streak, longestStreak: 4, lastPlayedDate: date }),
-        );
-      },
-      { result, streak },
-    );
+    await seedStorage(page, {
+      ...(result ? { "football-nerdle-daily-{today}": { date: "{today}", ...result } } : {}),
+      "football-nerdle-guess-stats": { played: 5, won: 4, lost: 1, streak, longestStreak: 4, lastPlayedDate: "{today}" },
+    });
     await page.goto("/");
   }
 

@@ -1,5 +1,4 @@
-import { test, expect } from "@playwright/test";
-import { mockTheSportsDB } from "./fixtures";
+import { test, expect, mockTheSportsDB, loadPuzzle } from "./fixtures";
 
 test.describe("Battle Mode", () => {
   test.beforeEach(async ({ page }) => {
@@ -21,26 +20,34 @@ test.describe("Battle Mode", () => {
   });
 
   test("clicking Practice starts the game", async ({ page }) => {
-    await page.getByRole("button", { name: "Practice" }).click();
-
-    // Should show game UI with timer and search
-    await expect(page.getByPlaceholder("Search for a player...")).toBeVisible({ timeout: 10_000 });
+    // Should show game UI with timer and search once the start player is loaded
+    await loadPuzzle(
+      page,
+      () => page.getByRole("button", { name: "Practice" }).click(),
+      page.getByPlaceholder("Search for a player..."),
+    );
   });
 
   test("game shows timer counting down from 15", async ({ page }) => {
-    await page.getByRole("button", { name: "Practice" }).click();
-    // Wait for game to load before checking timer
-    await expect(page.getByPlaceholder("Search for a player...")).toBeVisible({ timeout: 10_000 });
-    await expect(page.getByText("15s")).toBeVisible();
+    await loadPuzzle(
+      page,
+      () => page.getByRole("button", { name: "Practice" }).click(),
+      page.getByPlaceholder("Search for a player..."),
+    );
+    const timer = page.getByLabel(/seconds remaining/);
+    await expect(timer).toHaveText("15s");
 
-    // Wait a bit and check timer decreased
-    await page.waitForTimeout(2000);
-    await expect(page.getByText("15s")).not.toBeVisible();
+    // The timer moves off 15s within the default expect timeout
+    await expect(timer).not.toHaveText("15s");
+    await expect(timer).toHaveText(/^1[0-4]s$/);
   });
 
   test("game shows chain counter", async ({ page }) => {
-    await page.getByRole("button", { name: "Practice" }).click();
-    await expect(page.getByText(/Chain:.*0/)).toBeVisible({ timeout: 10_000 });
+    await loadPuzzle(
+      page,
+      () => page.getByRole("button", { name: "Practice" }).click(),
+      page.getByText(/Chain:.*0/),
+    );
   });
 
   test("Play with a Friend navigates to multiplayer", async ({ page }) => {

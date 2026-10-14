@@ -1,16 +1,10 @@
-import { test, expect } from "@playwright/test";
-import { mockTheSportsDB } from "./fixtures";
+import { test, expect, mockTheSportsDB, loadPuzzle } from "./fixtures";
 
 test.describe("Guess the Player nationality flag", () => {
   test.beforeEach(async ({ page }) => {
     await mockTheSportsDB(page);
-    await page.goto("/");
-    await page.evaluate(() => {
-      localStorage.removeItem("football-nerdle-guess-stats");
-    });
     // Mbappé (France)
-    await page.goto("/#/guess?id=tm_342229");
-    await expect(page.getByText("Club History")).toBeVisible({ timeout: 10_000 });
+    await loadPuzzle(page, () => page.goto("/#/guess?id=tm_342229"));
   });
 
   test("no flag before reveal, even after the nationality hint", async ({ page }) => {
@@ -22,9 +16,12 @@ test.describe("Guess the Player nationality flag", () => {
 
   test("shows the flag next to the name once revealed", async ({ page }) => {
     const skip = page.getByRole("button", { name: "Skip" });
-    for (let i = 0; i < 5; i++) {
+    for (let i = 1; i < 5; i++) {
       await skip.click();
+      await expect(page.getByText(new RegExp(`Attempts:.*${i}.*/.*5`))).toBeVisible();
     }
+    await skip.click();
+    await expect(page.getByRole("heading", { name: "Game Over!" })).toBeVisible();
     await expect(page.getByRole("img", { name: "France flag" })).toBeVisible();
   });
 });
