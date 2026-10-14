@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { getDailyPlayerIndex, getDayNumber, getDateForDay, getGuessAnnouncement } from "../pages/GuessThePlayer/helpers";
+import { getDailyPlayerIndex, getDayNumber, getDateForDay, getGuessAnnouncement, getAlreadyGuessedMap } from "../pages/GuessThePlayer/helpers";
 import { SEED_PLAYERS } from "../data/seedPlayers";
 
 describe("getDailyPlayerIndex (fallback sequential algorithm)", () => {
@@ -116,5 +116,27 @@ describe("getGuessAnnouncement", () => {
   it("announces a loss with the target name", () => {
     expect(getGuessAnnouncement({ kind: "lost", targetName: "Thierry Henry" }))
       .toBe("Out of attempts. The player was Thierry Henry.");
+  });
+});
+
+describe("getAlreadyGuessedMap", () => {
+  const messi = { id: "tm_28003", name: "Lionel Messi", thumbnail: "", nationality: "Argentina" };
+  const haaland = { id: "tm_418560", name: "Erling Haaland", thumbnail: "", nationality: "Norway" };
+
+  it("returns an empty map for no wrong guesses", () => {
+    expect(getAlreadyGuessedMap([]).size).toBe(0);
+  });
+
+  it("maps each wrong guess id to the Already guessed label", () => {
+    const map = getAlreadyGuessedMap([messi, haaland]);
+    expect(map.size).toBe(2);
+    expect(map.get("tm_28003")).toBe("Already guessed");
+    expect(map.get("tm_418560")).toBe("Already guessed");
+  });
+
+  it("does not create extra entries for duplicates", () => {
+    const map = getAlreadyGuessedMap([messi, messi]);
+    expect(map.size).toBe(1);
+    expect(map.get("tm_28003")).toBe("Already guessed");
   });
 });

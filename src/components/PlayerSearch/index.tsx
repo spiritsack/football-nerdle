@@ -145,7 +145,7 @@ export default function PlayerSearch({ onSelect, disabled, usedPlayerIds, disabl
                 onClick={() => handleSelect(player)}
                 onMouseEnter={() => setHighlightIndex(index)}
                 disabled={!!disabledReason}
-                className={`w-full px-4 py-3 flex items-center gap-3 text-left transition-colors ${
+                className={`w-full px-4 py-3 flex flex-wrap items-center gap-3 text-left transition-colors ${
                   disabledReason
                     ? "opacity-50 cursor-not-allowed"
                     : index === highlightIndex ? "bg-gray-700" : "hover:bg-gray-700"

@@ -2,7 +2,7 @@ import { useState, useMemo, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useGuessGame } from "./useGuessGame";
 import { HARD_MODE_KEY } from "./constants";
-import { mergeConsecutiveClubs, getTodayString, getDateForDay } from "./helpers";
+import { mergeConsecutiveClubs, getTodayString, getDateForDay, getAlreadyGuessedMap } from "./helpers";
 import PlayerCard from "../../components/PlayerCard";
 import DailyLeaderboard from "../../components/DailyLeaderboard";
 import { getLastRefresh } from "../../api/playerCache";
@@ -71,6 +71,7 @@ export default function GuessThePlayer() {
   }
 
   const mergedClubs = useMemo(() => mergeConsecutiveClubs(clubs), [clubs]);
+  const alreadyGuessed = useMemo(() => getAlreadyGuessedMap(wrongGuesses), [wrongGuesses]);
   const resultScreen = (status === "won" || status === "lost") && targetPlayer;
 
   const todayDayNum = Math.floor((new Date(today).getTime() - new Date("2026-03-24").getTime()) / 86400000) + 1;
@@ -202,6 +203,7 @@ export default function GuessThePlayer() {
               onSkip={skipGuess}
               attempts={attempts}
               maxAttempts={maxAttempts}
+              disabledPlayerIds={alreadyGuessed}
             />
 
             {wrongGuesses.length > 0 && (

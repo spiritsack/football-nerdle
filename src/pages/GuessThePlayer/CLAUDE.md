@@ -11,6 +11,7 @@ Route: `/guess` — Page: `index.tsx` — Hook: `useGuessGame.ts`
 5. Wrong guesses are listed; correct guess or 5 failures ends the game
 6. Result can be shared as emoji grid text (penalty-style circles)
 7. A visually hidden `role="status"` live region (`data-testid="guess-announcer"`) announces each wrong guess, skip, win or loss to screen readers; text comes from `getGuessAnnouncement` in `helpers.ts` and is cleared whenever a new puzzle loads
+8. Players already guessed wrong stay in the search dropdown but are greyed out, labelled "Already guessed" and can't be selected (`getAlreadyGuessedMap` → `PlayerSearch` `disabledPlayerIds`); `submitGuess` also ignores a repeated wrong guess, so it never costs an attempt. The list resets with each new puzzle and is not persisted
 
 ## Backwards Compatibility
 
