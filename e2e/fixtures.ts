@@ -29,10 +29,12 @@ export const GAME_ROOMS_TABLE = "game_rooms";
 type Route = Parameters<Parameters<Page["route"]>[1]>[0];
 
 /**
- * Lets reads through and records any write. Returns `true` when the caller
- * must answer the request locally, `false` once it has been passed on.
+ * Passes reads (GET/HEAD/OPTIONS) on to the next handler via `route.fallback()`
+ * and returns `false`. For any other method it records the write in
+ * `blockedWrites` and returns `true`: the caller must then fulfil the request
+ * itself.
  */
-async function recordWrite(route: Route, blockedWrites: BlockedWrite[]): Promise<boolean> {
+async function interceptWrite(route: Route, blockedWrites: BlockedWrite[]): Promise<boolean> {
   const request = route.request();
   const method = request.method();
   if (method === "GET" || method === "HEAD" || method === "OPTIONS") {
@@ -63,12 +65,12 @@ export const test = base.extend<{ blockedWrites: BlockedWrite[]; blockDbWrites: 
     async ({ context, blockedWrites }, provide) => {
       for (const table of BLOCKED_WRITE_TABLES) {
         await context.route(`**/rest/v1/${table}*`, async (route) => {
-          if (!(await recordWrite(route, blockedWrites))) return;
+          if (!(await interceptWrite(route, blockedWrites))) return;
           await route.fulfill({ status: 201, body: "" });
         });
       }
       await context.route(`**/rest/v1/${GAME_ROOMS_TABLE}*`, async (route) => {
-        if (!(await recordWrite(route, blockedWrites))) return;
+        if (!(await interceptWrite(route, blockedWrites))) return;
         if (route.request().method() === "POST") {
           const body = route.request().postDataJSON() as Record<string, unknown>;
           await route.fulfill({
@@ -162,82 +164,4 @@ export async function loadPuzzle(page: Page, trigger: () => Promise<unknown>, lo
 export async function searchFor(input: Locator, query: string, option: Locator) {
   await input.fill(query);
   await expect(option).toBeVisible({ timeout: DATA_TIMEOUT });
-}
-
-// Mock TheSportsDB search responses
-const MOCK_SEARCH_RESPONSES: Record<string, unknown> = {
-  messi: {
-    player: [
-      {
-        idPlayer: "34146370",
-        strPlayer: "Lionel Messi",
-        strThumb: "https://r2.thesportsdb.com/images/media/player/thumb/kpfsvp1725295651.jpg",
-        strNationality: "Argentina",
-        strSport: "Soccer",
-        idTeam: "137699",
-        strTeam: "Inter Miami",
-        dateSigned: null,
-      },
-    ],
-  },
-  ronaldo: {
-    player: [
-      {
-        idPlayer: "34146304",
-        strPlayer: "Cristiano Ronaldo",
-        strThumb: "https://r2.thesportsdb.com/images/media/player/thumb/bkre241600892282.jpg",
-        strNationality: "Portugal",
-        strSport: "Soccer",
-        idTeam: "134509",
-        strTeam: "Al-Nassr",
-        dateSigned: null,
-      },
-    ],
-  },
-  neymar: {
-    player: [
-      {
-        idPlayer: "34146371",
-        strPlayer: "Neymar",
-        strThumb: "https://r2.thesportsdb.com/images/media/player/thumb/j60pdx1741319053.jpg",
-        strNationality: "Brazil",
-        strSport: "Soccer",
-        idTeam: null,
-        strTeam: null,
-        dateSigned: null,
-      },
-    ],
-  },
-};
-
-export async function mockTheSportsDB(page: Page) {
-  await page.route("**/thesportsdb.com/**", (route) => {
-    const url = route.request().url();
-
-    // Mock search endpoint
-    if (url.includes("searchplayers.php")) {
-      const match = url.match(/p=([^&]+)/);
-      const query = match ? decodeURIComponent(match[1]).toLowerCase() : "";
-
-      for (const [key, response] of Object.entries(MOCK_SEARCH_RESPONSES)) {
-        if (query.includes(key)) {
-          return route.fulfill({
-            status: 200,
-            contentType: "application/json",
-            body: JSON.stringify(response),
-          });
-        }
-      }
-
-      // No match — return empty
-      return route.fulfill({
-        status: 200,
-        contentType: "application/json",
-        body: JSON.stringify({ player: null }),
-      });
-    }
-
-    // Let other TheSportsDB requests through (former teams, player lookup)
-    return route.continue();
-  });
 }

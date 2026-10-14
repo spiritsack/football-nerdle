@@ -146,7 +146,7 @@ async function getFromCache(playerId: string, playerName?: string): Promise<Play
   }
 
   // If no result or no clubs, try finding a TransferMarkt-sourced player by name
-  // This handles the case where search returns a TheSportsDB ID but we have better TM data
+  // Fallback for a player row with no club history: use the TransferMarkt-sourced row with the same name
   if (playerName) {
     const { data: tmData } = await supabase
       .from("players")
@@ -209,6 +209,16 @@ async function buildPlayerWithTeams(row: PlayerRow): Promise<PlayerWithTeams> {
 }
 
 const MIN_CLUBS = 3;
+const RANDOM_CANDIDATES = 20;
+
+/** Returns rows in the order of `ids`, skipping IDs with no matching row. */
+export function orderByIds<T extends { id: string }>(rows: T[], ids: string[]): T[] {
+  const byId = new Map(rows.map((row) => [row.id, row]));
+  return ids.flatMap((id) => {
+    const row = byId.get(id);
+    return row ? [row] : [];
+  });
+}
 
 export async function getRandomCachedPlayer(): Promise<PlayerWithTeams | null> {
   if (!supabase) return null;
@@ -222,20 +232,20 @@ export async function getRandomCachedPlayer(): Promise<PlayerWithTeams | null> {
   if (topError || !topPlayerRows || topPlayerRows.length === 0) return null;
 
   // Deduplicate and shuffle player IDs
-  const playerIds = [...new Set(topPlayerRows.map((r) => r.player_id))]
-    .sort(() => Math.random() - 0.5);
+  const candidates = [...new Set(topPlayerRows.map((r) => r.player_id as string))]
+    .sort(() => Math.random() - 0.5)
+    .slice(0, RANDOM_CANDIDATES);
 
-  // Try players until we find one with enough clubs (after merging)
-  for (const playerId of playerIds.slice(0, 20)) {
-    const { data, error } = await supabase
-      .from("players")
-      .select(PLAYER_SELECT)
-      .eq("id", playerId)
-      .single();
+  // Fetch all candidates in one round trip
+  const { data, error } = await supabase
+    .from("players")
+    .select(PLAYER_SELECT)
+    .in("id", candidates);
 
-    if (error || !data) continue;
+  if (error || !data || data.length === 0) return null;
 
-    const row = data as unknown as PlayerRow;
+  // Pick the first candidate, in shuffled order, with enough clubs (after merging)
+  for (const row of orderByIds(data as unknown as PlayerRow[], candidates)) {
     if (!row.player_clubs || row.player_clubs.length === 0) continue;
 
     const player = await buildPlayerWithTeams(row);

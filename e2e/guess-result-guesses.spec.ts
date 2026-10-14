@@ -1,9 +1,11 @@
-import { test, expect, mockTheSportsDB, loadPuzzle, searchFor } from "./fixtures";
+import { test, expect, loadPuzzle, mockDailySchedule, searchFor, todayString } from "./fixtures";
 
 test.describe("Guess the Player result screen wrong guesses", () => {
   test.beforeEach(async ({ page }) => {
-    await mockTheSportsDB(page);
-    await loadPuzzle(page, () => page.goto("/#/guess?id=tm_349066"));
+    // Yesterday must be a different player, so loading it fetches a new player row
+    await mockDailySchedule(page, { date: todayString(), playerId: "tm_349066" });
+    await mockDailySchedule(page, { date: todayString(new Date(Date.now() - 86_400_000)), playerId: "tm_342229" });
+    await loadPuzzle(page, () => page.goto("/#/guess"));
   });
 
   test("lists wrong guesses after losing and clears them for a new puzzle", async ({ page }) => {
@@ -33,7 +35,7 @@ test.describe("Guess the Player result screen wrong guesses", () => {
     // A new puzzle never shows the previous game's guesses
     await loadPuzzle(
       page,
-      () => page.getByRole("button", { name: "Random Game" }).click(),
+      () => page.getByRole("button", { name: "‹ Previous day" }).click(),
       page.getByText(/Attempts:.*0.*\/.*5/),
     );
     await expect(wrongGuesses).toHaveCount(0);

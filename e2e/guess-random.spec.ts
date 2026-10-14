@@ -1,13 +1,9 @@
-import { test, expect, mockTheSportsDB, loadPuzzle, DATA_TIMEOUT, type Page } from "./fixtures";
+import { test, expect, loadPuzzle, DATA_TIMEOUT, type Page } from "./fixtures";
 
 const openRandom = (page: Page) => loadPuzzle(page, () => page.goto("/#/guess?mode=random"));
 const attempts = (page: Page, n: number) => page.getByText(new RegExp(`Attempts:.*${n}.*/.*5`));
 
 test.describe("Random Guess the Player", () => {
-  test.beforeEach(async ({ page }) => {
-    await mockTheSportsDB(page);
-  });
-
   test("loads a random player via ?mode=random", async ({ page }) => {
     await openRandom(page);
   });
@@ -59,11 +55,6 @@ test.describe("Random Guess the Player", () => {
     // Random result screens have no next-puzzle countdown
     await expect(page.getByTestId("next-puzzle-countdown")).toHaveCount(0);
     await expect(page.getByRole("button", { name: "Play new daily" })).toHaveCount(0);
-
-    // Starting a new puzzle clears the region
-    await loadPuzzle(page, () => page.getByRole("button", { name: "Random Game" }).click());
-    await expect(attempts(page, 0)).toBeVisible();
-    await expect(announcer).toHaveText("");
   });
 
   test("hides the stats panel on the random result screen", async ({ page }) => {
@@ -76,7 +67,7 @@ test.describe("Random Guess the Player", () => {
     }
     await skip.click();
     await expect(page.getByRole("heading", { name: "Game Over!" })).toBeVisible();
-    await expect(page.getByRole("button", { name: "Random Game" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Random Game" })).toHaveCount(0);
     await expect(page.getByTestId("guess-stats")).toHaveCount(0);
     await expect(page.getByText("Your Stats")).toHaveCount(0);
   });

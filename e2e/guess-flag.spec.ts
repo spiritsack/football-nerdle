@@ -1,8 +1,7 @@
-import { test, expect, mockTheSportsDB, loadPuzzle } from "./fixtures";
+import { test, expect, loadPuzzle } from "./fixtures";
 
 test.describe("Guess the Player nationality flag", () => {
   test.beforeEach(async ({ page }) => {
-    await mockTheSportsDB(page);
     // Mbappé (France)
     await loadPuzzle(page, () => page.goto("/#/guess?id=tm_342229"));
   });

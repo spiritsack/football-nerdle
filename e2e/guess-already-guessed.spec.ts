@@ -1,4 +1,4 @@
-import { test, expect, mockTheSportsDB, loadPuzzle, searchFor, type Page } from "./fixtures";
+import { test, expect, loadPuzzle, mockDailySchedule, searchFor, todayString, type Page } from "./fixtures";
 
 const search = (page: Page) => page.getByRole("combobox");
 const option = (page: Page, name: RegExp) => page.getByRole("option", { name });
@@ -11,7 +11,6 @@ async function guess(page: Page, query: string, name: RegExp) {
 
 test.describe("Guess the Player already guessed players", () => {
   test.beforeEach(async ({ page }) => {
-    await mockTheSportsDB(page);
     // Mbappé
     await loadPuzzle(page, () => page.goto("/#/guess?id=tm_342229"));
   });
@@ -57,8 +56,17 @@ test.describe("Guess the Player already guessed players", () => {
     await expect(attempts(page, 2)).toBeVisible();
     await expect(page.getByText("Wrong: Lionel Messi, Erling Haaland")).toBeVisible();
   });
+});
 
-  test("new random puzzle clears already guessed", async ({ page }) => {
+test.describe("Guess the Player already guessed players across puzzles", () => {
+  test.beforeEach(async ({ page }) => {
+    // Today is Mbappé, yesterday a different player, so loading it fetches a new player row
+    await mockDailySchedule(page, { date: todayString(), playerId: "tm_342229" });
+    await mockDailySchedule(page, { date: todayString(new Date(Date.now() - 86_400_000)), playerId: "tm_349066" });
+    await loadPuzzle(page, () => page.goto("/#/guess"));
+  });
+
+  test("a new puzzle clears already guessed", async ({ page }) => {
     await guess(page, "Lionel Messi", /Lionel Messi/);
     await expect(attempts(page, 1)).toBeVisible();
 
@@ -69,7 +77,7 @@ test.describe("Guess the Player already guessed players", () => {
     }
     await skip.click();
     await expect(page.getByRole("heading", { name: "Game Over!" })).toBeVisible();
-    await loadPuzzle(page, () => page.getByRole("button", { name: "Random Game" }).click(), attempts(page, 0));
+    await loadPuzzle(page, () => page.getByRole("button", { name: "‹ Previous day" }).click(), attempts(page, 0));
 
     const row = option(page, /Lionel Messi/);
     await searchFor(search(page), "Lionel Messi", row);
