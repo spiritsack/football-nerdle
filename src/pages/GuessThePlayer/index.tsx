@@ -28,7 +28,6 @@ export default function GuessThePlayer() {
     hints,
     announcement,
     startDaily,
-    startRandom,
     retry,
     loadArchiveDay,
     submitGuess,
@@ -296,19 +295,12 @@ export default function GuessThePlayer() {
               >
                 {shareFeedback === "copied" ? "Copied!" : "Share Result"}
               </button>
-              {isArchive ? (
+              {isArchive && (
                 <button
                   onClick={handlePlayToday}
                   className="px-6 py-3 bg-green-600 hover:bg-green-500 rounded-lg font-semibold transition-colors"
                 >
                   Play Today's Daily
-                </button>
-              ) : (
-                <button
-                  onClick={startRandom}
-                  className="px-6 py-3 bg-green-600 hover:bg-green-500 rounded-lg font-semibold transition-colors"
-                >
-                  Random Game
                 </button>
               )}
             </div>
