@@ -158,9 +158,14 @@ test.describe("Daily Guess the Player", () => {
     await expect(stats).toBeVisible();
     await expect(stats).toContainText("Your Stats");
     await expect(stats.getByText("Win rate")).toHaveCount(0);
-    // Random mode is deprecated: the daily result screen does not offer it
+    // Random mode was removed: the daily result screen does not offer it
     await expect(page.getByRole("button", { name: "Share Result" })).toBeVisible();
     await expect(page.getByRole("button", { name: "Random Game" })).toHaveCount(0);
+  });
+
+  test("?mode=random (old bookmark) loads today's daily", async ({ page }) => {
+    await loadPuzzle(page, () => page.goto("/#/guess?mode=random"));
+    await expect(page.getByText(/Guess the Player — Daily #\d+/)).toBeVisible();
   });
 
   test("shows data updated timestamp", async ({ page }) => {

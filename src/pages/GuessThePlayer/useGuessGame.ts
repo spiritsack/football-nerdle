@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect, useRef } from "react";
-import { getPlayerWithTeamsCached, getFromCacheById, getRandomCachedPlayer } from "../../api/playerCache";
+import { getPlayerWithTeamsCached, getFromCacheById } from "../../api/playerCache";
 import { getOrCreateDailyPlayer, getScheduledPlayerForDate } from "../../api/dailySchedule";
 import { submitDailyResult } from "../../api/dailyLeaderboard";
 import type { Player } from "../../types";
@@ -172,35 +172,6 @@ export function useGuessGame() {
     }
   }, [today]);
 
-  const startRandom = useCallback(async () => {
-    const isCurrent = loadGuardRef.current!.begin();
-    lastStartRef.current = () => startRandom();
-    setState((s) => ({ ...s, status: "loading", error: null, announcement: "" }));
-    try {
-      const playerWithTeams = await getRandomCachedPlayer();
-      if (!isCurrent()) return;
-      if (!playerWithTeams) throw new Error("No players available");
-      setState({
-        targetPlayer: playerWithTeams,
-        clubs: playerWithTeams.formerTeams,
-        attempts: 0,
-        status: "playing",
-        wrongGuesses: [],
-        error: null,
-        isDaily: false,
-        isArchive: false,
-        dayNumber: null,
-        dailyCompleted: false,
-        hints: NO_HINTS,
-        announcement: "",
-      });
-    } catch (e) {
-      if (!isCurrent()) return;
-      const message = e instanceof Error ? e.message : "Something went wrong";
-      setState((s) => ({ ...s, status: "idle", error: message, announcement: "", isDaily: false, isArchive: false }));
-    }
-  }, []);
-
   const submitGuess = useCallback(
     (player: Player) => {
       if (!state.targetPlayer || state.status !== "playing") return;
@@ -354,12 +325,10 @@ export function useGuessGame() {
       loadArchiveDay(parseInt(day, 10));
     } else if (id) {
       startById(id);
-    } else if (params.get("mode") === "random") {
-      startRandom();
     } else {
       startDaily();
     }
-  }, [startDaily, startRandom, startById, loadArchiveDay]);
+  }, [startDaily, startById, loadArchiveDay]);
 
   return {
     ...state,
@@ -369,7 +338,6 @@ export function useGuessGame() {
     today,
     loadArchiveDay,
     startDaily,
-    startRandom,
     retry,
     submitGuess,
     skipGuess,
