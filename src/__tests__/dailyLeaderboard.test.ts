@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   client: {
@@ -13,7 +13,7 @@ vi.mock("../api/supabaseClient", () => ({
   },
 }));
 
-import { getDailyLeaderboard, toLeaderboardEntries } from "../api/dailyLeaderboard";
+import { getDailyLeaderboard, submitDailyResult, toLeaderboardEntries } from "../api/dailyLeaderboard";
 
 const rpc = () => mocks.client!.rpc;
 const from = () => mocks.client!.from;
@@ -105,5 +105,66 @@ describe("getDailyLeaderboard", () => {
   it("returns [] when supabase is null", async () => {
     mocks.client = null;
     expect(await getDailyLeaderboard("2026-10-14")).toEqual([]);
+  });
+});
+
+describe("submitDailyResult", () => {
+  const DATE = "2026-10-14";
+  const KEY = `football-nerdle-lb-${DATE}`;
+  let store: Map<string, string>;
+  let insert: ReturnType<typeof vi.fn>;
+
+  beforeEach(() => {
+    store = new Map<string, string>();
+    vi.stubGlobal("localStorage", {
+      getItem: (k: string) => (store.has(k) ? store.get(k)! : null),
+      setItem: (k: string, v: string) => void store.set(k, v),
+      removeItem: (k: string) => void store.delete(k),
+      clear: () => store.clear(),
+      key: (i: number) => Array.from(store.keys())[i] ?? null,
+      get length() {
+        return store.size;
+      },
+    });
+    insert = vi.fn().mockResolvedValue({ error: null });
+    mocks.client = { rpc: vi.fn(), from: vi.fn().mockReturnValue({ insert }) };
+    vi.stubEnv("DEV", false);
+  });
+
+  afterEach(() => {
+    vi.unstubAllEnvs();
+    vi.unstubAllGlobals();
+  });
+
+  it("is a no-op in dev builds", async () => {
+    vi.stubEnv("DEV", true);
+    await expect(submitDailyResult(DATE, true, 3)).resolves.toBeUndefined();
+    expect(from()).not.toHaveBeenCalled();
+    expect(store.has(KEY)).toBe(false);
+  });
+
+  it("inserts the result in production builds", async () => {
+    await submitDailyResult(DATE, true, 3);
+    expect(from()).toHaveBeenCalledWith("daily_results");
+    expect(insert).toHaveBeenCalledWith({ date: DATE, attempts: 3 });
+    expect(store.get(KEY)).toBe("1");
+  });
+
+  it("records a loss as 0 attempts", async () => {
+    await submitDailyResult(DATE, false, 5);
+    expect(insert).toHaveBeenCalledWith({ date: DATE, attempts: 0 });
+  });
+
+  it("skips when already submitted", async () => {
+    store.set(KEY, "1");
+    await submitDailyResult(DATE, true, 2);
+    expect(from()).not.toHaveBeenCalled();
+  });
+
+  it("does not mark submitted on insert error", async () => {
+    insert.mockResolvedValue({ error: { message: "boom" } });
+    await expect(submitDailyResult(DATE, true, 3)).resolves.toBeUndefined();
+    expect(insert).toHaveBeenCalled();
+    expect(store.has(KEY)).toBe(false);
   });
 });

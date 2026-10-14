@@ -11,6 +11,8 @@ export function hasSubmittedResult(date: string): boolean {
 }
 
 export async function submitDailyResult(date: string, won: boolean, attempts: number): Promise<void> {
+  // Local dev runs against production data; never pollute the live leaderboard.
+  if (import.meta.env.DEV) return;
   if (!supabase) return;
   if (hasSubmittedResult(date)) return;
 
