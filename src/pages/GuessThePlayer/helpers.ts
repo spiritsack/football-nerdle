@@ -198,3 +198,12 @@ export function getGuessAnnouncement(outcome: GuessOutcome): string {
 export function getAlreadyGuessedMap(wrongGuesses: Player[]): Map<string, string> {
   return new Map(wrongGuesses.map((p) => [p.id, ALREADY_GUESSED_LABEL]));
 }
+
+/** Formats a duration as zero-padded HH:MM:SS, rounding up to whole seconds. */
+export function formatCountdown(ms: number): string {
+  const total = Math.max(0, Math.ceil(ms / 1000));
+  const h = Math.floor(total / 3600);
+  const m = Math.floor((total % 3600) / 60);
+  const s = total % 60;
+  return [h, m, s].map((n) => String(n).padStart(2, "0")).join(":");
+}
