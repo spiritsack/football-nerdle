@@ -1,8 +1,8 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useGuessGame } from "./useGuessGame";
 import { HARD_MODE_KEY } from "./constants";
-import { mergeConsecutiveClubs, getTodayString, getDateForDay } from "./helpers";
+import { mergeConsecutiveClubs, getTodayString, getDateForDay, shareResult } from "./helpers";
 import PlayerCard from "../../components/PlayerCard";
 import DailyLeaderboard from "../../components/DailyLeaderboard";
 import { getLastRefresh } from "../../api/playerCache";
@@ -43,11 +43,27 @@ export default function GuessThePlayer() {
     }
   });
   const [hardMode, setHardMode] = useState(!hardModeDisabled);
-  const [copied, setCopied] = useState(false);
+  const [shareFeedback, setShareFeedback] = useState<"idle" | "copied" | "error">("idle");
+  const shareFeedbackTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const isMounted = useRef(true);
+  // Drop stale share feedback (e.g. an error) when a different puzzle loads
+  const [shareFeedbackPlayer, setShareFeedbackPlayer] = useState(targetPlayer);
+  if (shareFeedbackPlayer !== targetPlayer) {
+    setShareFeedbackPlayer(targetPlayer);
+    setShareFeedback("idle");
+  }
   const [lastRefresh, setLastRefresh] = useState<string | null>(null);
 
   useEffect(() => {
     getLastRefresh().then(setLastRefresh);
+  }, []);
+
+  useEffect(() => {
+    isMounted.current = true;
+    return () => {
+      isMounted.current = false;
+      if (shareFeedbackTimer.current) clearTimeout(shareFeedbackTimer.current);
+    };
   }, []);
 
   function toggleHardMode() {
@@ -62,12 +78,27 @@ export default function GuessThePlayer() {
     startDaily();
   }
 
-  function handleShare() {
-    const text = getShareText(hardMode);
-    navigator.clipboard.writeText(text).then(() => {
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    });
+  async function handleShare() {
+    if (shareFeedbackTimer.current) {
+      clearTimeout(shareFeedbackTimer.current);
+      shareFeedbackTimer.current = null;
+    }
+    setShareFeedback("idle");
+    const outcome = await shareResult(getShareText(hardMode), navigator);
+    if (!isMounted.current) return;
+    if (outcome === "failed") {
+      // Stays visible until the next click so the player can copy the text by hand
+      setShareFeedback("error");
+      return;
+    }
+    // "shared" / "cancelled": the OS share sheet is its own feedback
+    if (outcome !== "copied") return;
+    if (shareFeedbackTimer.current) clearTimeout(shareFeedbackTimer.current);
+    setShareFeedback("copied");
+    shareFeedbackTimer.current = setTimeout(() => {
+      shareFeedbackTimer.current = null;
+      setShareFeedback("idle");
+    }, 2000);
   }
 
   const mergedClubs = useMemo(() => mergeConsecutiveClubs(clubs), [clubs]);
@@ -248,7 +279,7 @@ export default function GuessThePlayer() {
                 onClick={handleShare}
                 className="px-6 py-3 bg-blue-600 hover:bg-blue-500 rounded-lg font-semibold transition-colors"
               >
-                {copied ? "Copied!" : "Share Result"}
+                {shareFeedback === "copied" ? "Copied!" : "Share Result"}
               </button>
               {isArchive ? (
                 <button
@@ -266,6 +297,15 @@ export default function GuessThePlayer() {
                 </button>
               )}
             </div>
+
+            {shareFeedback === "error" && (
+              <div role="alert" className="bg-orange-900/30 border border-orange-700 rounded-lg px-4 py-3 max-w-md w-full text-center text-orange-300 text-sm">
+                <p>Couldn't share or copy your result. Try again or copy it manually.</p>
+                <pre className="mt-2 select-all whitespace-pre-wrap break-words text-left text-gray-300 font-mono text-xs">
+                  {getShareText(hardMode)}
+                </pre>
+              </div>
+            )}
 
             {dayNavigation}
 

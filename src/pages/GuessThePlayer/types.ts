@@ -52,3 +52,7 @@ export interface GuessStats {
   longestStreak: number;
   lastPlayedDate?: string;
 }
+
+export type ShareOutcome = "shared" | "copied" | "cancelled" | "failed";
+
+export type ShareNavigator = Partial<Pick<Navigator, "share" | "canShare" | "clipboard">>;

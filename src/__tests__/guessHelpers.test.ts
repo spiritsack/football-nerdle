@@ -1,5 +1,6 @@
-import { describe, it, expect } from "vitest";
-import { getDailyPlayerIndex, getDayNumber, getDateForDay, getGuessAnnouncement } from "../pages/GuessThePlayer/helpers";
+import { describe, it, expect, vi } from "vitest";
+import { getDailyPlayerIndex, getDayNumber, getDateForDay, getGuessAnnouncement, shareResult } from "../pages/GuessThePlayer/helpers";
+import type { ShareNavigator } from "../pages/GuessThePlayer/types";
 import { SEED_PLAYERS } from "../data/seedPlayers";
 
 describe("getDailyPlayerIndex (fallback sequential algorithm)", () => {
@@ -116,5 +117,94 @@ describe("getGuessAnnouncement", () => {
   it("announces a loss with the target name", () => {
     expect(getGuessAnnouncement({ kind: "lost", targetName: "Thierry Henry" }))
       .toBe("Out of attempts. The player was Thierry Henry.");
+  });
+});
+
+describe("shareResult", () => {
+  const TEXT = "Football Nerdle #1\n🔴🔴🔴🔴🔴\nhttps://spiritsack.github.io/football-nerdle/#/guess";
+
+  function domError(name: string): Error {
+    const err = new Error(name);
+    err.name = name;
+    return err;
+  }
+
+  function fakeNav(opts: {
+    share?: ReturnType<typeof vi.fn>;
+    canShare?: ReturnType<typeof vi.fn>;
+    writeText?: ReturnType<typeof vi.fn>;
+  }): ShareNavigator {
+    const nav: Record<string, unknown> = {};
+    if (opts.share) nav.share = opts.share;
+    if (opts.canShare) nav.canShare = opts.canShare;
+    if (opts.writeText) nav.clipboard = { writeText: opts.writeText };
+    return nav as ShareNavigator;
+  }
+
+  it("uses navigator.share when available", async () => {
+    const share = vi.fn().mockResolvedValue(undefined);
+    const canShare = vi.fn().mockReturnValue(true);
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    const result = await shareResult(TEXT, fakeNav({ share, canShare, writeText }));
+    expect(result).toBe("shared");
+    expect(share).toHaveBeenCalledTimes(1);
+    expect(share).toHaveBeenCalledWith({ text: TEXT });
+    expect(canShare).toHaveBeenCalledWith({ text: TEXT });
+    expect(writeText).not.toHaveBeenCalled();
+  });
+
+  it("uses navigator.share when canShare is absent", async () => {
+    const share = vi.fn().mockResolvedValue(undefined);
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    expect(await shareResult(TEXT, fakeNav({ share, writeText }))).toBe("shared");
+    expect(writeText).not.toHaveBeenCalled();
+  });
+
+  it("skips share when canShare is false", async () => {
+    const share = vi.fn().mockResolvedValue(undefined);
+    const canShare = vi.fn().mockReturnValue(false);
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    const result = await shareResult(TEXT, fakeNav({ share, canShare, writeText }));
+    expect(result).toBe("copied");
+    expect(share).not.toHaveBeenCalled();
+    expect(writeText).toHaveBeenCalledWith(TEXT);
+  });
+
+  it("treats AbortError as cancelled", async () => {
+    const share = vi.fn().mockRejectedValue(domError("AbortError"));
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    const result = await shareResult(TEXT, fakeNav({ share, writeText }));
+    expect(result).toBe("cancelled");
+    expect(writeText).not.toHaveBeenCalled();
+  });
+
+  it("falls back to clipboard when share fails", async () => {
+    const share = vi.fn().mockRejectedValue(domError("NotAllowedError"));
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    const result = await shareResult(TEXT, fakeNav({ share, writeText }));
+    expect(result).toBe("copied");
+    expect(share).toHaveBeenCalledTimes(1);
+    expect(writeText).toHaveBeenCalledWith(TEXT);
+  });
+
+  it("copies when share unavailable", async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    expect(await shareResult(TEXT, fakeNav({ writeText }))).toBe("copied");
+    expect(writeText).toHaveBeenCalledTimes(1);
+    expect(writeText).toHaveBeenCalledWith(TEXT);
+  });
+
+  it("returns failed when clipboard rejects", async () => {
+    const writeText = vi.fn().mockRejectedValue(domError("NotAllowedError"));
+    await expect(shareResult(TEXT, fakeNav({ writeText }))).resolves.toBe("failed");
+  });
+
+  it("returns failed when clipboard missing", async () => {
+    await expect(shareResult(TEXT, fakeNav({}))).resolves.toBe("failed");
+  });
+
+  it("returns failed when share fails and clipboard is missing", async () => {
+    const share = vi.fn().mockRejectedValue(new TypeError("boom"));
+    await expect(shareResult(TEXT, fakeNav({ share }))).resolves.toBe("failed");
   });
 });

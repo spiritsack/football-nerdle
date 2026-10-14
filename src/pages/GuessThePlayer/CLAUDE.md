@@ -9,7 +9,7 @@ Route: `/guess` — Page: `index.tsx` — Hook: `useGuessGame.ts`
 3. National team entries are filtered out
 4. User has 5 attempts to guess who it is
 5. Wrong guesses are listed; correct guess or 5 failures ends the game
-6. Result can be shared as emoji grid text (penalty-style circles)
+6. Result can be shared as emoji grid text (penalty-style circles). "Share Result" calls `shareResult` in `helpers.ts`: it opens the native share sheet (`navigator.share({ text })`) when available (and `canShare` allows it), falls back to the clipboard if there is no share sheet or it fails, and treats a dismissed sheet (`AbortError`) as cancelled. A clipboard copy shows "Copied!" for 2s; if both fail, a `role="alert"` message with the share text (for manual copying) is shown until the next click
 7. A visually hidden `role="status"` live region (`data-testid="guess-announcer"`) announces each wrong guess, skip, win or loss to screen readers; text comes from `getGuessAnnouncement` in `helpers.ts` and is cleared whenever a new puzzle loads
 
 ## Backwards Compatibility
