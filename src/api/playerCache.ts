@@ -208,55 +208,6 @@ async function buildPlayerWithTeams(row: PlayerRow): Promise<PlayerWithTeams> {
   };
 }
 
-const MIN_CLUBS = 3;
-const RANDOM_CANDIDATES = 20;
-
-/** Returns rows in the order of `ids`, skipping IDs with no matching row. */
-export function orderByIds<T extends { id: string }>(rows: T[], ids: string[]): T[] {
-  const byId = new Map(rows.map((row) => [row.id, row]));
-  return ids.flatMap((id) => {
-    const row = byId.get(id);
-    return row ? [row] : [];
-  });
-}
-
-export async function getRandomCachedPlayer(): Promise<PlayerWithTeams | null> {
-  if (!supabase) return null;
-
-  // Get IDs of players who play/played for a top club
-  const { data: topPlayerRows, error: topError } = await supabase
-    .from("player_clubs")
-    .select("player_id, clubs!inner(is_top_club)")
-    .eq("clubs.is_top_club", true);
-
-  if (topError || !topPlayerRows || topPlayerRows.length === 0) return null;
-
-  // Deduplicate and shuffle player IDs
-  const candidates = [...new Set(topPlayerRows.map((r) => r.player_id as string))]
-    .sort(() => Math.random() - 0.5)
-    .slice(0, RANDOM_CANDIDATES);
-
-  // Fetch all candidates in one round trip
-  const { data, error } = await supabase
-    .from("players")
-    .select(PLAYER_SELECT)
-    .in("id", candidates);
-
-  if (error || !data || data.length === 0) return null;
-
-  // Pick the first candidate, in shuffled order, with enough clubs (after merging)
-  for (const row of orderByIds(data as unknown as PlayerRow[], candidates)) {
-    if (!row.player_clubs || row.player_clubs.length === 0) continue;
-
-    const player = await buildPlayerWithTeams(row);
-    if (player.formerTeams.length < MIN_CLUBS) continue;
-
-    return player;
-  }
-
-  return null;
-}
-
 export async function getPlayerWithTeamsCached(player: Player): Promise<PlayerWithTeams> {
   const cached = await getFromCache(player.id, player.name);
   if (cached) return cached;

@@ -45,7 +45,7 @@ src/
   index.css             — Global styles (Tailwind imports)
   api/
     supabaseClient.ts   — Supabase client singleton
-    playerCache.ts      — Player data queries: search, lookup, random selection
+    playerCache.ts      — Player data queries: search, lookup
     dailySchedule.ts    — Daily player selection (Supabase daily_schedule table)
     dailyLeaderboard.ts — Community leaderboard: submit results, fetch distribution
     multiplayerRoom.ts  — Room CRUD: createRoom, joinRoom, updateTurn, subscribeToRoom
