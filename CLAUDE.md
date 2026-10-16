@@ -32,6 +32,7 @@ A football (soccer) trivia web app with multiple game modes, deployed to GitHub 
 - `npx tsx scripts/import-transfermarkt.ts --all` — Import all players from dataset
 - `npx tsx scripts/backfill-wikidata.ts` — Backfill missing club history from Wikidata
 - `npx tsx scripts/copy-db.ts` — Copy data between Supabase instances (e.g. production to a new or local project)
+- `npx tsx scripts/purge-e2e-rows.ts --runs runs.json` — Dry-run report of `daily_results` rows written by past CI E2E runs (`--before <ISO>` cutoff, `--apply` deletes; service role key, human only)
 
 ## Project Structure
 
@@ -87,6 +88,8 @@ scripts/
   import-transfermarkt.ts — Import players/transfers from TransferMarkt CSVs (--all for full dataset)
   backfill-wikidata.ts    — Backfill missing club history from Wikidata SPARQL API
   copy-db.ts              — Copy data between Supabase instances
+  purge-e2e-rows.ts       — Report (and with --apply delete) daily_results rows from past CI E2E runs
+  purgeE2eRowsHelpers.ts  — Pure helpers for purge-e2e-rows (CI run windows, row matching), unit-tested
   seed-players.ts         — Pre-populate players from top clubs
 supabase/
   migrations/           — SQL migration files for Supabase schema
