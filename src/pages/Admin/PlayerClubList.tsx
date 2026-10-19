@@ -16,6 +16,7 @@ import { reorderList } from "./helpers";
 import type { AdminClubRow } from "./types";
 import ImageDropZone from "./ImageDropZone";
 import AddClubForm from "./AddClubForm";
+import AutoCleanPanel from "./AutoCleanPanel";
 
 interface Props {
   playerId: string;
@@ -32,6 +33,7 @@ export default function PlayerClubList({ playerId }: Props) {
   const [legacyOverride, setLegacyOverride] = useState<boolean | null>(null);
   const [dragIndex, setDragIndex] = useState<number | null>(null);
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
+  const [autoCleanOpen, setAutoCleanOpen] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -83,6 +85,10 @@ export default function PlayerClubList({ playerId }: Props) {
         prev.map((c) => (c.id === club.id ? { ...c, is_loan: newValue } : c)),
       );
     }
+  }
+
+  async function reloadClubs() {
+    setClubs(await getPlayerClubsAdmin(playerId));
   }
 
   function handleCrestUpdated(clubId: string, newBadgeUrl: string) {
@@ -225,19 +231,37 @@ export default function PlayerClubList({ playerId }: Props) {
         <p className="text-xs text-gray-500">
           Drag badge to upload crest. Click name to edit. Drag handle to reorder.
         </p>
-        <button
-          onClick={cycleLegacy}
-          className={`text-xs px-2.5 py-1 rounded-full border transition-colors ${
-            effectiveLegacy
-              ? "bg-amber-900/50 border-amber-700/60 text-amber-300"
-              : "bg-gray-700 border-gray-600 text-gray-400"
-          }`}
-          title={`Legacy status: ${legacyOverride === null ? "auto" : legacyOverride ? "forced on" : "forced off"} (click to cycle)`}
-        >
-          {legacyOverride === null ? "Legacy: Auto" : legacyOverride ? "Legacy: On" : "Legacy: Off"}
-          {legacyOverride === null && (effectiveLegacy ? " (yes)" : " (no)")}
-        </button>
+        <div className="flex items-center gap-2 shrink-0">
+          <button
+            onClick={() => setAutoCleanOpen(true)}
+            disabled={autoCleanOpen}
+            className="text-xs px-2.5 py-1 rounded-full border bg-gray-700 border-gray-600 text-gray-300 hover:text-white hover:border-green-500 disabled:opacity-40 disabled:cursor-default transition-colors"
+            title="Compare this history with the player's Wikipedia page and suggest fixes"
+          >
+            Auto-clean
+          </button>
+          <button
+            onClick={cycleLegacy}
+            className={`text-xs px-2.5 py-1 rounded-full border transition-colors ${
+              effectiveLegacy
+                ? "bg-amber-900/50 border-amber-700/60 text-amber-300"
+                : "bg-gray-700 border-gray-600 text-gray-400"
+            }`}
+            title={`Legacy status: ${legacyOverride === null ? "auto" : legacyOverride ? "forced on" : "forced off"} (click to cycle)`}
+          >
+            {legacyOverride === null ? "Legacy: Auto" : legacyOverride ? "Legacy: On" : "Legacy: Off"}
+            {legacyOverride === null && (effectiveLegacy ? " (yes)" : " (no)")}
+          </button>
+        </div>
       </div>
+      {autoCleanOpen && (
+        <AutoCleanPanel
+          playerId={playerId}
+          clubs={clubs}
+          onApplied={reloadClubs}
+          onClose={() => setAutoCleanOpen(false)}
+        />
+      )}
       {clubs.map((club, index) => (
         <div
           key={club.id}

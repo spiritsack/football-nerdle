@@ -15,6 +15,7 @@
  */
 
 import { createClient } from "@supabase/supabase-js";
+import { normalizeClubName, stripClubSuffix } from "../src/utils/clubNames";
 
 const supabaseUrl = process.env.VITE_SUPABASE_URL;
 const supabaseKey =
@@ -156,39 +157,6 @@ async function getPlayersMissingTransfers(): Promise<{ id: string; tmId: string 
   return allPlayers
     .filter((p) => !hasClubs.has(p.id) && p.transfermarkt_id)
     .map((p) => ({ id: p.id, tmId: p.transfermarkt_id }));
-}
-
-/**
- * Normalize club name for matching: strip common suffixes, punctuation differences.
- * "Liverpool F.C." → "liverpool fc"
- * "Fulham Football Club" → "fulham fc"
- * "AS Monaco FC" → "as monaco fc"
- */
-function normalizeClubName(name: string): string {
-  return name
-    .toLowerCase()
-    .replace(/\bfootball club\b/g, "fc")
-    .replace(/f\.c\./g, "fc")
-    .replace(/a\.c\./g, "ac")
-    .replace(/s\.c\./g, "sc")
-    .replace(/a\.s\./g, "as")
-    .replace(/s\.s\.c\./g, "ssc")
-    .replace(/s\.l\./g, "sl")
-    .replace(/c\.f\./g, "cf")
-    .replace(/\./g, "")
-    .replace(/\s+/g, " ")
-    .trim();
-}
-
-/**
- * Strip trailing abbreviations entirely for loose matching.
- * "AS Monaco FC" → "as monaco"
- * "Liverpool FC" → "liverpool"
- */
-function stripClubSuffix(name: string): string {
-  return normalizeClubName(name)
-    .replace(/\s+(fc|ac|sc|ssc|sl|cf|fk|bk|sk|if|ff|afc|sfc|cfc)$/g, "")
-    .trim();
 }
 
 async function loadClubNameMap(): Promise<Map<string, string>> {

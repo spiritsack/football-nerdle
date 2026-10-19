@@ -1,0 +1,63 @@
+{{Short description|English footballer (born 1997)}}
+{{redirect|Rashford|the Jamaican aerospace engineer|Robert Rashford}}
+{{protection padlock|small=yes}}
+{{Use British English|date=November 2020}}
+{{Use dmy dates|date=November 2020}}
+{{Infobox football biography
+| name = Marcus Rashford<br />{{nobold|{{post-nominals|country=GBR|MBE}}}}
+| image = Marcus Rashford England v Ghana 23 June 2026-073.jpg
+| caption = Rashford with [[England national football team|England]] in 2026
+| full_name = Marcus Rashford
+| birth_date = {{birth date and age|1997|10|31|df=y}}
+| birth_place = [[Manchester]], England
+| height = {{convert|1.88|m|order=flip}}<ref>{{cite web |url=https://www.fcbarcelona.com/en/football/first-team/players/13565/marcus-rashford |title=Marcus Rashford |publisher=FC Barcelona |access-date=16 September 2025}}</ref>
+| position = [[Forward (association football)|Forward]]
+| currentclub = [[Manchester United F.C.|Manchester United]]
+| clubnumber = 9
+| youthyears1 = 2003–2005
+| youthclubs1 = [[Fletcher Moss Rangers F.C.|Fletcher Moss Rangers]]
+| youthyears2 = 2005–2015
+| youthclubs2 = [[Manchester United F.C. Reserves and Academy|Manchester United]]
+| years1 = 2015–
+| clubs1 = [[Manchester United F.C.|Manchester United]]
+| caps1 = 292
+| goals1 = 87
+| years2 = 2025
+| clubs2 = → [[Aston Villa F.C.|Aston Villa]] (loan)
+| caps2 = 10
+| goals2 = 2
+| years3 = 2025–2026
+| clubs3 = → [[FC Barcelona|Barcelona]] (loan)
+| caps3 = 32
+| goals3 = 8
+| nationalyears1 = 2012
+| nationalteam1 = [[England national under-16 football team|England U16]]
+| nationalcaps1 = 2
+| nationalgoals1 = 0
+| nationalyears2 = 2014
+| nationalteam2 = [[England national under-18 football team|England U18]]
+| nationalcaps2 = 2
+| nationalgoals2 = 0
+| nationalyears3 = 2016
+| nationalteam3 = [[England national under-20 football team|England U20]]
+| nationalcaps3 = 2
+| nationalgoals3 = 0
+| nationalyears4 = 2016
+| nationalteam4 = [[England national under-21 football team|England U21]]
+| nationalcaps4 = 1
+| nationalgoals4 = 3
+| nationalyears5 = 2016–
+| nationalteam5 = [[England national football team|England]]
+| nationalcaps5 = 78
+| nationalgoals5 = 19
+| club-update = 18:49, 20 September 2026 (UTC)
+| nationalteam-update = 23:00, 18 July 2026 (UTC)
+| medaltemplates = {{MedalSport|Men's [[Association football|football]]}}
+{{MedalCountry|{{fb|ENG}}}}
+{{MedalCompetition|[[FIFA World Cup]]}}{{Medal|3rd|[[2026 FIFA World Cup|2026 Canada–Mexico–US]]|}}
+{{MedalCompetition|[[UEFA European Championship]]}}{{Medal|RU|[[UEFA Euro 2020|2020 Europe]]|}}
+{{MedalCompetition|[[UEFA Nations League]]}}{{Medal|3rd|[[2019 UEFA Nations League Finals|2019 Portugal]]|}}
+}}
+
+
+'''Marcus Rashford''' (born 31 October 1997) is an English professional [[Association football|footballer]] who plays as a [[Forward (association football)|forward]] for {{English football updater|ManchesU}} club [[Manchester United F.C.|Manchester United]] and the [[England national football team|

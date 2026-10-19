@@ -18,3 +18,36 @@ export function getBaseClubName(name: string): string {
 export function isYouthOrReserveTeam(name: string): boolean {
   return YOUTH_RESERVE_SUFFIX.test(name);
 }
+
+/**
+ * Normalize club name for matching: strip common suffixes, punctuation differences.
+ * "Liverpool F.C." → "liverpool fc"
+ * "Fulham Football Club" → "fulham fc"
+ * "AS Monaco FC" → "as monaco fc"
+ */
+export function normalizeClubName(name: string): string {
+  return name
+    .toLowerCase()
+    .replace(/\bfootball club\b/g, "fc")
+    .replace(/f\.c\./g, "fc")
+    .replace(/a\.c\./g, "ac")
+    .replace(/s\.c\./g, "sc")
+    .replace(/a\.s\./g, "as")
+    .replace(/s\.s\.c\./g, "ssc")
+    .replace(/s\.l\./g, "sl")
+    .replace(/c\.f\./g, "cf")
+    .replace(/\./g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+/**
+ * Strip trailing abbreviations entirely for loose matching.
+ * "AS Monaco FC" → "as monaco"
+ * "Liverpool FC" → "liverpool"
+ */
+export function stripClubSuffix(name: string): string {
+  return normalizeClubName(name)
+    .replace(/\s+(fc|ac|sc|ssc|sl|cf|fk|bk|sk|if|ff|afc|sfc|cfc)$/g, "")
+    .trim();
+}
