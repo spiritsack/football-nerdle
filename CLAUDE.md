@@ -48,7 +48,8 @@ src/
     dailySchedule.ts    — Daily player selection (Supabase daily_schedule table)
     dailyLeaderboard.ts — Community leaderboard: submit results, fetch distribution
     multiplayerRoom.ts  — Room CRUD: createRoom, joinRoom, updateTurn, subscribeToRoom
-    adminApi.ts         — Admin write operations: schedule, clubs, crests, player thumbnails
+    adminApi.ts         — Admin write operations: schedule, clubs, crests, player thumbnails, auto-clean writes
+    wikipedia.ts        — Find a player's English Wikipedia page (Wikidata P2446 → enwiki, name search fallback) and fetch its wikitext from the browser
     useAdminAuth.ts     — Supabase Auth hook for admin sign-in/sign-out
   pages/
     Home/               — Landing page with game mode selection
@@ -67,6 +68,8 @@ src/
       index.tsx, types.ts, constants.ts
       ScheduleManager.tsx — Daily schedule curation with search
       PlayerClubList.tsx  — Club history editor (reorder, hide, loan/youth flags, crests)
+      AutoCleanPanel.tsx  — "Auto-clean": current vs Wikipedia-suggested history, accept all or per row
+      clubHistoryCleanup.ts — Pure infobox parser + diff (loan splits, youth hiding, current club, review notes)
       ImageDropZone.tsx   — Drag-and-drop image upload (club crests, player photos)
     NotFound/           — Catch-all "Page not found" screen with a link back to Home
       index.tsx, types.ts

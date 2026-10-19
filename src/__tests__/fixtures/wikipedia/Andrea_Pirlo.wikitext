@@ -1,0 +1,107 @@
+{{Short description|Italian football player and manager (born 1979)}}
+{{redirect|Pirlo|the Italian alcoholic beverage|Pirlo (aperitivo)}}
+{{pp-pc|small=yes}}
+{{good article}}
+{{EngvarB|date=January 2019}}
+{{Use dmy dates|date=September 2021}}
+{{Infobox football biography
+| name = Andrea Pirlo<br>{{post-nominals|post-noms=[[Order of Merit of the Italian Republic|Ufficiale OMRI]]}}
+| image = 20150616 - Portugal - Italie - Genève - Andrea Pirlo (cropped).jpg
+| caption = Pirlo in 2015
+| birth_date = {{birth date and age|1979|5|19|df=y}}<ref name="Italy - A. Pirlo - Profile - Soccerway"/>
+| birth_place = [[Flero]], Italy
+| height = 1.77 m<ref>{{cite web |url=http://www.juventus.com/juve/en/campo/giocatori-e-staff/prima/giocatori/021pirlo |title=Andrea Pirlo |publisher=Juventus FC |archive-url=https://web.archive.org/web/20120424122212/http://www.juventus.com/juve/en/campo/giocatori-e-staff/prima/giocatori/021pirlo |archive-date=24 April 2012 |url-status=dead }}</ref>
+| position = [[Midfielder (association football)#Deep-lying playmaker|Midfielder]]
+| currentclub = [[United FC (Dubai)|Dubai United]] (head coach)
+| youthyears1 = 1985–1988
+| youthclubs1 = Flero
+| youthyears2 = 1988–1992
+| youthclubs2 = Voluntas Brescia
+| youthyears3 = 1992–1995
+| youthclubs3 = [[Brescia Calcio|Brescia]]
+| years1 = 1995–1998
+| clubs1 = [[Brescia Calcio|Brescia]]
+| caps1 = 47
+| goals1 = 6 <!-- LEAGUE APPEARANCES AND GOALS ONLY !-->
+| years2 = 1998–2001
+| clubs2 = [[Inter Milan]]
+| caps2 = 22
+| goals2 = 0 <!-- LEAGUE APPEARANCES AND GOALS ONLY !-->
+| years3 = 1999–2000
+| clubs3 = → [[Reggina Calcio|Reggina]] (loan)
+| caps3 = 28
+| goals3 = 6 <!-- LEAGUE APPEARANCES AND GOALS ONLY !-->
+| years4 = 2001
+| clubs4 = → [[Brescia Calcio|Brescia]] (loan)
+| caps4 = 10
+| goals4 = 0 <!-- LEAGUE APPEARANCES AND GOALS ONLY !-->
+| years5 = 2001–2011
+| clubs5 = [[A.C. Milan|AC Milan]]
+| caps5 = 284
+| goals5 = 32 <!-- LEAGUE APPEARANCES AND GOALS ONLY !-->
+| years6 = 2011–2015
+| clubs6 = [[Juventus FC|Juventus]]
+| caps6 = 119
+| goals6 = 16 <!-- LEAGUE APPEARANCES AND GOALS ONLY !-->
+| years7 = 2015–2017
+| clubs7 = [[New York City FC]]
+| caps7 = 60
+| goals7 = 1 <!-- LEAGUE APPEARANCES AND GOALS ONLY !-->
+| totalcaps = 570
+| totalgoals = 61 <!-- LEAGUE APPEARANCES AND GOALS ONLY !-->
+| nationalyears1 = 1994
+| nationalteam1 = [[Italy national under-15 football team|Italy U15]]
+| nationalcaps1 = 3
+| nationalgoals1 = 0
+| nationalyears2 = 1995
+| nationalteam2 = [[Italy national under-16 football team|Italy U16]]
+| nationalcaps2 = 6
+| nationalgoals2 = 2
+| nationalyears3 = 1995
+| nationalteam3 = [[Italy national under-17 football team|Italy U17]]
+| nationalcaps3 = 4
+| nationalgoals3 = 0
+| nationalyears4 = 1995–1997
+| nationalteam4 = [[Italy national under-18 football team|Italy U18]]
+| nationalcaps4 = 18
+| nationalgoals4 = 7
+| nationalyears5 = 1998–2002
+| nationalteam5 = [[Italy national under-21 football team|Italy U21]]
+| nationalcaps5 = 37
+| nationalgoals5 = 15
+| nationalyears6 = 2000–2004     
+| nationalteam6 = [[Italy national under-21 football team|Italy Olympic]] ([[List of overage players in Olympic football|O.P.]]) 
+| nationalcaps6 = 9   
+| nationalgoals6 = 1
+| nationalyears7 = 2002–2015
+| nationalteam7 = [[Italy national football team|Italy]]
+| nationalcaps7 = 116
+| nationalgoals7 = 13
+| manageryears1 = 2020<!--DO NOT REMOVE. HE WAS THERE EVEN IF FOR 9 DAYS-->
+| managerclubs1 = [[Juventus F.C. Under-23|Juventus U23]]<!--DO NOT REMOVE. HE WAS THERE EVEN IF FOR 9 DAYS-->
+| manageryears2 = 2020–2021
+| managerclubs2 = [[Juventus FC|Juventus]]
+| manageryears3 = 2022–2023
+| managerclubs3 = [[Fatih Karagümrük S.K.|Fatih Karagümrük]]
+| manageryears4 = 2023–2024
+| managerclubs4 = [[UC Sampdoria|Sampdoria]]
+| manageryears5 = 2025–
+| managerclubs5 = [[United FC (Dubai)|Dubai United]]<!-- Wait for the official announcement from FIGC before reporting his appointment as Italy's coach -->
+| medaltemplates = {{MedalSport|Men's [[Association football|football]]}}
+{{MedalCountry|{{ITA}}}}
+{{MedalCompetition|[[FIFA World Cup]]}}
+{{Medal|W|[[2006 FIFA World Cup|2006 Germany]]|}}
+{{MedalCompetition|[[UEFA European Championship]]}}
+{{Medal|RU|[[UEFA Euro 2012|2012 Poland–Ukraine]]|}}
+{{MedalCompetition|[[FIFA Confederations Cup]]}}
+{{Medal|Bronze|[[2013 FIFA Confederations Cup|2013 Brazil]]|}}
+{{MedalCompetition |[[Football at the Summer Olympics|Summer Olympics]]}}
+{{MedalBronze|[[Football at the 2004 Summer Olympics – Men's tournament|2004 Athens]]|}}
+{{MedalCompetition|[[UEFA European Under-21 Championship]]}}
+{{Medal|Winner|[[2000 UEFA European Under-21 Championship|2000 Slovakia]]|}}
+{{Medal|Bronze|[[2002 UEFA European Under-21 Championship|2002 Switzerland]]|}}
+}}
+
+
+
+'''Andrea Pirlo''' {{post-nominals|post-noms=[[Order of Merit of the Italian Republic|Ufficiale OMRI]]}}<ref name=omri1/><ref name=omri2/> ({{IPA|it|anˈdrɛːa ˈpirlo}}; born 19 May 1979) is an Italian [[association football|football]] [[manager (association football)|manager]] and former player who

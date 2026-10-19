@@ -1,6 +1,8 @@
 import { supabase } from "./supabaseClient";
 import type { Player } from "../types";
 import type { AdminClubRow } from "../pages/Admin/types";
+import { finalOrder } from "../pages/Admin/clubHistoryCleanup";
+import type { CleanupPlan, ProposedRow } from "../pages/Admin/clubHistoryCleanup";
 
 // --- Player lookup ---
 
@@ -261,6 +263,80 @@ export async function addPlayerClub(
     is_loan: row.is_loan,
     sort_order: row.sort_order,
   };
+}
+
+// --- Auto-clean operations ---
+
+export async function getPlayerNameAndTransfermarktId(
+  playerId: string,
+): Promise<{ name: string; transfermarktId: string | null } | null> {
+  if (!supabase) return null;
+  const { data } = await supabase
+    .from("players")
+    .select("name, transfermarkt_id")
+    .eq("id", playerId)
+    .single();
+  return data ? { name: data.name, transfermarktId: data.transfermarkt_id ?? null } : null;
+}
+
+type ClubSpellFields = Pick<ProposedRow, "year_joined" | "year_departed" | "is_loan" | "is_youth_team" | "is_hidden">;
+
+function spellFields(row: ProposedRow): ClubSpellFields {
+  const { year_joined, year_departed, is_loan, is_youth_team, is_hidden } = row;
+  return { year_joined, year_departed, is_loan, is_youth_team, is_hidden };
+}
+
+/**
+ * Write the accepted auto-clean changes: updates first, then inserts (the
+ * spells a loan split off), then the sort order. Returns how many writes failed.
+ */
+export async function applyClubCleanup(
+  playerId: string,
+  plan: CleanupPlan,
+  current: AdminClubRow[],
+  accepted: Set<string>,
+): Promise<{ failed: number }> {
+  if (!supabase) return { failed: accepted.size };
+  let failed = 0;
+  const insertedIds = new Map<string, number>();
+
+  for (const change of plan.changes) {
+    if (change.kind !== "update" || !accepted.has(change.id)) continue;
+    const { error } = await supabase
+      .from("player_clubs")
+      .update(spellFields(change.after!))
+      .eq("id", change.before!.id);
+    if (error) {
+      console.error("applyClubCleanup update failed:", error);
+      failed++;
+    }
+  }
+
+  for (const change of plan.changes) {
+    if (change.kind !== "insert" || !accepted.has(change.id)) continue;
+    const { data, error } = await supabase
+      .from("player_clubs")
+      .insert({ player_id: playerId, club_id: change.after!.club_id, ...spellFields(change.after!) })
+      .select("id")
+      .single();
+    if (error || !data) {
+      console.error("applyClubCleanup insert failed:", error);
+      failed++;
+    } else {
+      insertedIds.set(change.after!.key, data.id);
+    }
+  }
+
+  const needsOrder = accepted.has("reorder") || insertedIds.size > 0;
+  if (needsOrder) {
+    const ids = finalOrder(plan, current, accepted)
+      .map((p) => p.rowId ?? insertedIds.get(p.key))
+      .filter((id): id is number => id !== undefined);
+    const ok = await updateClubSortOrders(ids.map((id, i) => ({ id, sort_order: i })));
+    if (!ok) failed++;
+  }
+
+  return { failed };
 }
 
 // --- Club reorder operations ---
