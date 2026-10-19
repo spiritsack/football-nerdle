@@ -3,8 +3,8 @@
  * Wikidata and Wikipedia APIs allow anonymous CORS requests with origin=*.
  */
 
-const WIKIDATA_API = "https://www.wikidata.org/w/api.php";
-const WIKIPEDIA_API = "https://en.wikipedia.org/w/api.php";
+export const WIKIDATA_API = "https://www.wikidata.org/w/api.php";
+export const WIKIPEDIA_API = "https://en.wikipedia.org/w/api.php";
 
 export interface WikipediaPage {
   title: string;
@@ -14,9 +14,10 @@ export interface WikipediaPage {
   foundBy: "transfermarkt" | "name";
 }
 
-async function getJson(base: string, params: Record<string, string>): Promise<unknown> {
+/** `headers` is for Node scripts, which must send a User-Agent; browsers send their own */
+export async function getJson(base: string, params: Record<string, string>, headers?: HeadersInit): Promise<unknown> {
   const query = new URLSearchParams({ ...params, format: "json", formatversion: "2", origin: "*" });
-  const res = await fetch(`${base}?${query}`);
+  const res = await fetch(`${base}?${query}`, { headers });
   if (!res.ok) throw new Error(`${new URL(base).hostname} returned ${res.status}`);
   return res.json();
 }

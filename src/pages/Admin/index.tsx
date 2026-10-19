@@ -2,6 +2,27 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 import { useAdminAuth } from "../../api/useAdminAuth";
 import ScheduleManager from "./ScheduleManager";
+import MissingLogosPanel from "./MissingLogosPanel";
+
+function ClubLogos() {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="mt-10 space-y-3">
+      <div className="flex items-center justify-between">
+        <h2 className="text-lg font-semibold">Club Logos</h2>
+        <button
+          onClick={() => setOpen(true)}
+          disabled={open}
+          className="px-3 py-1.5 bg-gray-700 hover:bg-gray-600 disabled:opacity-40 disabled:cursor-default text-gray-300 hover:text-white text-sm font-medium rounded-lg transition-colors"
+          title="Find logos on Wikipedia for every club without a badge"
+        >
+          Fill all missing
+        </button>
+      </div>
+      {open && <MissingLogosPanel onClose={() => setOpen(false)} />}
+    </div>
+  );
+}
 
 function SignInForm({ onSignIn, error }: { onSignIn: (email: string, password: string) => void; error: string | null }) {
   const [email, setEmail] = useState("");
@@ -74,6 +95,7 @@ export default function Admin() {
           </div>
         </div>
         <ScheduleManager />
+        <ClubLogos />
       </div>
     </div>
   );

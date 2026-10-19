@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { Fragment, useState, useEffect, useCallback } from "react";
 import {
   getPlayerClubsAdmin,
   getPlayerLegacyStatus,
@@ -17,6 +17,7 @@ import type { AdminClubRow } from "./types";
 import ImageDropZone from "./ImageDropZone";
 import AddClubForm from "./AddClubForm";
 import AutoCleanPanel from "./AutoCleanPanel";
+import FindLogoPanel from "./FindLogoPanel";
 
 interface Props {
   playerId: string;
@@ -34,6 +35,7 @@ export default function PlayerClubList({ playerId }: Props) {
   const [dragIndex, setDragIndex] = useState<number | null>(null);
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
   const [autoCleanOpen, setAutoCleanOpen] = useState(false);
+  const [findLogoRowId, setFindLogoRowId] = useState<number | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -95,6 +97,13 @@ export default function PlayerClubList({ playerId }: Props) {
     setClubs((prev) =>
       prev.map((c) => (c.club_id === clubId ? { ...c, badge: newBadgeUrl } : c)),
     );
+  }
+
+  function handleLogoSaved(clubIds: string[], newBadgeUrl: string) {
+    setClubs((prev) =>
+      prev.map((c) => (clubIds.includes(c.club_id) ? { ...c, badge: newBadgeUrl } : c)),
+    );
+    setFindLogoRowId(null);
   }
 
   const moveClub = useCallback(async (index: number, direction: -1 | 1) => {
@@ -263,202 +272,221 @@ export default function PlayerClubList({ playerId }: Props) {
         />
       )}
       {clubs.map((club, index) => (
-        <div
-          key={club.id}
-          onDragOver={(e) => {
-            if (dragIndex === null) return;
-            e.preventDefault();
-            e.dataTransfer.dropEffect = "move";
-            setDragOverIndex(index);
-          }}
-          onDragLeave={() => setDragOverIndex((prev) => (prev === index ? null : prev))}
-          onDrop={(e) => {
-            if (dragIndex === null) return;
-            e.preventDefault();
-            handleReorderDrop(index);
-          }}
-          className={`flex items-center gap-3 px-3 py-2 rounded-lg transition-opacity ${
-            club.is_hidden || club.is_youth_team ? "opacity-40" : ""
-          } ${dragOverIndex === index && dragIndex !== index ? "ring-2 ring-green-500/60 bg-green-900/10" : ""}`}
-        >
-          {/* Drag handle for reordering */}
+        <Fragment key={club.id}>
           <div
-            draggable
-            onDragStart={(e) => {
-              e.dataTransfer.effectAllowed = "move";
-              e.dataTransfer.setData("text/plain", String(club.id));
-              setDragIndex(index);
+            onDragOver={(e) => {
+              if (dragIndex === null) return;
+              e.preventDefault();
+              e.dataTransfer.dropEffect = "move";
+              setDragOverIndex(index);
             }}
-            onDragEnd={() => {
-              setDragIndex(null);
-              setDragOverIndex(null);
+            onDragLeave={() => setDragOverIndex((prev) => (prev === index ? null : prev))}
+            onDrop={(e) => {
+              if (dragIndex === null) return;
+              e.preventDefault();
+              handleReorderDrop(index);
             }}
-            className="shrink-0 px-0.5 text-gray-600 hover:text-gray-300 cursor-grab active:cursor-grabbing"
-            title="Drag to reorder"
+            className={`flex items-center gap-3 px-3 py-2 rounded-lg transition-opacity ${
+              club.is_hidden || club.is_youth_team ? "opacity-40" : ""
+            } ${dragOverIndex === index && dragIndex !== index ? "ring-2 ring-green-500/60 bg-green-900/10" : ""}`}
           >
-            <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24">
-              <circle cx="9" cy="6" r="1.5" />
-              <circle cx="15" cy="6" r="1.5" />
-              <circle cx="9" cy="12" r="1.5" />
-              <circle cx="15" cy="12" r="1.5" />
-              <circle cx="9" cy="18" r="1.5" />
-              <circle cx="15" cy="18" r="1.5" />
-            </svg>
-          </div>
-
-          {/* Reorder buttons */}
-          <div className="flex flex-col shrink-0">
-            <button
-              onClick={() => moveClub(index, -1)}
-              disabled={index === 0}
-              className="text-gray-500 hover:text-white disabled:opacity-20 disabled:cursor-default p-0.5 transition-colors"
-              title="Move up"
+            {/* Drag handle for reordering */}
+            <div
+              draggable
+              onDragStart={(e) => {
+                e.dataTransfer.effectAllowed = "move";
+                e.dataTransfer.setData("text/plain", String(club.id));
+                setDragIndex(index);
+              }}
+              onDragEnd={() => {
+                setDragIndex(null);
+                setDragOverIndex(null);
+              }}
+              className="shrink-0 px-0.5 text-gray-600 hover:text-gray-300 cursor-grab active:cursor-grabbing"
+              title="Drag to reorder"
             >
-              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
+              <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24">
+                <circle cx="9" cy="6" r="1.5" />
+                <circle cx="15" cy="6" r="1.5" />
+                <circle cx="9" cy="12" r="1.5" />
+                <circle cx="15" cy="12" r="1.5" />
+                <circle cx="9" cy="18" r="1.5" />
+                <circle cx="15" cy="18" r="1.5" />
               </svg>
-            </button>
-            <button
-              onClick={() => moveClub(index, 1)}
-              disabled={index === clubs.length - 1}
-              className="text-gray-500 hover:text-white disabled:opacity-20 disabled:cursor-default p-0.5 transition-colors"
-              title="Move down"
-            >
-              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-              </svg>
-            </button>
-          </div>
+            </div>
 
-          {/* Badge with drop zone */}
-          <ImageDropZone
-            currentImage={club.badge}
-            alt={club.club_name}
-            fallbackText={club.club_name.slice(0, 2).toUpperCase()}
-            title={`Click or drag to upload crest for ${club.club_name}`}
-            upload={(file) => uploadClubCrest(club.club_id, file)}
-            onUpdated={(url) => handleCrestUpdated(club.club_id, url)}
-          />
-
-          {/* Club info */}
-          <div className="flex-1 min-w-0">
-            {editingNameId === club.id ? (
-              <input
-                type="text"
-                value={editNameValue}
-                onChange={(e) => setEditNameValue(e.target.value)}
-                onBlur={() => saveEditName(club)}
-                onKeyDown={(e) => handleNameKeyDown(e, club)}
-                className="text-sm font-medium bg-gray-700 text-white px-2 py-0.5 rounded border border-gray-500 focus:outline-none focus:border-green-500 w-full"
-                autoFocus
-              />
-            ) : (
+            {/* Reorder buttons */}
+            <div className="flex flex-col shrink-0">
               <button
-                onClick={() => startEditName(club)}
-                className={`text-sm font-medium text-left cursor-text hover:underline ${
-                  club.is_hidden ? "line-through text-gray-500" : "text-white"
-                }`}
-                title="Click to edit name"
+                onClick={() => moveClub(index, -1)}
+                disabled={index === 0}
+                className="text-gray-500 hover:text-white disabled:opacity-20 disabled:cursor-default p-0.5 transition-colors"
+                title="Move up"
               >
-                {club.club_name}
+                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
+                </svg>
               </button>
-            )}
-            {editingYearsId === club.id ? (
-              <div className="flex items-center gap-1 mt-0.5">
+              <button
+                onClick={() => moveClub(index, 1)}
+                disabled={index === clubs.length - 1}
+                className="text-gray-500 hover:text-white disabled:opacity-20 disabled:cursor-default p-0.5 transition-colors"
+                title="Move down"
+              >
+                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+              </button>
+            </div>
+
+            {/* Badge with drop zone */}
+            <ImageDropZone
+              currentImage={club.badge}
+              alt={club.club_name}
+              fallbackText={club.club_name.slice(0, 2).toUpperCase()}
+              title={`Click or drag to upload crest for ${club.club_name}`}
+              upload={(file) => uploadClubCrest(club.club_id, file)}
+              onUpdated={(url) => handleCrestUpdated(club.club_id, url)}
+            />
+
+            {/* Club info */}
+            <div className="flex-1 min-w-0">
+              {editingNameId === club.id ? (
                 <input
                   type="text"
-                  inputMode="numeric"
-                  maxLength={4}
-                  value={editYearJoined}
-                  onChange={(e) => setEditYearJoined(e.target.value.replace(/\D/g, ""))}
-                  onKeyDown={(e) => handleYearsKeyDown(e, club)}
-                  className="w-16 px-1.5 py-0.5 text-xs bg-gray-700 text-white rounded border border-gray-500 focus:outline-none focus:border-green-500"
-                  placeholder="YYYY"
+                  value={editNameValue}
+                  onChange={(e) => setEditNameValue(e.target.value)}
+                  onBlur={() => saveEditName(club)}
+                  onKeyDown={(e) => handleNameKeyDown(e, club)}
+                  className="text-sm font-medium bg-gray-700 text-white px-2 py-0.5 rounded border border-gray-500 focus:outline-none focus:border-green-500 w-full"
                   autoFocus
                 />
-                <span className="text-xs text-gray-500">–</span>
-                <input
-                  type="text"
-                  inputMode="numeric"
-                  maxLength={4}
-                  value={editYearDeparted}
-                  onChange={(e) => setEditYearDeparted(e.target.value.replace(/\D/g, ""))}
-                  onKeyDown={(e) => handleYearsKeyDown(e, club)}
-                  onBlur={() => saveEditYears(club)}
-                  className="w-16 px-1.5 py-0.5 text-xs bg-gray-700 text-white rounded border border-gray-500 focus:outline-none focus:border-green-500"
-                  placeholder="present"
-                />
-              </div>
-            ) : (
+              ) : (
+                <button
+                  onClick={() => startEditName(club)}
+                  className={`text-sm font-medium text-left cursor-text hover:underline ${
+                    club.is_hidden ? "line-through text-gray-500" : "text-white"
+                  }`}
+                  title="Click to edit name"
+                >
+                  {club.club_name}
+                </button>
+              )}
+              {editingYearsId === club.id ? (
+                <div className="flex items-center gap-1 mt-0.5">
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    maxLength={4}
+                    value={editYearJoined}
+                    onChange={(e) => setEditYearJoined(e.target.value.replace(/\D/g, ""))}
+                    onKeyDown={(e) => handleYearsKeyDown(e, club)}
+                    className="w-16 px-1.5 py-0.5 text-xs bg-gray-700 text-white rounded border border-gray-500 focus:outline-none focus:border-green-500"
+                    placeholder="YYYY"
+                    autoFocus
+                  />
+                  <span className="text-xs text-gray-500">–</span>
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    maxLength={4}
+                    value={editYearDeparted}
+                    onChange={(e) => setEditYearDeparted(e.target.value.replace(/\D/g, ""))}
+                    onKeyDown={(e) => handleYearsKeyDown(e, club)}
+                    onBlur={() => saveEditYears(club)}
+                    className="w-16 px-1.5 py-0.5 text-xs bg-gray-700 text-white rounded border border-gray-500 focus:outline-none focus:border-green-500"
+                    placeholder="present"
+                  />
+                </div>
+              ) : (
+                <button
+                  onClick={() => startEditYears(club)}
+                  className="text-xs text-gray-500 hover:text-white hover:underline cursor-text"
+                  title="Click to edit years"
+                >
+                  {club.year_joined || "?"} – {club.year_departed || "present"}
+                </button>
+              )}
+            </div>
+
+            {!club.badge && (
               <button
-                onClick={() => startEditYears(club)}
-                className="text-xs text-gray-500 hover:text-white hover:underline cursor-text"
-                title="Click to edit years"
+                onClick={() => setFindLogoRowId(club.id)}
+                disabled={findLogoRowId === club.id}
+                className="shrink-0 text-xs px-2 py-0.5 rounded-full border bg-gray-700 border-gray-600 text-gray-300 hover:text-white hover:border-green-500 disabled:opacity-40 disabled:cursor-default transition-colors"
+                title={`Look for ${club.club_name}'s logo on Wikipedia`}
               >
-                {club.year_joined || "?"} – {club.year_departed || "present"}
+                Find logo
               </button>
             )}
-          </div>
 
-          {/* Flags */}
-          <div className="flex items-center gap-3 shrink-0">
-            <label className="flex items-center gap-1 cursor-pointer" title="Youth team (hidden in game)">
-              <input
-                type="checkbox"
-                checked={club.is_youth_team}
-                onChange={() => toggleYouthTeam(club)}
-                className="accent-yellow-500 w-3.5 h-3.5"
-              />
-              <span className={`text-xs ${club.is_youth_team ? "text-yellow-400" : "text-gray-500"}`}>Youth</span>
-            </label>
-            <label className="flex items-center gap-1 cursor-pointer" title="Loan spell">
-              <input
-                type="checkbox"
-                checked={club.is_loan}
-                onChange={() => toggleLoan(club)}
-                className="accent-blue-500 w-3.5 h-3.5"
-              />
-              <span className={`text-xs ${club.is_loan ? "text-blue-400" : "text-gray-500"}`}>Loan</span>
-            </label>
-          </div>
+            {/* Flags */}
+            <div className="flex items-center gap-3 shrink-0">
+              <label className="flex items-center gap-1 cursor-pointer" title="Youth team (hidden in game)">
+                <input
+                  type="checkbox"
+                  checked={club.is_youth_team}
+                  onChange={() => toggleYouthTeam(club)}
+                  className="accent-yellow-500 w-3.5 h-3.5"
+                />
+                <span className={`text-xs ${club.is_youth_team ? "text-yellow-400" : "text-gray-500"}`}>Youth</span>
+              </label>
+              <label className="flex items-center gap-1 cursor-pointer" title="Loan spell">
+                <input
+                  type="checkbox"
+                  checked={club.is_loan}
+                  onChange={() => toggleLoan(club)}
+                  className="accent-blue-500 w-3.5 h-3.5"
+                />
+                <span className={`text-xs ${club.is_loan ? "text-blue-400" : "text-gray-500"}`}>Loan</span>
+              </label>
+            </div>
 
-          {/* Hide/show toggle */}
-          <button
-            onClick={() => toggleHidden(club)}
-            title={club.is_hidden ? "Show this club" : "Hide this club"}
-            className={`p-1.5 rounded transition-colors ${
-              club.is_hidden
-                ? "text-gray-500 hover:text-white hover:bg-gray-700"
-                : "text-gray-400 hover:text-red-400 hover:bg-gray-700"
-            }`}
-          >
-            {club.is_hidden ? (
+            {/* Hide/show toggle */}
+            <button
+              onClick={() => toggleHidden(club)}
+              title={club.is_hidden ? "Show this club" : "Hide this club"}
+              className={`p-1.5 rounded transition-colors ${
+                club.is_hidden
+                  ? "text-gray-500 hover:text-white hover:bg-gray-700"
+                  : "text-gray-400 hover:text-red-400 hover:bg-gray-700"
+              }`}
+            >
+              {club.is_hidden ? (
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                    d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.878 9.878L3 3m6.878 6.878L21 21" />
+                </svg>
+              ) : (
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                    d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                    d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                </svg>
+              )}
+            </button>
+
+            {/* Delete */}
+            <button
+              onClick={() => handleDelete(club)}
+              title="Delete this club from the player's history"
+              className="p-1.5 rounded text-gray-500 hover:text-red-400 hover:bg-gray-700 transition-colors"
+            >
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                  d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.878 9.878L3 3m6.878 6.878L21 21" />
+                  d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6M1 7h22M9 7V4a1 1 0 011-1h4a1 1 0 011 1v3" />
               </svg>
-            ) : (
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                  d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                  d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-              </svg>
-            )}
-          </button>
-
-          {/* Delete */}
-          <button
-            onClick={() => handleDelete(club)}
-            title="Delete this club from the player's history"
-            className="p-1.5 rounded text-gray-500 hover:text-red-400 hover:bg-gray-700 transition-colors"
-          >
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6M1 7h22M9 7V4a1 1 0 011-1h4a1 1 0 011 1v3" />
-            </svg>
-          </button>
-        </div>
+            </button>
+          </div>
+          {findLogoRowId === club.id && !club.badge && (
+            <FindLogoPanel
+              club={{ id: club.club_id, name: club.club_name }}
+              onSaved={(badge, alsoFilled) => handleLogoSaved([club.club_id, ...alsoFilled], badge)}
+              onClose={() => setFindLogoRowId(null)}
+            />
+          )}
+        </Fragment>
       ))}
       <AddClubForm playerId={playerId} onAdded={handleClubAdded} />
     </div>

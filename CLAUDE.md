@@ -31,6 +31,7 @@ A football (soccer) trivia web app with multiple game modes, deployed to GitHub 
 - `npx tsx scripts/import-transfermarkt.ts` — Import target league players
 - `npx tsx scripts/import-transfermarkt.ts --all` — Import all players from dataset
 - `npx tsx scripts/backfill-wikidata.ts` — Backfill missing club history from Wikidata
+- `npx tsx --env-file=.env scripts/backfill-club-logos.ts --dry-run` — Find logos for clubs with no badge on Wikidata/Wikipedia (`--club <id>`, `--limit <n>`; drop `--dry-run` to save them)
 - `npx tsx scripts/copy-db.ts` — Copy data between Supabase instances (e.g. production to a new or local project)
 
 ## Project Structure
@@ -50,6 +51,8 @@ src/
     multiplayerRoom.ts  — Room CRUD: createRoom, joinRoom, updateTurn, subscribeToRoom
     adminApi.ts         — Admin write operations: schedule, clubs, crests, player thumbnails, auto-clean writes
     wikipedia.ts        — Find a player's English Wikipedia page (Wikidata P2446 → enwiki, name search fallback) and fetch its wikitext from the browser
+    clubLogoLookup.ts   — Find a club's logo (Wikidata P154, else the article's lead image if it looks like a crest) and download it; shared with the backfill script
+    clubCrestStorage.ts — Store a crest in the `club-crests` bucket and point `clubs.badge` at it; fill a sportsdb/tm_ duplicate pair (takes a Supabase client, shared with the script)
     useAdminAuth.ts     — Supabase Auth hook for admin sign-in/sign-out
   pages/
     Home/               — Landing page with game mode selection
@@ -71,6 +74,10 @@ src/
       AutoCleanPanel.tsx  — "Auto-clean": current vs Wikipedia-suggested history, accept all or per row
       clubHistoryCleanup.ts — Pure infobox parser + diff (loan splits, youth hiding, current club, review notes)
       ImageDropZone.tsx   — Drag-and-drop image upload (club crests, player photos)
+      clubLogo.ts         — Pure logo lookup rules: club id → Wikidata/TransferMarkt/name lookup, article pick, crest-vs-photo check
+      FindLogoPanel.tsx   — "Find logo" on a club row with no badge: preview, Accept/Skip
+      MissingLogosPanel.tsx — "Fill all missing": clubs without a badge a page at a time, found vs check-by-hand, accept all or per row
+      LogoCandidate.tsx   — Logo preview (or check-by-hand reason) shared by both
     NotFound/           — Catch-all "Page not found" screen with a link back to Home
       index.tsx, types.ts
   components/
@@ -89,6 +96,7 @@ src/
 scripts/
   import-transfermarkt.ts — Import players/transfers from TransferMarkt CSVs (--all for full dataset)
   backfill-wikidata.ts    — Backfill missing club history from Wikidata SPARQL API
+  backfill-club-logos.ts  — Fill empty club badges from Wikidata/Wikipedia (same lookup and storage as the Admin UI)
   copy-db.ts              — Copy data between Supabase instances
   seed-players.ts         — Pre-populate players from top clubs
 supabase/

@@ -3,6 +3,8 @@ import type { Player } from "../types";
 import type { AdminClubRow } from "../pages/Admin/types";
 import { finalOrder } from "../pages/Admin/clubHistoryCleanup";
 import type { CleanupPlan, ProposedRow } from "../pages/Admin/clubHistoryCleanup";
+import { findDuplicateClubsWithoutBadge, shareClubCrest, storeClubCrest } from "./clubCrestStorage";
+import { downloadLogo } from "./clubLogoLookup";
 
 // --- Player lookup ---
 
@@ -385,30 +387,47 @@ export async function searchClubs(query: string): Promise<{ id: string; name: st
 export async function uploadClubCrest(clubId: string, file: File): Promise<string | null> {
   if (!supabase) return null;
   const ext = file.name.split(".").pop() ?? "png";
-  const path = `${clubId}.${ext}`;
+  return storeClubCrest(supabase, clubId, file, ext);
+}
 
-  const { error: uploadError } = await supabase.storage
-    .from("club-crests")
-    .upload(path, file, { upsert: true });
-  if (uploadError) {
-    console.error("uploadClubCrest upload failed:", uploadError);
-    return null;
-  }
+export interface MissingBadgeClub {
+  id: string;
+  name: string;
+  transfermarkt_id: string | null;
+}
 
-  const { data: urlData } = supabase.storage
-    .from("club-crests")
-    .getPublicUrl(path);
-
-  const publicUrl = urlData.publicUrl;
-
-  // Update the club record with the new badge URL
-  const { error: updateError } = await supabase
+/** One page of clubs with no badge, by id, plus how many there are in total */
+export async function getClubsWithoutBadge(
+  offset: number,
+  limit: number,
+): Promise<{ clubs: MissingBadgeClub[]; total: number }> {
+  if (!supabase) return { clubs: [], total: 0 };
+  const { data, count, error } = await supabase
     .from("clubs")
-    .update({ badge: publicUrl })
-    .eq("id", clubId);
-  if (updateError) console.error("uploadClubCrest update failed:", updateError);
+    .select("id, name, transfermarkt_id", { count: "exact" })
+    .eq("badge", "")
+    .order("id")
+    .range(offset, offset + limit - 1);
+  if (error) throw new Error(error.message);
+  return { clubs: data ?? [], total: count ?? 0 };
+}
 
-  return publicUrl;
+/**
+ * Download a logo found on Wikipedia, store our own copy as the club's crest,
+ * and give a same-named duplicate club without a badge the same crest.
+ * Throws with a message the UI can show.
+ */
+export async function saveClubLogo(
+  club: { id: string; name: string },
+  imageUrl: string,
+): Promise<{ badge: string; alsoFilled: string[] }> {
+  if (!supabase) throw new Error("Supabase is not configured");
+  const { blob, ext } = await downloadLogo(imageUrl);
+  const badge = await storeClubCrest(supabase, club.id, blob, ext);
+  if (!badge) throw new Error("Upload failed");
+  const duplicates = await findDuplicateClubsWithoutBadge(supabase, club.id, club.name);
+  const alsoFilled = await shareClubCrest(supabase, duplicates, badge);
+  return { badge, alsoFilled };
 }
 
 // --- Player thumbnail operations ---
