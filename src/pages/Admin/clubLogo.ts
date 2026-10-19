@@ -122,3 +122,82 @@ export function extensionForMime(mime: string): string | null {
   const type = mime.split(";")[0].trim().toLowerCase();
   return { "image/png": "png", "image/jpeg": "jpg", "image/webp": "webp", "image/svg+xml": "svg", "image/gif": "gif" }[type] ?? null;
 }
+
+// TransferMarkt abbreviates youth/reserve teams: "Derby U18", "Lens Yth.", "Malmö FF Jgd.", "Toulouse For.", "Sevilla FC C"
+const YOUTH_SUFFIX =
+  /\s+-?\s*(U-?\d{2}|Sub-?\d{2}|S\d{2}|Yth\.?|Youth|Yout|You|Y\.?|Jgd\.?|Jugend|Jun\.|J\.|Gio\.|Giovanili|Primavera|For\.?|Fo\.|Formação|Acad\.|Academy|II|III|B|C|2|3|Reserves?|Res\.|Juvenil(?: [AB])?|Juv\.?(?: [AB])?)$/;
+
+/** The parent club's name for a youth or reserve team ("Derby U18" → "Derby"), or null for a first team */
+export function parentClubName(name: string): string | null {
+  const trimmed = name.trim();
+  const match = YOUTH_SUFFIX.exec(trimmed);
+  if (!match) return null;
+  const base = trimmed.slice(0, match.index).trim();
+  return base || null;
+}
+
+/** Key for matching a parent name: case, accents and punctuation don't count ("SönderjyskE" = "Sonderjyske") */
+export function parentNameKey(name: string): string {
+  return normalizeClubName(name.normalize("NFD").replace(/[̀-ͯ]/g, ""))
+    .replace(/[^a-z0-9 ]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+/**
+ * An `ilike` pattern that finds every club whose name could have the same
+ * parentNameKey: vowels (the letters that usually carry an accent) and
+ * anything that isn't an ASCII letter or digit become `_`, so "Concordia" also
+ * finds "Concórdia". Keeping the consonants keeps the result small: at most
+ * ~175 rows for any youth team in the data. Filter the rows with pickParentClub.
+ */
+export function parentNamePattern(name: string): string {
+  return [...name.trim()].map((ch) => (/[a-z0-9]/i.test(ch) && !/[aeiouy]/i.test(ch) ? ch : "_")).join("");
+}
+
+export interface ParentCandidate {
+  id: string;
+  name: string;
+  badge: string;
+}
+
+export type ParentPick =
+  | { kind: "match"; parent: ParentCandidate }
+  | { kind: "ambiguous"; candidates: ParentCandidate[] }
+  /** Another club has the youth team's own name (two TransferMarkt "Red Star U19"), so its parent can't be told apart */
+  | { kind: "same-name"; others: ParentCandidate[] }
+  | { kind: "none" };
+
+/** wd_ items have the best Wikidata link, then tm_ (TransferMarkt id), then sportsdb (name only) */
+const SOURCE_RANK: Record<string, number> = { wd: 0, tm: 1, sportsdb: 2 };
+
+/**
+ * Pick a youth team's parent from clubs found by name. One club is a match,
+ * and so is one club imported from several sources (sportsdb "133612" and
+ * "tm_985" "Manchester United"), or several clubs with the same badge.
+ * Anything else (two TransferMarkt "Rangers") is ambiguous, never guessed.
+ * `candidates` should also hold clubs with the youth team's own name: another
+ * youth team from the same source with that name is just as ambiguous.
+ */
+export function pickParentClub(youth: { id: string; name: string }, candidates: ParentCandidate[]): ParentPick {
+  const base = parentClubName(youth.name);
+  if (!base) return { kind: "none" };
+  const ownKey = parentNameKey(youth.name);
+  const others = candidates.filter((c) =>
+    c.id !== youth.id && idSource(c.id) === idSource(youth.id) && parentNameKey(c.name) === ownKey);
+  if (others.length > 0) return { kind: "same-name", others };
+
+  const key = parentNameKey(base);
+  const matches = candidates.filter((c) => c.id !== youth.id && parentNameKey(c.name) === key);
+  if (matches.length === 0) return { kind: "none" };
+
+  const sources = new Set(matches.map((c) => idSource(c.id)));
+  const badges = new Set(matches.map((c) => c.badge));
+  const oneClub = sources.size === matches.length || (badges.size === 1 && !badges.has(""));
+  if (!oneClub) return { kind: "ambiguous", candidates: matches };
+
+  // Prefer a copy with a badge, then the one with the best Wikipedia link
+  const [parent] = [...matches].sort((a, b) =>
+    Number(!a.badge) - Number(!b.badge) || SOURCE_RANK[idSource(a.id)] - SOURCE_RANK[idSource(b.id)]);
+  return { kind: "match", parent };
+}

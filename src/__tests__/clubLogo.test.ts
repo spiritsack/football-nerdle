@@ -6,9 +6,13 @@ import {
   isDuplicateClub,
   isSameClubName,
   lookupKeyForClub,
+  parentClubName,
+  parentNameKey,
+  parentNamePattern,
   pickArticle,
+  pickParentClub,
 } from "../pages/Admin/clubLogo";
-import type { ArticleCandidate } from "../pages/Admin/clubLogo";
+import type { ArticleCandidate, ParentCandidate } from "../pages/Admin/clubLogo";
 
 function article(title: string, description = "Association football club in England", qid: string | null = null): ArticleCandidate {
   return { title, description, qid };
@@ -207,5 +211,132 @@ describe("extensionForMime", () => {
   it("rejects anything else", () => {
     expect(extensionForMime("text/html")).toBeNull();
     expect(extensionForMime("")).toBeNull();
+  });
+});
+
+describe("parentClubName", () => {
+  it("strips TransferMarkt youth and reserve suffixes", () => {
+    expect(parentClubName("Derby U18")).toBe("Derby");
+    expect(parentClubName("Lens Yth.")).toBe("Lens");
+    expect(parentClubName("Malmö FF Jgd.")).toBe("Malmö FF");
+    expect(parentClubName("Hannover 96 II")).toBe("Hannover 96");
+    expect(parentClubName("Barcelona B")).toBe("Barcelona");
+    expect(parentClubName("Sevilla FC C")).toBe("Sevilla FC");
+    expect(parentClubName("Wolves U21")).toBe("Wolves");
+    expect(parentClubName("Juventus U23")).toBe("Juventus");
+    expect(parentClubName("Portland Timbers Reserves")).toBe("Portland Timbers");
+    expect(parentClubName("Toulouse For.")).toBe("Toulouse");
+    expect(parentClubName("Montpellier For")).toBe("Montpellier");
+    expect(parentClubName("CF Benfica S15")).toBe("CF Benfica");
+    expect(parentClubName("Tondela Sub-17")).toBe("Tondela");
+    expect(parentClubName("Dynamo 2 ")).toBe("Dynamo");
+  });
+
+  it("leaves first teams alone", () => {
+    expect(parentClubName("Derby County")).toBeNull();
+    expect(parentClubName("Hannover 96")).toBeNull();
+    expect(parentClubName("Boca Juniors")).toBeNull();
+    expect(parentClubName("Bayern Munich")).toBeNull();
+  });
+
+  it("strips a suffix that is also part of a first team's name, for the parent lookup to reject", () => {
+    expect(parentClubName("Willem II")).toBe("Willem");
+  });
+});
+
+describe("parentNameKey", () => {
+  it("ignores case, accents and punctuation", () => {
+    expect(parentNameKey("SönderjyskE")).toBe(parentNameKey("Sonderjyske"));
+    expect(parentNameKey("Al-Ahly")).toBe(parentNameKey("Al Ahly"));
+    expect(parentNameKey("Paris F.C.")).toBe(parentNameKey("Paris Football Club"));
+  });
+
+  it("keeps prefixes, so CF Benfica is not Benfica", () => {
+    expect(parentNameKey("CF Benfica")).not.toBe(parentNameKey("Benfica"));
+  });
+});
+
+describe("parentNamePattern", () => {
+  it("matches accented and punctuated spellings of the same name", () => {
+    const like = (pattern: string, name: string) =>
+      new RegExp(`^${pattern.replace(/_/g, ".")}$`, "iu").test(name);
+    expect(like(parentNamePattern("Concordia"), "Concórdia")).toBe(true);
+    expect(like(parentNamePattern("Al Ahly"), "Al-Ahly")).toBe(true);
+    expect(parentNamePattern("50% off")).not.toContain("%");
+  });
+});
+
+describe("pickParentClub", () => {
+  const club = (id: string, name: string, badge = ""): ParentCandidate => ({ id, name, badge });
+  const derbyU18 = { id: "tm_9999", name: "Derby U18" };
+
+  it("matches a single club with the parent's name", () => {
+    const derby = club("133627", "Derby", "https://example.com/derby.png");
+    expect(pickParentClub(derbyU18, [derby, club("tm_1", "Derby County")])).toEqual({ kind: "match", parent: derby });
+  });
+
+  it("matches a parent without a badge, for the Wikipedia lookup", () => {
+    const kalmar = club("tm_3654", "Kalmar FF");
+    expect(pickParentClub({ id: "tm_1", name: "Kalmar FF Jgd." }, [kalmar])).toEqual({ kind: "match", parent: kalmar });
+  });
+
+  it("matches across accents and case", () => {
+    const sonderjyske = club("tm_5817", "SönderjyskE", "b.png");
+    expect(pickParentClub({ id: "tm_1", name: "Sönderjyske U19" }, [sonderjyske])).toEqual({ kind: "match", parent: sonderjyske });
+  });
+
+  it("treats one club imported from two sources as one parent, preferring the copy with a badge", () => {
+    const sportsdb = club("134011", "AIK");
+    const tm = club("tm_272", "AIK", "aik.png");
+    expect(pickParentClub({ id: "tm_1", name: "AIK Yth." }, [sportsdb, tm])).toEqual({ kind: "match", parent: tm });
+  });
+
+  it("prefers the tm_/wd_ copy when neither has a badge", () => {
+    const sportsdb = club("134011", "AIK");
+    const wd = club("wd_Q1", "AIK");
+    expect(pickParentClub({ id: "tm_1", name: "AIK U19" }, [sportsdb, wd])).toEqual({ kind: "match", parent: wd });
+  });
+
+  it("treats same-named clubs with the same badge as one parent", () => {
+    const a = club("tm_1", "Atlas", "atlas.png");
+    const b = club("tm_2", "Atlas", "atlas.png");
+    expect(pickParentClub({ id: "tm_3", name: "Atlas U20" }, [a, b]).kind).toBe("match");
+  });
+
+  it("is ambiguous for two TransferMarkt clubs with the parent's name", () => {
+    const rangers = [club("tm_124", "Rangers", "a.png"), club("tm_2930", "Rangers", "b.png")];
+    expect(pickParentClub({ id: "tm_1", name: "Rangers B" }, rangers)).toEqual({ kind: "ambiguous", candidates: rangers });
+  });
+
+  it("is ambiguous when the same name differs only by accents", () => {
+    const concordia = [club("tm_15945", "Concordia", "a.png"), club("tm_31534", "Concórdia", "b.png")];
+    expect(pickParentClub({ id: "tm_1", name: "Concordia U17" }, concordia).kind).toBe("ambiguous");
+  });
+
+  it("is ambiguous when one of two same-named clubs has no badge", () => {
+    const bohemians = [club("tm_37350", "Bohemians", "a.png"), club("tm_9211", "Bohemians")];
+    expect(pickParentClub({ id: "tm_1", name: "Bohemians Yth." }, bohemians).kind).toBe("ambiguous");
+  });
+
+  it("finds no parent when no club has the name, or the name is the club itself", () => {
+    expect(pickParentClub(derbyU18, [club("tm_1", "Derby County")])).toEqual({ kind: "none" });
+    expect(pickParentClub({ id: "tm_1", name: "Willem II" }, [club("tm_1", "Willem II")])).toEqual({ kind: "none" });
+    expect(pickParentClub({ id: "tm_1", name: "Bayern Munich" }, [club("tm_2", "Bayern Munich")])).toEqual({ kind: "none" });
+  });
+
+  it("can't tell the parent apart when another club has the youth team's own name", () => {
+    const redStarU19 = { id: "tm_11137", name: "Red Star U19" };
+    const twin = club("tm_16193", "Red Star U19");
+    expect(pickParentClub(redStarU19, [club("tm_19598", "Red Star", "r.png"), twin, club(redStarU19.id, redStarU19.name)]))
+      .toEqual({ kind: "same-name", others: [twin] });
+  });
+
+  it("still matches when the youth team's namesake is the same club from another source", () => {
+    const derby = club("133627", "Derby", "d.png");
+    expect(pickParentClub(derbyU18, [derby, club("134000", "Derby U18")])).toEqual({ kind: "match", parent: derby });
+  });
+
+  it("does not match CF Benfica's youth team to Benfica", () => {
+    expect(pickParentClub({ id: "tm_1", name: "CF Benfica S15" }, [club("tm_294", "Benfica", "b.png")])).toEqual({ kind: "none" });
   });
 });

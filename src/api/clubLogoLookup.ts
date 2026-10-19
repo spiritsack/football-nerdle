@@ -4,9 +4,12 @@
  * Supabase client. Wikimedia's APIs and upload/thumb servers all send
  * Access-Control-Allow-Origin: *, so the browser can fetch the image bytes too.
  */
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { WIKIDATA_API, WIKIPEDIA_API, getJson } from "./wikipedia";
-import { checkCrestImage, extensionForMime, lookupKeyForClub, pickArticle } from "../pages/Admin/clubLogo";
-import type { ArticleCandidate, ImageFacts } from "../pages/Admin/clubLogo";
+import {
+  checkCrestImage, extensionForMime, lookupKeyForClub, parentClubName, parentNamePattern, pickArticle, pickParentClub,
+} from "../pages/Admin/clubLogo";
+import type { ArticleCandidate, ImageFacts, ParentCandidate } from "../pages/Admin/clubLogo";
 
 export interface LogoClub {
   id: string;
@@ -23,6 +26,8 @@ interface LogoBase {
   file: string | null;
   articleTitle: string | null;
   articleUrl: string | null;
+  /** Set for a youth/reserve team: the logo is its parent club's */
+  parent?: ParentCandidate;
 }
 
 export interface FoundLogo extends LogoBase {
@@ -30,8 +35,8 @@ export interface FoundLogo extends LogoBase {
   imageUrl: string;
   file: string;
   foundBy: LogoFoundBy;
-  /** "wikidata": the item's logo (P154); "article": the article's lead image */
-  source: "wikidata" | "article";
+  /** "wikidata": the item's logo (P154); "article": the article's lead image; "parent": the parent club's badge */
+  source: "wikidata" | "article" | "parent";
 }
 
 /** Needs a person: never saved automatically */
@@ -44,6 +49,8 @@ export interface ReviewLogo extends LogoBase {
 export type LogoLookup = FoundLogo | ReviewLogo;
 
 const THUMB_WIDTH = "256";
+/** PostgREST's default max rows */
+const PARENT_CANDIDATE_LIMIT = 1000;
 
 function articleUrl(title: string): string {
   return `https://en.wikipedia.org/wiki/${encodeURIComponent(title.replace(/ /g, "_"))}`;
@@ -206,6 +213,61 @@ export async function findClubLogo(club: LogoClub, headers?: HeadersInit): Promi
 
 function review(reason: string, extra: Partial<LogoBase> = {}): ReviewLogo {
   return { status: "review", reason, imageUrl: null, file: null, articleTitle: null, articleUrl: null, ...extra };
+}
+
+/** Clubs that could be named `name` (a parent, or the youth team's namesakes), for pickParentClub to filter */
+export async function findParentCandidates(client: SupabaseClient, name: string): Promise<ParentCandidate[]> {
+  const { data, error } = await client
+    .from("clubs")
+    .select("id, name, badge")
+    .ilike("name", parentNamePattern(name))
+    .limit(PARENT_CANDIDATE_LIMIT);
+  if (error) throw new Error(`Parent club lookup failed: ${error.message}`);
+  // A full page may have cut off a same-named club, and missing one would turn an ambiguous parent into a guess
+  if (data.length >= PARENT_CANDIDATE_LIMIT) throw new Error(`Too many clubs look like "${name}" to pick a parent`);
+  return data;
+}
+
+/**
+ * findClubLogo for any club, but a youth or reserve team ("Derby U18") reuses
+ * its parent club's badge, or the parent's Wikipedia logo when it has none.
+ * Several possible parents go to a person. With no parent at all the club is
+ * looked up by itself ("Willem II" is a first team).
+ */
+export async function findClubOrParentLogo(client: SupabaseClient, club: LogoClub, headers?: HeadersInit): Promise<LogoLookup> {
+  const base = parentClubName(club.name);
+  if (!base) return findClubLogo(club, headers);
+
+  const [parents, sameName] = await Promise.all([findParentCandidates(client, base), findParentCandidates(client, club.name)]);
+  const pick = pickParentClub(club, [...parents, ...sameName]);
+  if (pick.kind === "same-name") {
+    return {
+      ...review(`Another club is also called "${club.name}", so its parent club can't be told apart by name`),
+      candidates: pick.others.map((c) => c.id),
+    };
+  }
+  if (pick.kind === "ambiguous") {
+    return {
+      ...review(`Several possible parent clubs named "${base}"`),
+      candidates: pick.candidates.map((c) => `${c.name} (${c.id})`),
+    };
+  }
+  if (pick.kind === "none") {
+    const own = await findClubLogo(club, headers);
+    return own.status === "found" ? own : { ...own, reason: `No parent club named "${base}". ${own.reason}` };
+  }
+
+  const { parent } = pick;
+  if (parent.badge) {
+    return {
+      status: "found", imageUrl: parent.badge, file: parent.badge.split("/").pop() ?? parent.badge,
+      foundBy: "name", source: "parent", articleTitle: null, articleUrl: null, parent,
+    };
+  }
+  const logo = await findClubLogo(parent, headers);
+  return logo.status === "found"
+    ? { ...logo, parent }
+    : { ...logo, parent, reason: `Parent club ${parent.name} has no logo yet: ${logo.reason}` };
 }
 
 /** Download a found logo. Throws when the download fails or isn't an image we can store. */
