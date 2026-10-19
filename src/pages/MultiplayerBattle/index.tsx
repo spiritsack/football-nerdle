@@ -1,7 +1,10 @@
 import { useState, useEffect } from "react";
-import { Link } from "react-router-dom";
+import { Check, Copy, Gamepad2, Users } from "lucide-react";
 import { useMultiplayerRoom } from "./useMultiplayerRoom";
 import MultiplayerGame from "./MultiplayerGame";
+import AppShell from "../../components/AppShell";
+import PageHeader from "../../components/PageHeader";
+import { ALERT_WARN, BTN_GOLD, BTN_LG, BTN_SECONDARY, PANEL } from "../../theme";
 
 export default function MultiplayerBattle() {
   const { status, room, playerId, isHost, error, createRoom, joinRoom, cleanup } =
@@ -34,107 +37,101 @@ export default function MultiplayerBattle() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-900 text-white flex flex-col">
-      <header className="py-6 border-b border-gray-700">
-        <h1 className="text-3xl font-bold text-center">Football Nerdle</h1>
-        <p className="text-gray-400 text-center mt-1">Multiplayer Battle</p>
-        <div className="text-center mt-2">
-          <Link
-            to="/"
-            className="text-green-400 hover:text-green-300 text-sm"
-          >
-            &larr; Back to Home
-          </Link>
-        </div>
-      </header>
+    <AppShell>
+      <main className="flex-1 w-full max-w-4xl mx-auto px-4 sm:px-6 py-6 space-y-6">
+        <PageHeader title="Multiplayer Battle" icon={Users} accent="gold" />
 
-      <main className="flex-1 flex flex-col items-center px-4 py-8 gap-6">
-        {(status === "idle" || status === "error") && (
-          <div className="flex flex-col items-center gap-8 max-w-sm w-full">
-            <div className="text-center">
-              <p className="text-gray-300 text-lg mb-6">
-                Play against a friend! Create a room or join with a code.
-              </p>
-            </div>
+        <section className={`${PANEL} p-6 sm:p-8`}>
+          <div className="max-w-md mx-auto flex flex-col items-center text-center gap-6">
+            <span className="w-16 h-16 rounded-2xl bg-gold-500/10 border border-gold-500/30 flex items-center justify-center text-gold-400">
+              <Gamepad2 className="w-8 h-8" aria-hidden="true" />
+            </span>
 
-            <button
-              onClick={createRoom}
-              className="w-full px-6 py-4 bg-green-600 hover:bg-green-500 rounded-lg text-xl font-semibold transition-colors"
-            >
-              Create Room
-            </button>
+            {(status === "idle" || status === "error") && (
+              <>
+                <p className="text-slate-300 text-base sm:text-lg">
+                  Play against a friend! Create a room or join with a code.
+                </p>
 
-            <div className="w-full flex items-center gap-3">
-              <div className="flex-1 h-px bg-gray-700" />
-              <span className="text-gray-500 text-sm">OR</span>
-              <div className="flex-1 h-px bg-gray-700" />
-            </div>
+                <button onClick={createRoom} className={`${BTN_GOLD} ${BTN_LG} w-full text-base`}>
+                  Create Room
+                </button>
 
-            <div className="w-full flex gap-2">
-              <input
-                type="text"
-                value={joinCode}
-                onChange={(e) => setJoinCode(e.target.value.toUpperCase())}
-                placeholder="Enter code"
-                maxLength={6}
-                className="flex-1 px-4 py-3 bg-gray-800 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:border-green-500 text-center text-xl tracking-widest font-mono"
-              />
-              <button
-                onClick={() => joinRoom(joinCode)}
-                disabled={joinCode.length < 6}
-                className="px-6 py-3 bg-blue-600 hover:bg-blue-500 disabled:bg-gray-700 disabled:text-gray-500 rounded-lg font-semibold transition-colors"
-              >
-                Join
-              </button>
-            </div>
+                <div className="w-full flex items-center gap-3">
+                  <div className="flex-1 h-px bg-slate-800" />
+                  <span className="text-slate-500 text-xs font-bold">OR</span>
+                  <div className="flex-1 h-px bg-slate-800" />
+                </div>
 
-            {error && (
-              <div role="alert" className="bg-orange-900/30 border border-orange-700 rounded-lg px-4 py-3 w-full text-center text-orange-300 text-sm">
-                {error}
-              </div>
+                <div className="w-full flex gap-2">
+                  <input
+                    type="text"
+                    value={joinCode}
+                    onChange={(e) => setJoinCode(e.target.value.toUpperCase())}
+                    placeholder="Enter code"
+                    maxLength={6}
+                    className="flex-1 min-w-0 px-4 py-3 bg-slate-900/90 border border-slate-700 rounded-xl text-white placeholder-slate-500 outline-none focus:border-gold-500 focus:ring-2 focus:ring-gold-500/20 text-center text-xl tracking-widest font-mono font-bold"
+                  />
+                  <button
+                    onClick={() => joinRoom(joinCode)}
+                    disabled={joinCode.length < 6}
+                    className={`${BTN_SECONDARY} px-6 py-3 text-sm`}
+                  >
+                    Join
+                  </button>
+                </div>
+
+                {error && (
+                  <div role="alert" className={`${ALERT_WARN} w-full`}>
+                    {error}
+                  </div>
+                )}
+              </>
+            )}
+
+            {status === "creating" && (
+              <p className="text-slate-400">Creating room...</p>
+            )}
+
+            {status === "joining" && (
+              <p className="text-slate-400">Joining room...</p>
+            )}
+
+            {status === "reconnecting" && (
+              <p className="text-slate-400">Reconnecting to game...</p>
+            )}
+
+            {status === "waiting" && room && (
+              <>
+                <p className="text-slate-300 text-base sm:text-lg">
+                  Waiting for opponent to join...
+                </p>
+
+                <div className="w-full p-4 rounded-xl bg-slate-900/80 border border-slate-700 flex flex-wrap items-center justify-between gap-3">
+                  <div className="text-left">
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Room Code</p>
+                    <p className="text-3xl font-mono font-extrabold tracking-widest text-gold-400">
+                      {room.code}
+                    </p>
+                  </div>
+                  <button onClick={handleCopyCode} className={`${BTN_SECONDARY} px-4 py-2 text-xs`}>
+                    {copied ? <Check className="w-4 h-4" aria-hidden="true" /> : <Copy className="w-4 h-4" aria-hidden="true" />}
+                    {copied ? "Copied!" : "Copy Invite Link"}
+                  </button>
+                </div>
+
+                <div className="w-full p-4 rounded-xl glass-card border-slate-800 flex items-center gap-3">
+                  <span className="relative flex w-3 h-3" aria-hidden="true">
+                    <span className="absolute inline-flex h-full w-full rounded-full bg-pitch-500 opacity-75 animate-ping" />
+                    <span className="relative inline-flex w-3 h-3 rounded-full bg-pitch-500" />
+                  </span>
+                  <span className="text-xs font-semibold text-slate-300">Listening for opponent...</span>
+                </div>
+              </>
             )}
           </div>
-        )}
-
-        {status === "creating" && (
-          <p className="text-gray-400">Creating room...</p>
-        )}
-
-        {status === "joining" && (
-          <p className="text-gray-400">Joining room...</p>
-        )}
-
-        {status === "reconnecting" && (
-          <p className="text-gray-400">Reconnecting to game...</p>
-        )}
-
-        {status === "waiting" && room && (
-          <div className="flex flex-col items-center gap-6 max-w-sm w-full">
-            <p className="text-gray-300 text-lg">
-              Waiting for opponent to join...
-            </p>
-
-            <div className="bg-gray-800 border border-gray-600 rounded-xl p-6 text-center w-full">
-              <p className="text-gray-400 text-sm mb-2">Room Code</p>
-              <p className="text-4xl font-mono font-bold tracking-widest text-green-400">
-                {room.code}
-              </p>
-            </div>
-
-            <button
-              onClick={handleCopyCode}
-              className="px-6 py-3 bg-blue-600 hover:bg-blue-500 rounded-lg font-semibold transition-colors"
-            >
-              {copied ? "Copied!" : "Copy Invite Link"}
-            </button>
-
-            <div className="flex items-center gap-2 text-gray-500">
-              <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
-              <span className="text-sm">Listening for opponent...</span>
-            </div>
-          </div>
-        )}
+        </section>
       </main>
-    </div>
+    </AppShell>
   );
 }

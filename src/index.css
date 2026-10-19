@@ -1,5 +1,65 @@
 @import "tailwindcss";
 
+/* Player-facing theme. Admin keeps Tailwind's defaults: these are only
+   applied inside AppShell (font-body, bg-night, bg-stadium). */
+@theme {
+  --color-night: #0b0f19;
+  --color-pitch-300: #6ee7b7;
+  --color-pitch-400: #34d399;
+  --color-pitch-500: #10b981;
+  --color-pitch-600: #059669;
+  --color-pitch-700: #047857;
+  --color-pitch-800: #065f46;
+  --color-pitch-900: #022c22;
+  --color-gold-300: #fcd34d;
+  --color-gold-400: #fbbf24;
+  --color-gold-500: #f59e0b;
+  --color-gold-600: #d97706;
+
+  --font-body: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Teko", ui-sans-serif, system-ui, sans-serif;
+
+  --shadow-stadium: 0 0 25px rgba(16, 185, 129, 0.25);
+  --shadow-gold: 0 0 20px rgba(245, 158, 11, 0.25);
+}
+
+@utility bg-stadium {
+  background-color: var(--color-night);
+  background-image:
+    radial-gradient(circle at 50% 0%, rgba(16, 185, 129, 0.15) 0%, transparent 60%),
+    radial-gradient(circle at 80% 80%, rgba(245, 158, 11, 0.05) 0%, transparent 50%),
+    radial-gradient(circle at 10% 50%, rgba(59, 130, 246, 0.08) 0%, transparent 50%);
+}
+
+/* Surfaces live in the components layer so utilities (border-*, shadow-*)
+   can override their border colour and shadow. */
+@layer components {
+  .glass-panel {
+    background: rgba(15, 23, 42, 0.75);
+    backdrop-filter: blur(16px);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+  }
+
+  .glass-card {
+    background: rgba(30, 41, 59, 0.5);
+    backdrop-filter: blur(8px);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+  }
+
+  .glass-card-active {
+    background: rgba(16, 185, 129, 0.1);
+    border: 1px solid rgba(16, 185, 129, 0.3);
+    box-shadow: 0 0 15px rgba(16, 185, 129, 0.15);
+  }
+
+  .legacy-card {
+    background: linear-gradient(135deg, rgba(245, 158, 11, 0.12) 0%, rgba(15, 23, 42, 0.85) 100%);
+    border: 1px solid rgba(245, 158, 11, 0.4);
+    box-shadow: inset 0 0 15px rgba(245, 158, 11, 0.1);
+  }
+}
+
 @keyframes fadeIn {
   from { opacity: 0; transform: translateY(4px); }
   to { opacity: 1; transform: translateY(0); }

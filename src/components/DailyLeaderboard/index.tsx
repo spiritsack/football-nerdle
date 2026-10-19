@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { getDailyLeaderboard, type LeaderboardEntry } from "../../api/dailyLeaderboard";
+import { PANEL, SECTION_LABEL } from "../../theme";
 
 const ROW_LABELS: Record<number, string> = {
   1: "1st try",
@@ -44,8 +45,8 @@ export default function DailyLeaderboard({ date, userAttempts }: Props) {
   if (total === 0) return null;
 
   return (
-    <div className="bg-gray-800 border border-gray-600 rounded-xl p-6 max-w-md w-full">
-      <h3 className="text-lg font-semibold text-center text-gray-300 mb-4">
+    <div className={`${PANEL} p-5 sm:p-6 w-full`}>
+      <h3 className={`${SECTION_LABEL} text-center mb-4`}>
         Today's Results
       </h3>
       <div className="space-y-2">
@@ -58,21 +59,21 @@ export default function DailyLeaderboard({ date, userAttempts }: Props) {
 
           return (
             <div key={bucket} className="flex items-center gap-3">
-              <span className={`text-xs w-14 shrink-0 text-right ${isUser ? "text-white font-bold" : "text-gray-400"}`}>
+              <span className={`text-xs w-14 shrink-0 text-right ${isUser ? "text-white font-bold" : "text-slate-400"}`}>
                 {ROW_LABELS[bucket]}
               </span>
-              <div className="flex-1 h-6 bg-gray-700 rounded overflow-hidden relative">
+              <div className="flex-1 h-4 bg-slate-800 rounded-full overflow-hidden relative">
                 <div
-                  className={`h-full rounded transition-all duration-500 ${
+                  className={`h-full rounded-full transition-all duration-500 ${
                     isUser
-                      ? isFail ? "bg-red-500" : "bg-green-500"
-                      : isFail ? "bg-red-900/60" : "bg-green-900/60"
+                      ? isFail ? "bg-rose-500" : "bg-pitch-500"
+                      : isFail ? "bg-rose-500/30" : "bg-pitch-500/35"
                   }`}
                   style={{ width: `${barWidth}%` }}
                 />
               </div>
-              <span className={`text-xs w-14 shrink-0 ${isUser ? "text-white font-bold" : "text-gray-500"}`}>
-                {count} <span className="text-gray-600">({pct}%)</span>
+              <span className={`text-xs w-14 shrink-0 ${isUser ? "text-white font-bold" : "text-slate-500"}`}>
+                {count} <span className="text-slate-600">({pct}%)</span>
               </span>
             </div>
           );

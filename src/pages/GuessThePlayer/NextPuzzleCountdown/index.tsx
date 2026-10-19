@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { getMsUntilNextDay } from "../../../utils/dates";
 import { formatCountdown } from "../helpers";
+import { BTN_LG, BTN_PRIMARY } from "../../../theme";
 import type { NextPuzzleCountdownProps } from "./types";
 
 export default function NextPuzzleCountdown({ today }: NextPuzzleCountdownProps) {
@@ -19,18 +20,18 @@ export default function NextPuzzleCountdown({ today }: NextPuzzleCountdownProps)
 
   if (msLeft > 0) {
     return (
-      <p role="timer" data-testid="next-puzzle-countdown" className="text-gray-400 text-center">
-        Next puzzle in <span className="font-mono text-white">{formatCountdown(msLeft)}</span>
+      <p role="timer" data-testid="next-puzzle-countdown" className="text-slate-400 text-center text-sm">
+        Next puzzle in <span className="font-mono font-semibold text-pitch-400 text-base">{formatCountdown(msLeft)}</span>
       </p>
     );
   }
 
   return (
     <div className="flex flex-col items-center gap-2 text-center">
-      <p className="text-gray-300">New puzzle available!</p>
+      <p className="text-slate-300">New puzzle available!</p>
       <button
         onClick={() => window.location.reload()}
-        className="px-6 py-3 bg-green-600 hover:bg-green-500 rounded-lg font-semibold transition-colors"
+        className={`${BTN_PRIMARY} ${BTN_LG}`}
       >
         Play new daily
       </button>

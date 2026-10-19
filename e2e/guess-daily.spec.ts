@@ -96,8 +96,8 @@ test.describe("Daily Guess the Player", () => {
     await expect(chart).not.toContainText("No daily wins recorded yet");
     await expect(chart.getByTestId("guess-distribution-count")).toHaveText(["1", "0", "4", "0", "2"]);
     // Today's daily was won in 3 attempts, so row 3 is highlighted
-    await expect(chart.getByTestId("guess-distribution-row-3").locator(".bg-green-500")).toHaveCount(1);
-    await expect(chart.locator(".bg-green-500")).toHaveCount(1);
+    await expect(chart.getByTestId("guess-distribution-row-3").locator(".bg-pitch-500")).toHaveCount(1);
+    await expect(chart.locator(".bg-pitch-500")).toHaveCount(1);
   });
 
   test("does not show the next-puzzle countdown while playing", async ({ page }) => {
