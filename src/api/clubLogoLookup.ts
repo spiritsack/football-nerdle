@@ -7,7 +7,8 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { WIKIDATA_API, WIKIPEDIA_API, getJson } from "./wikipedia";
 import {
-  checkCrestImage, extensionForMime, lookupKeyForClub, parentClubName, parentNamePattern, pickArticle, pickParentClub,
+  checkCrestImage, extensionForMime, lookupKeyForClub, parentClubName, parentNamePattern, parentPool, pickArticle,
+  pickParentClub,
 } from "../pages/Admin/clubLogo";
 import type { ArticleCandidate, ImageFacts, ParentCandidate } from "../pages/Admin/clubLogo";
 
@@ -51,6 +52,8 @@ export type LogoLookup = FoundLogo | ReviewLogo;
 const THUMB_WIDTH = "256";
 /** PostgREST's default max rows */
 const PARENT_CANDIDATE_LIMIT = 1000;
+/** Youth team players compared with the candidates' (keeps the `in` filter's URL short) */
+const SHARED_PLAYER_SAMPLE = 150;
 
 function articleUrl(title: string): string {
   return `https://en.wikipedia.org/wiki/${encodeURIComponent(title.replace(/ /g, "_"))}`;
@@ -215,12 +218,16 @@ function review(reason: string, extra: Partial<LogoBase> = {}): ReviewLogo {
   return { status: "review", reason, imageUrl: null, file: null, articleTitle: null, articleUrl: null, ...extra };
 }
 
-/** Clubs that could be named `name` (a parent, or the youth team's namesakes), for pickParentClub to filter */
-export async function findParentCandidates(client: SupabaseClient, name: string): Promise<ParentCandidate[]> {
+/**
+ * Clubs that could be named `name` (or, with `orLonger`, start with it: "Newcastle"
+ * finds "Newcastle United"), for pickParentClub to filter
+ */
+export async function findParentCandidates(client: SupabaseClient, name: string, orLonger = false): Promise<ParentCandidate[]> {
+  const pattern = parentNamePattern(name);
   const { data, error } = await client
     .from("clubs")
     .select("id, name, badge")
-    .ilike("name", parentNamePattern(name))
+    .ilike("name", orLonger ? `${pattern}%` : pattern)
     .limit(PARENT_CANDIDATE_LIMIT);
   if (error) throw new Error(`Parent club lookup failed: ${error.message}`);
   // A full page may have cut off a same-named club, and missing one would turn an ambiguous parent into a guess
@@ -228,18 +235,48 @@ export async function findParentCandidates(client: SupabaseClient, name: string)
   return data;
 }
 
+/** How many of the youth team's players also played for each of `clubIds` */
+export async function countSharedPlayers(client: SupabaseClient, youthId: string, clubIds: string[]): Promise<Record<string, number>> {
+  if (clubIds.length === 0) return {};
+  const { data: own, error } = await client
+    .from("player_clubs")
+    .select("player_id")
+    .eq("club_id", youthId)
+    .limit(SHARED_PLAYER_SAMPLE);
+  if (error) throw new Error(`Youth team players lookup failed: ${error.message}`);
+  const players = [...new Set((own ?? []).map((r) => r.player_id as string))];
+  if (players.length === 0) return {};
+
+  const { data: rows, error: sharedError } = await client
+    .from("player_clubs")
+    .select("player_id, club_id")
+    .in("club_id", clubIds)
+    .in("player_id", players);
+  if (sharedError) throw new Error(`Shared players lookup failed: ${sharedError.message}`);
+  const byClub = new Map<string, Set<string>>();
+  for (const r of rows ?? []) {
+    if (!byClub.has(r.club_id)) byClub.set(r.club_id, new Set());
+    byClub.get(r.club_id)!.add(r.player_id);
+  }
+  return Object.fromEntries([...byClub].map(([id, set]) => [id, set.size]));
+}
+
 /**
  * findClubLogo for any club, but a youth or reserve team ("Derby U18") reuses
  * its parent club's badge, or the parent's Wikipedia logo when it has none.
- * Several possible parents go to a person. With no parent at all the club is
+ * The parent is found by name and confirmed by the players both clubs share
+ * (see pickParentClub). Several possible parents go to a person. With no parent at all the club is
  * looked up by itself ("Willem II" is a first team).
  */
 export async function findClubOrParentLogo(client: SupabaseClient, club: LogoClub, headers?: HeadersInit): Promise<LogoLookup> {
   const base = parentClubName(club.name);
   if (!base) return findClubLogo(club, headers);
 
-  const [parents, sameName] = await Promise.all([findParentCandidates(client, base), findParentCandidates(client, club.name)]);
-  const pick = pickParentClub(club, [...parents, ...sameName]);
+  const [parents, sameName] = await Promise.all([findParentCandidates(client, base, true), findParentCandidates(client, club.name)]);
+  const candidates = [...parents, ...sameName];
+  const { exact, longer } = parentPool(club, parents);
+  const shared = await countSharedPlayers(client, club.id, [...exact, ...longer].map((c) => c.id));
+  const pick = pickParentClub(club, candidates, shared);
   if (pick.kind === "same-name") {
     return {
       ...review(`Another club is also called "${club.name}", so its parent club can't be told apart by name`),
@@ -248,8 +285,8 @@ export async function findClubOrParentLogo(client: SupabaseClient, club: LogoClu
   }
   if (pick.kind === "ambiguous") {
     return {
-      ...review(`Several possible parent clubs named "${base}"`),
-      candidates: pick.candidates.map((c) => `${c.name} (${c.id})`),
+      ...review(`Several possible parent clubs for "${base}"`),
+      candidates: pick.candidates.map((c) => `${c.name} (${c.id}${shared[c.id] ? `, ${shared[c.id]} shared players` : ""})`),
     };
   }
   if (pick.kind === "none") {

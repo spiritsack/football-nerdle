@@ -171,15 +171,48 @@ export type ParentPick =
 /** wd_ items have the best Wikidata link, then tm_ (TransferMarkt id), then sportsdb (name only) */
 const SOURCE_RANK: Record<string, number> = { wd: 0, tm: 1, sportsdb: 2 };
 
+/** Fewest players a youth team must share with a club for that club to count as its parent */
+export const MIN_SHARED_PLAYERS = 2;
+
+/** Prefer a copy with a badge, then the one with the best Wikipedia link */
+function bestCopy(copies: ParentCandidate[]): ParentCandidate {
+  return [...copies].sort((a, b) =>
+    Number(!a.badge) - Number(!b.badge) || SOURCE_RANK[idSource(a.id)] - SOURCE_RANK[idSource(b.id)])[0];
+}
+
+/** Clubs with the youth team's parent name, and first teams whose name starts with it */
+export function parentPool(
+  youth: { id: string; name: string },
+  candidates: ParentCandidate[],
+): { exact: ParentCandidate[]; longer: ParentCandidate[] } {
+  const base = parentClubName(youth.name);
+  if (!base) return { exact: [], longer: [] };
+  const key = parentNameKey(base);
+  const others = candidates.filter((c) => c.id !== youth.id);
+  return {
+    exact: others.filter((c) => parentNameKey(c.name) === key),
+    longer: others.filter((c) => !parentClubName(c.name) && parentNameKey(c.name).startsWith(`${key} `)),
+  };
+}
+
 /**
- * Pick a youth team's parent from clubs found by name. One club is a match,
- * and so is one club imported from several sources (sportsdb "133612" and
- * "tm_985" "Manchester United"), or several clubs with the same badge.
- * Anything else (two TransferMarkt "Rangers") is ambiguous, never guessed.
- * `candidates` should also hold clubs with the youth team's own name: another
- * youth team from the same source with that name is just as ambiguous.
+ * Pick a youth team's parent. TransferMarkt shortens names, so "Newcastle U18"
+ * can belong to "Newcastle United" as well as to a club called "Newcastle":
+ * the candidates are clubs with the parent's name and first teams whose name
+ * starts with it. `sharedPlayers` (club id → players who also played for the
+ * youth team) decides: the parent is the one candidate that clearly shares the
+ * most. With no shared players, a single club with exactly the parent's name
+ * is a match, and so is one club imported from several sources (sportsdb
+ * "133612" and "tm_985" "Manchester United"), or same-named clubs with one
+ * badge. Anything else is ambiguous, never guessed. `candidates` should also
+ * hold clubs with the youth team's own name: another youth team from the same
+ * source with that name ("Red Star U19" twice) can't be told apart.
  */
-export function pickParentClub(youth: { id: string; name: string }, candidates: ParentCandidate[]): ParentPick {
+export function pickParentClub(
+  youth: { id: string; name: string },
+  candidates: ParentCandidate[],
+  sharedPlayers: Record<string, number> = {},
+): ParentPick {
   const base = parentClubName(youth.name);
   if (!base) return { kind: "none" };
   const ownKey = parentNameKey(youth.name);
@@ -187,17 +220,27 @@ export function pickParentClub(youth: { id: string; name: string }, candidates: 
     c.id !== youth.id && idSource(c.id) === idSource(youth.id) && parentNameKey(c.name) === ownKey);
   if (others.length > 0) return { kind: "same-name", others };
 
-  const key = parentNameKey(base);
-  const matches = candidates.filter((c) => c.id !== youth.id && parentNameKey(c.name) === key);
-  if (matches.length === 0) return { kind: "none" };
+  const { exact, longer } = parentPool(youth, candidates);
+  const pool = [...exact, ...longer];
+  if (pool.length === 0) return { kind: "none" };
 
-  const sources = new Set(matches.map((c) => idSource(c.id)));
-  const badges = new Set(matches.map((c) => c.badge));
-  const oneClub = sources.size === matches.length || (badges.size === 1 && !badges.has(""));
-  if (!oneClub) return { kind: "ambiguous", candidates: matches };
+  const shared = (c: ParentCandidate) => sharedPlayers[c.id] ?? 0;
+  const ranked = pool.filter((c) => shared(c) > 0).sort((a, b) => shared(b) - shared(a));
+  if (ranked.length > 0) {
+    const [top, next] = ranked;
+    if (shared(top) < MIN_SHARED_PLAYERS || (next && shared(next) === shared(top))) {
+      return { kind: "ambiguous", candidates: ranked };
+    }
+    // Copies of the same club from other sources have no player history of their own
+    const topKey = parentNameKey(top.name);
+    const copies = pool.filter((c) => idSource(c.id) !== idSource(top.id) && parentNameKey(c.name) === topKey);
+    return { kind: "match", parent: bestCopy([top, ...copies]) };
+  }
 
-  // Prefer a copy with a badge, then the one with the best Wikipedia link
-  const [parent] = [...matches].sort((a, b) =>
-    Number(!a.badge) - Number(!b.badge) || SOURCE_RANK[idSource(a.id)] - SOURCE_RANK[idSource(b.id)]);
-  return { kind: "match", parent };
+  if (longer.length > 0 || exact.length === 0) return { kind: "ambiguous", candidates: pool };
+  const sources = new Set(exact.map((c) => idSource(c.id)));
+  const badges = new Set(exact.map((c) => c.badge));
+  const oneClub = sources.size === exact.length || (badges.size === 1 && !badges.has(""));
+  if (!oneClub) return { kind: "ambiguous", candidates: exact };
+  return { kind: "match", parent: bestCopy(exact) };
 }

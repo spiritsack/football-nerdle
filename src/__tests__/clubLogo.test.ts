@@ -10,6 +10,7 @@ import {
   parentNameKey,
   parentNamePattern,
   pickArticle,
+  parentPool,
   pickParentClub,
 } from "../pages/Admin/clubLogo";
 import type { ArticleCandidate, ParentCandidate } from "../pages/Admin/clubLogo";
@@ -270,9 +271,44 @@ describe("pickParentClub", () => {
   const club = (id: string, name: string, badge = ""): ParentCandidate => ({ id, name, badge });
   const derbyU18 = { id: "tm_9999", name: "Derby U18" };
 
-  it("matches a single club with the parent's name", () => {
+  it("matches a single club with the parent's name when no player history says otherwise", () => {
     const derby = club("133627", "Derby", "https://example.com/derby.png");
-    expect(pickParentClub(derbyU18, [derby, club("tm_1", "Derby County")])).toEqual({ kind: "match", parent: derby });
+    expect(pickParentClub(derbyU18, [derby, club("tm_1", "Derby Town FC U19")])).toEqual({ kind: "match", parent: derby });
+  });
+
+  it("picks the club that shares the most players, also among longer names", () => {
+    const newcastle = club("tm_5551", "Newcastle", "jets.png");
+    const united = club("tm_762", "Newcastle United Football Club", "nufc.png");
+    const u18 = { id: "tm_6943", name: "Newcastle U18" };
+    expect(pickParentClub(u18, [newcastle, united], { tm_762: 14 })).toEqual({ kind: "match", parent: united });
+  });
+
+  it("is ambiguous when a longer-named first team exists and no players are shared", () => {
+    const newcastle = club("tm_5551", "Newcastle", "jets.png");
+    const united = club("tm_762", "Newcastle United Football Club", "nufc.png");
+    expect(pickParentClub({ id: "tm_6943", name: "Newcastle U18" }, [newcastle, united]))
+      .toEqual({ kind: "ambiguous", candidates: [newcastle, united] });
+  });
+
+  it("ignores longer-named youth teams as candidates", () => {
+    const derby = club("133627", "Derby", "d.png");
+    expect(pickParentClub(derbyU18, [derby, club("tm_2", "Derby County U23")])).toEqual({ kind: "match", parent: derby });
+  });
+
+  it("is ambiguous when the top clubs share as many players, or too few", () => {
+    const a = club("tm_1", "Sparta Rotterdam", "a.png");
+    const b = club("tm_2", "Sparta Prague", "b.png");
+    const u21 = { id: "tm_8621", name: "Sparta U21" };
+    expect(pickParentClub(u21, [a, b], { tm_1: 5, tm_2: 5 }).kind).toBe("ambiguous");
+    expect(pickParentClub(u21, [a, b], { tm_1: 1 }).kind).toBe("ambiguous");
+    expect(pickParentClub(u21, [a, b], { tm_1: 18, tm_2: 2 })).toEqual({ kind: "match", parent: a });
+  });
+
+  it("uses a badged copy of the shared-player winner from another source", () => {
+    const tm = club("tm_29", "Everton FC");
+    const sportsdb = club("133615", "Everton FC", "everton.png");
+    expect(pickParentClub({ id: "tm_6920", name: "Everton U18" }, [tm, sportsdb], { tm_29: 11 }))
+      .toEqual({ kind: "match", parent: sportsdb });
   });
 
   it("matches a parent without a badge, for the Wikipedia lookup", () => {
@@ -319,7 +355,7 @@ describe("pickParentClub", () => {
   });
 
   it("finds no parent when no club has the name, or the name is the club itself", () => {
-    expect(pickParentClub(derbyU18, [club("tm_1", "Derby County")])).toEqual({ kind: "none" });
+    expect(pickParentClub(derbyU18, [club("tm_1", "Derbyshire")])).toEqual({ kind: "none" });
     expect(pickParentClub({ id: "tm_1", name: "Willem II" }, [club("tm_1", "Willem II")])).toEqual({ kind: "none" });
     expect(pickParentClub({ id: "tm_1", name: "Bayern Munich" }, [club("tm_2", "Bayern Munich")])).toEqual({ kind: "none" });
   });
@@ -338,5 +374,20 @@ describe("pickParentClub", () => {
 
   it("does not match CF Benfica's youth team to Benfica", () => {
     expect(pickParentClub({ id: "tm_1", name: "CF Benfica S15" }, [club("tm_294", "Benfica", "b.png")])).toEqual({ kind: "none" });
+  });
+});
+
+describe("parentPool", () => {
+  it("splits exact parent names from longer first-team names", () => {
+    const candidates = [
+      { id: "tm_1", name: "Red Star", badge: "" },
+      { id: "tm_159", name: "Red Star Belgrade", badge: "" },
+      { id: "tm_2", name: "Red Star U17", badge: "" },
+      { id: "tm_3", name: "Redstar", badge: "" },
+    ];
+    expect(parentPool({ id: "tm_2", name: "Red Star U17" }, candidates)).toEqual({
+      exact: [candidates[0]],
+      longer: [candidates[1]],
+    });
   });
 });
