@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from "react";
+import { LoaderCircle, Search } from "lucide-react";
 import { searchPlayers } from "../../api/playerCache";
 import type { Player } from "../../types";
 import type { PlayerSearchProps } from "./types";
@@ -123,7 +124,8 @@ export default function PlayerSearch({ onSelect, disabled, usedPlayerIds, disabl
   }
 
   return (
-    <div ref={containerRef} className="relative w-full max-w-md mx-auto">
+    <div ref={containerRef} className="relative w-full">
+      <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" aria-hidden="true" />
       <input
         ref={inputRef}
         type="text"
@@ -132,7 +134,7 @@ export default function PlayerSearch({ onSelect, disabled, usedPlayerIds, disabl
         onKeyDown={handleKeyDown}
         disabled={disabled}
         placeholder={placeholder ?? "Search for a player..."}
-        className="w-full px-4 py-3 bg-gray-800 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:border-green-500 disabled:opacity-50"
+        className="w-full py-3.5 pl-11 pr-10 bg-slate-900/90 border border-slate-700 rounded-xl text-white text-sm font-semibold placeholder-slate-500 shadow-xl outline-none transition-all focus:border-pitch-500 focus:ring-2 focus:ring-pitch-500/20 disabled:opacity-50"
         role="combobox"
         aria-expanded={isOpen}
         aria-controls="player-search-listbox"
@@ -140,10 +142,13 @@ export default function PlayerSearch({ onSelect, disabled, usedPlayerIds, disabl
         aria-activedescendant={highlightIndex >= 0 ? `player-option-${highlightIndex}` : undefined}
       />
       {loading && (
-        <div className="absolute right-3 top-3.5 text-gray-400 text-sm">...</div>
+        <div className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400">
+          <LoaderCircle className="w-4 h-4 animate-spin" aria-hidden="true" />
+          <span className="sr-only">Searching</span>
+        </div>
       )}
       {isOpen && !loading && results.length === 0 && (
-        <div className={`absolute z-10 w-full bg-gray-800 border border-gray-600 rounded-lg p-4 text-gray-400 text-sm ${dropUp ? "bottom-full mb-1" : "mt-1"}`}>
+        <div className={`absolute z-30 w-full bg-slate-900/95 backdrop-blur-lg border border-slate-700 rounded-xl p-4 text-slate-400 text-sm text-center shadow-2xl ${dropUp ? "bottom-full mb-2" : "mt-2"}`}>
           No players found
         </div>
       )}
@@ -152,8 +157,8 @@ export default function PlayerSearch({ onSelect, disabled, usedPlayerIds, disabl
           id="player-search-listbox"
           ref={listRef}
           role="listbox"
-          className={`absolute z-10 w-full bg-gray-800 border border-gray-600 rounded-lg overflow-hidden shadow-lg max-h-80 overflow-y-auto ${
-            dropUp ? "bottom-full mb-1" : "mt-1"
+          className={`absolute z-30 w-full bg-slate-900/95 backdrop-blur-lg border border-slate-700 rounded-xl overflow-hidden shadow-2xl max-h-80 overflow-y-auto ${
+            dropUp ? "bottom-full mb-2" : "mt-2"
           }`}
         >
           {results.map((player, index) => {
@@ -170,25 +175,25 @@ export default function PlayerSearch({ onSelect, disabled, usedPlayerIds, disabl
                 onClick={() => handleSelect(player)}
                 onMouseEnter={() => setHighlightIndex(index)}
                 disabled={!!disabledReason}
-                className={`w-full px-4 py-3 flex flex-wrap items-center gap-3 text-left transition-colors ${
+                className={`w-full px-4 py-3 flex flex-wrap items-center gap-3 text-left transition-colors border-b border-slate-800/50 ${
                   disabledReason
                     ? "opacity-50 cursor-not-allowed"
-                    : index === highlightIndex ? "bg-gray-700" : "hover:bg-gray-700"
+                    : index === highlightIndex ? "bg-slate-800" : "hover:bg-slate-800"
                 }`}
               >
                 {!hideThumbnails && player.thumbnail && (
                   <img
                     src={player.thumbnail}
                     alt=""
-                    className="w-10 h-10 rounded-full object-cover bg-gray-700"
+                    className="w-10 h-10 rounded-full object-cover bg-slate-800 border border-slate-700"
                   />
                 )}
                 <div className="flex-1 min-w-0">
-                  <div className="text-white font-medium">{player.name}</div>
-                  <div className="text-gray-400 text-sm">{player.nationality}</div>
+                  <div className="text-slate-100 font-semibold text-sm">{player.name}</div>
+                  <div className="text-slate-400 text-xs">{player.nationality}</div>
                 </div>
                 {disabledReason && (
-                  <span className="text-gray-500 text-xs shrink-0">{disabledReason}</span>
+                  <span className="text-slate-500 text-xs shrink-0">{disabledReason}</span>
                 )}
               </button>
             </li>

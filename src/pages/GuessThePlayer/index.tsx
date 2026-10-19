@@ -1,13 +1,18 @@
 import { useState, useMemo, useEffect, useRef } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import { CalendarDays, Check, CircleX, History, RotateCcw, Share2, ShieldHalf, Trophy, X } from "lucide-react";
 import { useGuessGame } from "./useGuessGame";
 import { HARD_MODE_KEY } from "./constants";
 import { mergeConsecutiveClubs, getTodayString, getDateForDay, getDayNumber, getAlreadyGuessedMap, formatWrongGuesses, shareResult } from "./helpers";
+import AppShell from "../../components/AppShell";
 import PlayerCard from "../../components/PlayerCard";
 import DailyLeaderboard from "../../components/DailyLeaderboard";
 import GuessDistribution from "./GuessDistribution";
 import NextPuzzleCountdown from "./NextPuzzleCountdown";
 import { getLastRefresh } from "../../api/playerCache";
+import { ALERT_WARN, BTN_LG, BTN_PRIMARY, BTN_SECONDARY, PANEL, SECTION_LABEL } from "../../theme";
+
+const DAY_NAV_BUTTON = `${BTN_SECONDARY} px-4 py-2 text-sm`;
 
 export default function GuessThePlayer() {
   const navigate = useNavigate();
@@ -112,16 +117,16 @@ export default function GuessThePlayer() {
   const todayDayNum = getDayNumber(today);
 
   const dayNavigation = (isDaily || isArchive) && dayNumber ? (
-    <div className="flex items-center gap-6 text-sm text-gray-500">
+    <div className="flex items-center justify-center gap-3 text-sm">
       {dayNumber > 1 && (
-        <button onClick={() => loadArchiveDay(dayNumber - 1)} className="hover:text-gray-300 transition-colors">
+        <button onClick={() => loadArchiveDay(dayNumber - 1)} className={DAY_NAV_BUTTON}>
           ‹ Previous day
         </button>
       )}
       {isArchive && (
         <button
           onClick={() => dayNumber < todayDayNum ? loadArchiveDay(dayNumber + 1) : navigate("/guess")}
-          className="hover:text-gray-300 transition-colors"
+          className={DAY_NAV_BUTTON}
         >
           Next day ›
         </button>
@@ -129,93 +134,108 @@ export default function GuessThePlayer() {
     </div>
   ) : null;
 
-  return (
-    <div className="min-h-screen bg-gray-900 text-white flex flex-col">
-      <header className="py-6 border-b border-gray-700">
-        <h1 className="text-3xl font-bold text-center">Football Nerdle</h1>
-        <p className="text-gray-400 text-center mt-1">
-          {isArchive
-            ? dayNumber !== null ? `Archive — Daily #${dayNumber}` : "Archive"
-            : isDaily && dayNumber !== null ? `Guess the Player — Daily #${dayNumber}` : "Guess the Player"}
-        </p>
-        <div className="flex items-center justify-center gap-4 mt-2">
-          <Link to="/" className="text-green-400 hover:text-green-300 text-sm">
-            ← Back to Home
-          </Link>
-          <Link to="/guess/archive" className="text-gray-500 hover:text-gray-300 text-sm">
-            Archive
-          </Link>
-        </div>
-      </header>
+  const wrongGuessesRow = wrongGuessesText ? (
+    <div
+      data-testid="wrong-guesses"
+      className="flex items-start gap-2 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-300 text-sm font-semibold px-4 py-3"
+    >
+      <CircleX className="w-4 h-4 mt-0.5 shrink-0 text-rose-400" aria-hidden="true" />
+      <span>{wrongGuessesText}</span>
+    </div>
+  ) : null;
 
-      <main className="flex-1 flex flex-col items-center px-4 py-8 gap-6">
+  return (
+    <AppShell>
+      <main className="flex-1 w-full max-w-4xl mx-auto px-4 sm:px-6 py-6 space-y-6">
         <div role="status" aria-live="polite" aria-atomic="true" className="sr-only" data-testid="guess-announcer">
           {announcement}
         </div>
+
+        <header className="glass-panel rounded-2xl border-slate-800 p-4 flex flex-wrap items-center justify-between gap-4">
+          <div className="flex items-center gap-3 min-w-0">
+            <span className="w-10 h-10 shrink-0 rounded-lg bg-pitch-500/10 border border-pitch-500/30 flex items-center justify-center text-pitch-400">
+              <CalendarDays className="w-5 h-5" aria-hidden="true" />
+            </span>
+            <div className="min-w-0">
+              <p className="font-bold text-white text-base">
+                {isArchive
+                  ? dayNumber !== null ? `Archive — Daily #${dayNumber}` : "Archive"
+                  : isDaily && dayNumber !== null ? `Guess the Player — Daily #${dayNumber}` : "Guess the Player"}
+              </p>
+              <div className="flex items-center gap-4 mt-0.5 text-xs">
+                <Link to="/" className="text-pitch-400 hover:text-pitch-300 font-semibold">
+                  ← Back to Home
+                </Link>
+                <Link to="/guess/archive" className="text-slate-400 hover:text-white font-semibold">
+                  Archive
+                </Link>
+              </div>
+            </div>
+          </div>
+
+          {status === "playing" && (
+            <div className="flex items-center gap-3 bg-slate-900/60 py-1.5 px-3 rounded-xl border border-slate-800">
+              <span className="text-xs font-semibold text-slate-300 flex items-center gap-1.5">
+                <ShieldHalf className="w-3.5 h-3.5 text-gold-400" aria-hidden="true" />
+                Show club names
+              </span>
+              <div className="relative group">
+                <button
+                  role="switch"
+                  aria-checked={!hardMode}
+                  aria-label="Show club names"
+                  onClick={toggleHardMode}
+                  disabled={!hardMode}
+                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                    !hardMode
+                      ? "bg-pitch-500/60 cursor-not-allowed"
+                      : "bg-slate-700 hover:bg-slate-600"
+                  }`}
+                >
+                  <span
+                    className={`inline-block h-4 w-4 rounded-full transition-transform ${
+                      !hardMode ? "translate-x-6 bg-slate-950" : "translate-x-1 bg-slate-300"
+                    }`}
+                  />
+                </button>
+                {!hardMode && (
+                  <div
+                    role="tooltip"
+                    className="pointer-events-none absolute right-0 sm:left-1/2 sm:right-auto top-full z-10 mt-2 w-56 sm:-translate-x-1/2 rounded-lg bg-slate-800 px-3 py-2 text-center text-xs text-slate-200 shadow-lg border border-slate-700 opacity-0 transition-opacity duration-150 group-hover:opacity-100"
+                  >
+                    You've peeked at today's teams — I'll reset this for tomorrow :)
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+        </header>
+
         {isArchive && (
-          <div className="w-full max-w-md bg-amber-900/40 border border-amber-600 rounded-lg px-4 py-3 text-center">
-            <p className="text-amber-300 text-sm font-medium">
+          <div className="glass-card border-gold-500/40 bg-gold-500/10 rounded-2xl px-4 py-3 flex flex-wrap items-center justify-between gap-3">
+            <p className="text-gold-300 text-sm font-semibold flex items-center gap-2">
+              <History className="w-4 h-4" aria-hidden="true" />
               {dayNumber !== null ? `This is an archived puzzle (Daily #${dayNumber})` : "This is an archived puzzle"}
             </p>
-            <button
-              onClick={handlePlayToday}
-              className="mt-2 px-4 py-1.5 bg-green-600 hover:bg-green-500 rounded-lg text-sm font-semibold text-white transition-colors"
-            >
+            <button onClick={handlePlayToday} className={`${BTN_PRIMARY} px-4 py-2 text-xs`}>
               Play Today's Daily
             </button>
           </div>
         )}
 
-        {status === "playing" && (
-          <div className="flex items-center gap-3">
-            <span className="text-sm font-medium text-gray-300">Show club names</span>
-            <div className="relative group">
-              <button
-                role="switch"
-                aria-checked={!hardMode}
-                aria-label="Show club names"
-                onClick={toggleHardMode}
-                disabled={!hardMode}
-                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                  !hardMode
-                    ? "bg-emerald-700/70 cursor-not-allowed"
-                    : "bg-gray-600 hover:bg-gray-500"
-                }`}
-              >
-                <span
-                  className={`inline-block h-4 w-4 rounded-full bg-white transition-transform ${
-                    !hardMode ? "translate-x-6" : "translate-x-1"
-                  }`}
-                />
-              </button>
-              {!hardMode && (
-                <div
-                  role="tooltip"
-                  className="pointer-events-none absolute left-1/2 top-full z-10 mt-2 w-56 -translate-x-1/2 rounded-md bg-gray-800 px-3 py-2 text-center text-xs text-gray-200 shadow-lg ring-1 ring-gray-700 opacity-0 transition-opacity duration-150 group-hover:opacity-100"
-                >
-                  You've peeked at today's teams — I'll reset this for tomorrow :)
-                  <span className="absolute -top-1 left-1/2 h-2 w-2 -translate-x-1/2 rotate-45 bg-gray-800 ring-1 ring-gray-700" />
-                </div>
-              )}
-            </div>
-          </div>
-        )}
-
         {status === "loading" && (
-          <p className="text-gray-400">Loading player...</p>
+          <p className="text-slate-400 text-center py-10">Loading player...</p>
         )}
 
         {status === "idle" && (
-          <div className="flex-1 flex flex-col items-center justify-center gap-4">
+          <div className="flex-1 flex flex-col items-center justify-center gap-4 py-10">
             {error && (
-              <div role="alert" className="bg-orange-900/30 border border-orange-700 rounded-lg px-4 py-3 max-w-md w-full text-center text-orange-300 text-sm">
+              <div role="alert" className={`${ALERT_WARN} max-w-md w-full`}>
                 {error}
               </div>
             )}
-            <button
-              onClick={retry}
-              className="px-6 py-3 bg-green-600 hover:bg-green-500 rounded-lg font-semibold transition-colors"
-            >
+            <button onClick={retry} className={`${BTN_PRIMARY} ${BTN_LG}`}>
+              <RotateCcw className="w-4 h-4" aria-hidden="true" />
               Try Again
             </button>
           </div>
@@ -223,12 +243,25 @@ export default function GuessThePlayer() {
 
         {status === "playing" && targetPlayer && (
           <>
-            <div className="text-lg">
-              Attempts: <span className={`font-bold ${attempts >= maxAttempts - 1 ? "text-red-400" : "text-green-400"}`}>{attempts}</span>
-              <span className="text-gray-500"> / {maxAttempts}</span>
+            <div className="flex flex-wrap items-center justify-between gap-3 px-1">
+              <p className="text-slate-300 font-semibold">Which player is this?</p>
+              <div className="flex items-center gap-3">
+                <div className="text-sm font-bold text-slate-400">
+                  Attempts: <span className={`text-base font-extrabold ${attempts >= maxAttempts - 1 ? "text-rose-400" : "text-pitch-400"}`}>{attempts}</span>
+                  <span className="text-slate-500"> / {maxAttempts}</span>
+                </div>
+                <div className="flex gap-1.5" aria-hidden="true">
+                  {Array.from({ length: maxAttempts }, (_, i) => (
+                    <span
+                      key={i}
+                      className={`w-3 h-3 rounded-full border ${
+                        i < maxAttempts - attempts ? "bg-pitch-500 border-pitch-400" : "bg-slate-800 border-slate-700"
+                      }`}
+                    />
+                  ))}
+                </div>
+              </div>
             </div>
-
-            <p className="text-gray-300">Which player is this?</p>
 
             <PlayerCard
               player={targetPlayer}
@@ -243,14 +276,10 @@ export default function GuessThePlayer() {
               disabledPlayerIds={alreadyGuessed}
             />
 
-            {wrongGuessesText && (
-              <div data-testid="wrong-guesses" className="text-sm text-gray-400">
-                {wrongGuessesText}
-              </div>
-            )}
+            {wrongGuessesRow}
 
             {error && (
-              <div role="alert" className="bg-orange-900/30 border border-orange-700 rounded-lg px-4 py-3 max-w-md w-full text-center text-orange-300 text-sm">
+              <div role="alert" className={ALERT_WARN}>
                 {error}
               </div>
             )}
@@ -261,119 +290,122 @@ export default function GuessThePlayer() {
 
         {resultScreen && targetPlayer && (
           <>
-            <h2 className={`text-2xl font-bold ${status === "won" ? "text-green-400" : "text-red-400"}`}>
-              {status === "won" ? "Correct!" : "Game Over!"}
-            </h2>
-
-            <PlayerCard
-              player={targetPlayer}
-              clubs={mergedClubs}
-              hints={hints}
-              revealed={true}
-              hardMode={false}
-              result={status === "won" ? "won" : "lost"}
-            />
-
-            {wrongGuessesText && (
-              <div data-testid="wrong-guesses" className="text-sm text-gray-400">
-                {wrongGuessesText}
-              </div>
-            )}
-
-            <p className="text-gray-300">
-              {status === "won" ? (
-                <>Guessed in <span className="text-green-400 font-bold">{attempts}</span> {attempts === 1 ? "attempt" : "attempts"}</>
-              ) : (
-                <span className="text-red-400">Not guessed</span>
-              )}
-            </p>
-
-            <div className="flex gap-3 flex-wrap justify-center">
-              <button
-                onClick={handleShare}
-                className="px-6 py-3 bg-blue-600 hover:bg-blue-500 rounded-lg font-semibold transition-colors"
-              >
-                {shareFeedback === "copied" ? "Copied!" : "Share Result"}
-              </button>
-              {!isDaily && (
-                <button
-                  onClick={handlePlayToday}
-                  className="px-6 py-3 bg-green-600 hover:bg-green-500 rounded-lg font-semibold transition-colors"
+            <section
+              className={`glass-panel rounded-3xl p-5 sm:p-8 space-y-6 ${
+                status === "won" ? "border-pitch-500/30 shadow-stadium" : "border-rose-500/30"
+              }`}
+            >
+              <div className="text-center space-y-2">
+                <span
+                  className={`w-16 h-16 rounded-2xl flex items-center justify-center mx-auto border ${
+                    status === "won"
+                      ? "bg-pitch-500/20 text-pitch-400 border-pitch-500/40"
+                      : "bg-rose-500/20 text-rose-400 border-rose-500/40"
+                  }`}
                 >
-                  Play Today's Daily
-                </button>
-              )}
-            </div>
-
-            {shareFeedback === "error" && (
-              <div role="alert" className="bg-orange-900/30 border border-orange-700 rounded-lg px-4 py-3 max-w-md w-full text-center text-orange-300 text-sm">
-                <p>Couldn't share or copy your result. Try again or copy it manually.</p>
-                <pre className="mt-2 select-all whitespace-pre-wrap break-words text-left text-gray-300 font-mono text-xs">
-                  {getShareText(hardMode)}
-                </pre>
+                  {status === "won"
+                    ? <Trophy className="w-8 h-8" aria-hidden="true" />
+                    : <X className="w-8 h-8" aria-hidden="true" />}
+                </span>
+                <h2 className={`text-3xl font-extrabold ${status === "won" ? "text-pitch-400" : "text-rose-400"}`}>
+                  {status === "won" ? "Correct!" : "Game Over!"}
+                </h2>
+                <p className="text-slate-300 text-sm">
+                  {status === "won" ? (
+                    <>Guessed in <span className="text-pitch-400 font-bold">{attempts}</span> {attempts === 1 ? "attempt" : "attempts"}</>
+                  ) : (
+                    <span className="text-rose-400">Not guessed</span>
+                  )}
+                </p>
               </div>
-            )}
 
-            {isDaily && !isArchive && <NextPuzzleCountdown key={today} today={today} />}
+              <PlayerCard
+                player={targetPlayer}
+                clubs={mergedClubs}
+                hints={hints}
+                revealed={true}
+                hardMode={false}
+                result={status === "won" ? "won" : "lost"}
+              />
 
-            {dayNavigation}
+              {wrongGuessesRow}
+
+              <div className="flex gap-3 flex-wrap justify-center">
+                <button onClick={handleShare} className={`${BTN_PRIMARY} ${BTN_LG} flex-1 min-w-48`}>
+                  {shareFeedback === "copied"
+                    ? <Check className="w-4 h-4" aria-hidden="true" />
+                    : <Share2 className="w-4 h-4" aria-hidden="true" />}
+                  {shareFeedback === "copied" ? "Copied!" : "Share Result"}
+                </button>
+                {!isDaily && (
+                  <button onClick={handlePlayToday} className={`${BTN_SECONDARY} ${BTN_LG} flex-1 min-w-48`}>
+                    Play Today's Daily
+                  </button>
+                )}
+              </div>
+
+              {shareFeedback === "error" && (
+                <div role="alert" className={ALERT_WARN}>
+                  <p>Couldn't share or copy your result. Try again or copy it manually.</p>
+                  <pre className="mt-2 select-all whitespace-pre-wrap break-words text-left text-slate-300 font-mono text-xs">
+                    {getShareText(hardMode)}
+                  </pre>
+                </div>
+              )}
+
+              {isDaily && !isArchive && <NextPuzzleCountdown key={today} today={today} />}
+
+              {dayNavigation}
+            </section>
 
             {(isDaily || isArchive) && (
-              <div data-testid="guess-stats" className="bg-gray-800 border border-gray-600 rounded-xl p-6 max-w-md w-full">
-                <h3 className="text-lg font-semibold text-center text-gray-300 mb-4">Your Stats</h3>
-                <div className="grid grid-cols-5 gap-2 text-center">
-                  <div>
-                    <div className="text-2xl font-bold">{stats.played}</div>
-                    <div className="text-gray-400 text-xs">Played</div>
+              <div className="grid md:grid-cols-2 gap-6 items-start">
+                <div data-testid="guess-stats" className={`${PANEL} p-5 sm:p-6`}>
+                  <h3 className={`${SECTION_LABEL} text-center mb-4`}>Your Stats</h3>
+                  <div className="grid grid-cols-5 gap-1.5 sm:gap-2 text-center">
+                    {[
+                      { label: "Played", value: stats.played, color: "text-white" },
+                      { label: "Won", value: stats.won, color: "text-pitch-400" },
+                      { label: "Lost", value: stats.lost, color: "text-rose-400" },
+                      { label: "Streak", value: stats.streak, color: "text-gold-400" },
+                      { label: "Best", value: stats.longestStreak, color: "text-gold-400" },
+                    ].map(({ label, value, color }) => (
+                      <div key={label} className="glass-card rounded-xl py-2.5 px-1">
+                        <div className={`text-xl sm:text-2xl font-extrabold ${color}`}>{value}</div>
+                        <div className="text-slate-400 text-[10px] sm:text-xs font-semibold">{label}</div>
+                      </div>
+                    ))}
                   </div>
-                  <div>
-                    <div className="text-2xl font-bold text-green-400">{stats.won}</div>
-                    <div className="text-gray-400 text-xs">Won</div>
-                  </div>
-                  <div>
-                    <div className="text-2xl font-bold text-red-400">{stats.lost}</div>
-                    <div className="text-gray-400 text-xs">Lost</div>
-                  </div>
-                  <div>
-                    <div className="text-2xl font-bold text-yellow-400">{stats.streak}</div>
-                    <div className="text-gray-400 text-xs">Streak</div>
-                  </div>
-                  <div>
-                    <div className="text-2xl font-bold text-yellow-400">{stats.longestStreak}</div>
-                    <div className="text-gray-400 text-xs">Best</div>
-                  </div>
+                  {stats.played > 0 && (
+                    <div className="mt-3 text-center text-slate-400 text-sm">
+                      Win rate: {Math.round((stats.won / stats.played) * 100)}%
+                    </div>
+                  )}
+                  <GuessDistribution
+                    distribution={distribution}
+                    highlight={isDaily && status === "won" ? attempts : undefined}
+                  />
                 </div>
-                {stats.played > 0 && (
-                  <div className="mt-3 text-center text-gray-400 text-sm">
-                    Win rate: {Math.round((stats.won / stats.played) * 100)}%
-                  </div>
-                )}
-                <GuessDistribution
-                  distribution={distribution}
-                  highlight={isDaily && status === "won" ? attempts : undefined}
+
+                <DailyLeaderboard
+                  date={isArchive && dayNumber ? getDateForDay(dayNumber) : today}
+                  userAttempts={status === "won" ? attempts : 0}
                 />
               </div>
-            )}
-
-            {(isDaily || isArchive) && (
-              <DailyLeaderboard
-                date={isArchive && dayNumber ? getDateForDay(dayNumber) : today}
-                userAttempts={status === "won" ? attempts : 0}
-              />
             )}
           </>
         )}
       </main>
 
       {targetPlayer && (
-        <footer className="py-4 text-center space-y-1">
+        <footer className="py-6 text-center space-y-1">
           {lastRefresh && (
-            <p className="text-gray-600 text-xs">
+            <p className="text-slate-600 text-xs">
               Data updated: {new Date(lastRefresh).toLocaleDateString("en-GB")}
             </p>
           )}
           {(status === "won" || status === "lost") && (
-            <p className="text-gray-600 text-xs">
+            <p className="text-slate-600 text-xs">
               Player ID: {targetPlayer.id}
             </p>
           )}
@@ -382,13 +414,13 @@ export default function GuessThePlayer() {
               href={`https://github.com/spiritsack/football-nerdle/issues/new?title=${encodeURIComponent(`Data error: ${targetPlayer.name}`)}&body=${encodeURIComponent(`**Player:** ${targetPlayer.name} (ID: ${targetPlayer.id})\n**Clubs shown:**\n${clubs.map((c) => `- ${c.teamName} ${c.yearJoined}${c.yearDeparted ? ` – ${c.yearDeparted}` : " – present"}`).join("\n")}\n\n**What's wrong:**\n`)}&labels=data-error`}
               target="_blank"
               rel="noopener noreferrer"
-              className="text-gray-500 hover:text-gray-300 text-xs underline"
+              className="text-slate-500 hover:text-slate-300 text-xs underline"
             >
               Report data error
             </a>
           )}
         </footer>
       )}
-    </div>
+    </AppShell>
   );
 }

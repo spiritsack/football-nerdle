@@ -9,8 +9,8 @@ test.describe("Home Page", () => {
   test("shows Guess the Player card with Daily and Archive buttons", async ({ page }) => {
     await page.goto("/");
     await expect(page.getByRole("heading", { name: "Guess the Player" })).toBeVisible();
-    await expect(page.getByRole("link", { name: /Daily/ })).toBeVisible();
-    await expect(page.getByRole("link", { name: "Archive" })).toBeVisible();
+    await expect(page.getByRole("main").getByRole("link", { name: /Daily/ })).toBeVisible();
+    await expect(page.getByRole("main").getByRole("link", { name: "Archive" })).toBeVisible();
   });
 
   test("shows Battle Mode card", async ({ page }) => {
@@ -26,29 +26,29 @@ test.describe("Home Page", () => {
 
   test("Daily button links to /guess", async ({ page }) => {
     await page.goto("/");
-    await page.getByRole("link", { name: /Daily/ }).click();
+    await page.getByRole("main").getByRole("link", { name: /Daily/ }).click();
     await expect(page).toHaveURL(/#\/guess$/);
   });
 
   test("Archive button links to /guess/archive", async ({ page }) => {
     await page.goto("/");
-    await page.getByRole("link", { name: "Archive" }).click();
+    await page.getByRole("main").getByRole("link", { name: "Archive" }).click();
     await expect(page).toHaveURL(/#\/guess\/archive$/);
   });
 
   test("Daily button is emphasised when daily not completed", async ({ page }) => {
     // A fresh browser context has no daily result stored
     await page.goto("/");
-    const dailyBtn = page.getByRole("link", { name: /Daily/ });
-    await expect(dailyBtn).toHaveClass(/bg-green-600/);
-    await expect(page.getByRole("link", { name: "Archive" })).toHaveClass(/bg-gray-700/);
+    const dailyBtn = page.getByRole("main").getByRole("link", { name: /Daily/ });
+    await expect(dailyBtn).toHaveClass(/bg-pitch-500/);
+    await expect(page.getByRole("main").getByRole("link", { name: "Archive" })).toHaveClass(/bg-slate-800/);
   });
 
   test("Archive button is emphasised once daily is completed", async ({ page }) => {
     await seedStorage(page, { "football-nerdle-daily-guess": { date: "{today}" } });
     await page.goto("/");
-    await expect(page.getByRole("link", { name: "Daily (Done)" })).toHaveClass(/bg-gray-700/);
-    await expect(page.getByRole("link", { name: "Archive" })).toHaveClass(/bg-green-600/);
+    await expect(page.getByRole("link", { name: "Daily (Done)" })).toHaveClass(/bg-slate-800/);
+    await expect(page.getByRole("main").getByRole("link", { name: "Archive" })).toHaveClass(/bg-pitch-500/);
   });
 
   test("does not show the Pack Mode card", async ({ page }) => {
@@ -170,7 +170,7 @@ test.describe("Meta tags", () => {
     await expect(page.locator('meta[name="twitter:image"]')).toHaveAttribute("content", OG_IMAGE_URL);
     await expect(page.locator('meta[property="og:image:width"]')).toHaveAttribute("content", "1200");
     await expect(page.locator('meta[property="og:image:height"]')).toHaveAttribute("content", "630");
-    await expect(page.locator('meta[name="theme-color"]')).toHaveAttribute("content", "#111827");
+    await expect(page.locator('meta[name="theme-color"]')).toHaveAttribute("content", "#0b0f19");
   });
 
   test("serves the social preview image under the base path", async ({ page, baseURL }) => {

@@ -1,12 +1,15 @@
+import type { ReactNode } from "react";
+import { Crown, Info, Lock, Route, SkipForward, UserRound } from "lucide-react";
 import PlayerSearch from "../PlayerSearch";
-import type { PlayerCardProps } from "./types";
+import { SECTION_LABEL } from "../../theme";
+import type { MergedClub, PlayerCardProps } from "./types";
 import { getFlagEmoji } from "./helpers";
 
 function BadgeImg({ src, alt, size }: { src: string; alt: string; size: "sm" | "lg" }) {
-  const imgClass = size === "lg" ? "w-16 h-16 object-contain" : "w-8 h-8 object-contain";
+  const imgClass = size === "lg" ? "w-10 h-10 object-contain" : "w-7 h-7 object-contain";
   const fallbackClass = size === "lg"
-    ? "w-16 h-16 bg-gray-600 rounded flex items-center justify-center text-xs text-gray-300 text-center p-1 leading-tight"
-    : "w-8 h-8 bg-gray-600 rounded flex items-center justify-center text-[0.5rem] text-gray-300 text-center p-0.5 leading-tight";
+    ? "w-10 h-10 bg-slate-700 rounded flex items-center justify-center text-[0.55rem] text-slate-300 text-center p-0.5 leading-tight overflow-hidden"
+    : "w-7 h-7 bg-slate-700 rounded flex items-center justify-center text-[0.45rem] text-slate-300 text-center p-0.5 leading-tight overflow-hidden";
 
   return (
     <>
@@ -23,20 +26,54 @@ function BadgeImg({ src, alt, size }: { src: string; alt: string; size: "sm" | "
   );
 }
 
-function HiddenField({ label }: { label: string }) {
+function ClubTile({ club, hidden }: { club: MergedClub; hidden: boolean }) {
   return (
-    <div className="flex items-center justify-between py-2 border-b border-gray-700/50 last:border-0">
-      <span className="text-gray-500 text-sm">{label}</span>
-      <span className="bg-gray-700 rounded px-3 py-0.5 text-gray-600 text-sm select-none">???</span>
-    </div>
+    <li
+      className={`glass-card relative rounded-xl p-3 sm:p-4 flex items-center gap-3 min-w-0 ${
+        club.isLoan ? "border-dashed border-gold-500/60" : "border-slate-800"
+      }`}
+    >
+      {club.isLoan && (
+        <span className="absolute top-1.5 right-1.5 text-[9px] font-extrabold uppercase bg-gold-500 text-slate-950 px-1.5 py-0.5 rounded">
+          Loan
+        </span>
+      )}
+      <span className={`shrink-0 rounded-lg bg-slate-800 border border-slate-700 flex items-center justify-center ${hidden ? "w-12 h-12" : "w-10 h-10"}`}>
+        <BadgeImg src={club.badge} alt={club.teamName} size={hidden ? "lg" : "sm"} />
+      </span>
+      {hidden ? (
+        <span className="min-w-0" aria-hidden="true">
+          <span className="block font-bold text-sm text-slate-500">Hidden club</span>
+          <span className="block text-xs text-slate-600 font-mono">????–????</span>
+        </span>
+      ) : (
+        <span className={`min-w-0 ${club.isLoan ? "pr-8" : ""}`}>
+          <span className="block font-bold text-sm text-white leading-snug">{club.teamName}</span>
+          <span className="block text-xs text-slate-400 font-mono whitespace-nowrap">
+            {club.yearJoined}{club.yearDeparted ? ` – ${club.yearDeparted}` : " – present"}
+          </span>
+        </span>
+      )}
+    </li>
   );
 }
 
-function RevealedField({ label, value }: { label: string; value: string }) {
+function HintCard({ step, label, value }: { step: number; label: string; value: ReactNode | null }) {
   return (
-    <div className="flex items-center justify-between py-2 border-b border-gray-700/50 last:border-0 animate-[fadeIn_0.4s_ease-in]">
-      <span className="text-gray-400 text-sm">{label}</span>
-      <span className="text-white font-semibold text-sm">{value}</span>
+    <div className={`rounded-xl p-3 text-center transition-all ${value !== null ? "glass-card-active animate-[fadeIn_0.4s_ease-in]" : "glass-card border-slate-800"}`}>
+      <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mb-1">
+        {step}. {label}
+      </p>
+      <div className="min-h-12 flex flex-col items-center justify-center py-1">
+        {value !== null ? (
+          <span className="text-sm font-bold text-white break-words">{value}</span>
+        ) : (
+          <span className="flex flex-col items-center text-slate-500">
+            <Lock className="w-3.5 h-3.5 mb-1" aria-hidden="true" />
+            <span className="text-xs font-semibold">???</span>
+          </span>
+        )}
+      </div>
     </div>
   );
 }
@@ -54,46 +91,33 @@ export default function PlayerCard({ player, clubs, hints, revealed, hardMode, r
   const isLegacy = player.isLegacy != null ? player.isLegacy : autoLegacy;
 
   const flag = revealed ? getFlagEmoji(player.nationality ?? "") : null;
+  const hideClubs = hardMode && !revealed;
 
-  const borderColor = result === "won" ? "border-green-600" : result === "lost" ? "border-red-600" : isLegacy ? "border-amber-700/60" : "border-gray-600";
+  const surface = isLegacy ? "legacy-card" : "glass-panel";
+  const borderColor = result === "won"
+    ? "border-pitch-500/60"
+    : result === "lost"
+      ? "border-rose-500/50"
+      : isLegacy ? "" : "border-slate-800";
+
+  const photo = player.thumbnail ? (
+    <img
+      src={player.thumbnail}
+      alt={revealed ? player.name : ""}
+      className={`object-cover bg-slate-800 border-2 shrink-0 ${isLegacy ? "border-gold-500/50 sepia-[.3]" : "border-slate-600"} ${revealed ? "w-20 h-20 rounded-xl" : "w-14 h-14 rounded-full"}`}
+    />
+  ) : null;
 
   return (
-    <div className={`${isLegacy ? "bg-gray-800/90" : "bg-gray-800"} border-2 ${borderColor} rounded-2xl overflow-visible max-w-md w-full transition-colors duration-500 relative`}>
-      {/* Legacy badge */}
-      {isLegacy && (
-        <div className="absolute -top-3 right-4 flex items-center gap-1.5 bg-amber-900/80 border border-amber-700/60 rounded-full px-3 py-1 z-10">
-          <span className="text-amber-300 text-xs font-medium">Legacy Player</span>
-          <div className="relative group">
-            <button
-              type="button"
-              aria-label="This player is potentially retired"
-              className="text-amber-400/70 hover:text-amber-300 text-xs select-none focus:outline-none"
-            >
-              &#9432;
-            </button>
-            <div className="absolute bottom-full right-0 mb-2 w-48 px-3 py-2 bg-gray-700 text-gray-200 text-xs rounded-lg shadow-lg pointer-events-none opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity text-center z-20">
-              This player is potentially retired — no current team in their career data.
-              <div className="absolute top-full right-4 border-4 border-transparent border-t-gray-700" />
+    <div className="w-full space-y-5">
+      {revealed && (
+        <section className={`${surface} ${borderColor} rounded-2xl p-4 sm:p-5 flex items-center gap-4 transition-colors duration-500`}>
+          {photo ?? (
+            <div className="w-20 h-20 rounded-xl bg-slate-800 border border-slate-600 flex items-center justify-center text-slate-500 shrink-0">
+              <UserRound className="w-9 h-9" aria-hidden="true" />
             </div>
-          </div>
-        </div>
-      )}
-
-      {/* Player identity header */}
-      <div className="px-6 pt-5 pb-4 flex items-center gap-4 border-b border-gray-700">
-        {(revealed || hints.photo) && player.thumbnail ? (
-          <img
-            src={player.thumbnail}
-            alt={revealed ? player.name : ""}
-            className={`w-20 h-20 rounded-full object-cover bg-gray-700 border-2 shrink-0 ${isLegacy ? "border-amber-700/50 sepia-[.3]" : "border-gray-600"}`}
-          />
-        ) : (
-          <div className={`w-20 h-20 rounded-full bg-gray-700 border-2 flex items-center justify-center text-3xl text-gray-500 select-none shrink-0 ${isLegacy ? "border-amber-700/50" : "border-gray-600"}`}>
-            ?
-          </div>
-        )}
-        <div className="flex-1 min-w-0">
-          {revealed ? (
+          )}
+          <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 min-w-0">
               {flag && (
                 <span
@@ -105,88 +129,94 @@ export default function PlayerCard({ player, clubs, hints, revealed, hardMode, r
                   {flag}
                 </span>
               )}
-              <p className="text-xl font-bold truncate">{player.name}</p>
+              <p className="text-xl font-bold leading-tight break-words min-w-0">{player.name}</p>
             </div>
-          ) : onGuess ? (
-            <div className="flex items-center gap-2 w-full">
-              <div className="flex-1 min-w-0">
-                <PlayerSearch
-                  onSelect={onGuess}
-                  disabledPlayerIds={disabledPlayerIds}
-                  placeholder={hints.initials
-                    ? player.name.split(" ").map((part) => part[0] + ".".repeat(part.length - 1)).join(" ")
-                    : "Player name"}
-                />
-              </div>
-              {onSkip && (
+            <p className="text-xs sm:text-sm text-slate-400 mt-1">
+              {player.nationality || "Unknown"} · Age {age ?? "Unknown"} · {player.position || "Unknown"}
+            </p>
+          </div>
+        </section>
+      )}
+
+      <section
+        className={`${surface} ${borderColor} ${isLegacy ? "" : "shadow-stadium"} relative rounded-2xl p-4 sm:p-6 transition-colors duration-500`}
+      >
+        <div className="flex flex-wrap items-center justify-between gap-3 mb-4 sm:mb-5">
+          <div className="flex items-center gap-2">
+            <Route className={`w-5 h-5 ${isLegacy ? "text-gold-400" : "text-pitch-400"}`} aria-hidden="true" />
+            <p className="text-lg font-bold text-white">Club History</p>
+          </div>
+
+          {isLegacy && (
+            <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-gold-500/10 border border-gold-500/30 text-gold-400">
+              <Crown className="w-3.5 h-3.5" aria-hidden="true" />
+              <span className="text-xs font-extrabold uppercase tracking-wide">Legacy Player</span>
+              <div className="relative group">
                 <button
-                  onClick={onSkip}
-                  className="px-3 py-3 bg-gray-700 hover:bg-gray-600 text-gray-400 hover:text-white text-xs font-medium rounded-lg transition-colors shrink-0"
-                  title={`Skip and reveal hint (${(attempts ?? 0) + 1}/${maxAttempts ?? 5})`}
+                  type="button"
+                  aria-label="This player is potentially retired"
+                  className="flex text-gold-400/70 hover:text-gold-300 focus:outline-none focus-visible:text-gold-300"
                 >
-                  Skip
+                  <Info className="w-3.5 h-3.5" aria-hidden="true" />
                 </button>
-              )}
+                <div className="absolute bottom-full right-0 mb-2 w-48 px-3 py-2 bg-slate-800 border border-slate-700 text-slate-200 text-xs rounded-lg shadow-lg pointer-events-none opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity text-center z-20">
+                  This player is potentially retired — no current team in their career data.
+                </div>
+              </div>
             </div>
-          ) : (
-            <>
-              <div className="h-6 bg-gray-700 rounded w-40 mb-2" />
-              <div className="h-4 bg-gray-700 rounded w-24" />
-            </>
           )}
         </div>
-      </div>
 
-      {/* Stats fields */}
-      <div className="px-6 py-3">
-        {hints.nationality || revealed
-          ? <RevealedField label="Nationality" value={player.nationality || "Unknown"} />
-          : <HiddenField label="Nationality" />
-        }
-        {hints.age || revealed
-          ? <RevealedField label="Age" value={age ? String(age) : "Unknown"} />
-          : <HiddenField label="Age" />
-        }
-        {hints.position || revealed
-          ? <RevealedField label="Position" value={player.position || "Unknown"} />
-          : <HiddenField label="Position" />
-        }
-      </div>
+        <ol
+          className={`grid gap-2.5 sm:gap-3 ${
+            hideClubs ? "grid-cols-2 md:grid-cols-3" : "grid-cols-1 sm:grid-cols-2 md:grid-cols-3"
+          }`}
+        >
+          {clubs.map((club, i) => (
+            <ClubTile key={`${club.teamId}-${i}`} club={club} hidden={hideClubs} />
+          ))}
+        </ol>
+      </section>
 
-      {/* Club history */}
-      <div className="px-6 pb-5 pt-2">
-        <p className={`text-xs uppercase tracking-wider mb-3 ${isLegacy ? "text-amber-600/80" : "text-gray-500"}`}>Club History</p>
-        {hardMode && !revealed ? (
-          <div className="flex items-center justify-center gap-1 flex-wrap">
-            {clubs.map((club, i) => (
-              <div key={`${club.teamId}-${i}`} className="flex items-center">
-                {i > 0 && <span className="text-gray-500 text-lg mx-1">→</span>}
-                <div className={`rounded-lg p-1 border ${club.isLoan ? "border-dashed border-gray-500" : "border-transparent"}`}>
-                  <BadgeImg src={club.badge} alt={club.teamName} size="lg" />
-                </div>
-              </div>
-            ))}
+      {!revealed && (
+        <section aria-label="Hints" className="space-y-2">
+          <h3 className={`${SECTION_LABEL} px-1`}>Hints (one per missed guess)</h3>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <HintCard step={1} label="Nationality" value={hints.nationality ? player.nationality || "Unknown" : null} />
+            <HintCard step={2} label="Age" value={hints.age ? (age ? String(age) : "Unknown") : null} />
+            <HintCard step={3} label="Position" value={hints.position ? player.position || "Unknown" : null} />
+            <HintCard
+              step={4}
+              label="Photo"
+              value={hints.photo ? photo ?? <span className="text-xs text-slate-400">No photo</span> : null}
+            />
           </div>
-        ) : (
-          <div className="space-y-1">
-            {clubs.map((club, i) => (
-              <div key={`${club.teamId}-${i}`}>
-                {i > 0 && <div className="text-gray-500 text-center text-sm">↓</div>}
-                <div className={`flex items-center gap-3 rounded-lg px-4 py-2 border ${club.isLoan ? "bg-gray-700/60 border-dashed border-gray-500" : "bg-gray-700 border-transparent"}`}>
-                  <BadgeImg src={club.badge} alt={club.teamName} size="sm" />
-                  <span className="font-medium text-sm">{club.teamName}</span>
-                  {club.isLoan && (
-                    <span className="text-gray-400 text-xs px-1.5 py-0.5 rounded-full bg-gray-600/50">loan</span>
-                  )}
-                  <span className="bg-gray-800 text-gray-300 text-xs px-2.5 py-1 rounded-full ml-auto whitespace-nowrap">
-                    {club.yearJoined}{club.yearDeparted ? ` – ${club.yearDeparted}` : " – present"}
-                  </span>
-                </div>
-              </div>
-            ))}
+        </section>
+      )}
+
+      {!revealed && onGuess && (
+        <div className="flex items-center gap-2 w-full">
+          <div className="flex-1 min-w-0">
+            <PlayerSearch
+              onSelect={onGuess}
+              disabledPlayerIds={disabledPlayerIds}
+              placeholder={hints.initials
+                ? player.name.split(" ").map((part) => part[0] + ".".repeat(part.length - 1)).join(" ")
+                : "Player name"}
+            />
           </div>
-        )}
-      </div>
+          {onSkip && (
+            <button
+              onClick={onSkip}
+              className="px-4 py-3.5 glass-card border-slate-700 hover:bg-slate-800 text-slate-300 hover:text-white text-sm font-bold rounded-xl transition-colors shrink-0 inline-flex items-center gap-1.5"
+              title={`Skip and reveal hint (${(attempts ?? 0) + 1}/${maxAttempts ?? 5})`}
+            >
+              <SkipForward className="w-4 h-4" aria-hidden="true" />
+              Skip
+            </button>
+          )}
+        </div>
+      )}
     </div>
   );
 }

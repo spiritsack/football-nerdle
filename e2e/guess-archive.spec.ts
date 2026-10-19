@@ -6,8 +6,8 @@ test.describe("Guess the Player Archive", () => {
   test("archive page is accessible from the daily game", async ({ page }) => {
     await mockDailySchedule(page, { date: todayString() });
     await page.goto("/#/guess");
-    await expect(page.getByRole("link", { name: "Archive" })).toBeVisible();
-    await page.getByRole("link", { name: "Archive" }).click();
+    await expect(page.getByRole("main").getByRole("link", { name: "Archive" })).toBeVisible();
+    await page.getByRole("main").getByRole("link", { name: "Archive" }).click();
     await expect(page).toHaveURL(/#\/guess\/archive/);
   });
 
@@ -147,7 +147,7 @@ test.describe("Guess the Player Archive", () => {
   test("daily game shows Archive link but no navigation arrows by default", async ({ page }) => {
     await mockDailySchedule(page, { date: todayString() });
     await loadPuzzle(page, () => page.goto("/#/guess"));
-    await expect(page.getByRole("link", { name: "Archive" })).toBeVisible();
+    await expect(page.getByRole("main").getByRole("link", { name: "Archive" })).toBeVisible();
     // No Next day arrow on today's daily
     await expect(page.getByRole("button", { name: /Next day/ })).not.toBeVisible();
   });

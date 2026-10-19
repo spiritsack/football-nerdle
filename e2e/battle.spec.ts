@@ -11,7 +11,7 @@ test.describe("Battle Mode", () => {
   });
 
   test("shows Battle Mode header", async ({ page }) => {
-    await expect(page.getByText("Battle Mode")).toBeVisible();
+    await expect(page.getByRole("main").getByText("Battle Mode")).toBeVisible();
   });
 
   test("shows back to home link", async ({ page }) => {

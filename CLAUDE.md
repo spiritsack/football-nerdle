@@ -42,7 +42,8 @@ src/
   App.tsx               — Routes: /, /battle, /guess, /guess/archive, /battle/multiplayer, /admin, * (NotFound)
   types.ts              — Shared types: Player, FormerTeam, PlayerWithTeams, GameRoom
   constants.ts          — Shared constants (TURN_TIME)
-  index.css             — Global styles (Tailwind imports)
+  index.css             — Theme tokens (`@theme`: pitch/gold/night colours, font-body/font-display), glass surfaces, background glow
+  theme.ts              — Shared class strings for buttons, panels, labels and alerts
   api/
     supabaseClient.ts   — Supabase client singleton
     playerCache.ts      — Player data queries: search, lookup
@@ -81,6 +82,13 @@ src/
     NotFound/           — Catch-all "Page not found" screen with a link back to Home
       index.tsx, types.ts
   components/
+    AppShell/           — Player-facing page frame: background, fonts, SiteHeader (Admin doesn't use it)
+    SiteHeader/         — Sticky header: wordmark, nav (Home / Guess Player / Battle Mode / Archive), mobile menu
+    PageHeader/         — Title bar with icon and "Back to Home" link for game screens
+    TurnTimer/          — 15-second ring timer (Battle + Multiplayer)
+    CurrentLinkCard/    — Current player in a Battle chain
+    PlayerChain/        — Chain of linked players as chips
+    HowToPlayModal/     — Rules dialog opened from Home
     PlayerSearch/       — Reusable player autocomplete (searches Supabase)
       index.tsx, types.ts, constants.ts, helpers.ts (debounced search that drops stale responses)
     PlayerCard/         — Player card with club history, hints, legacy styling, and guess input
@@ -154,7 +162,9 @@ e2e/                    — Playwright E2E tests
 - Page-specific hooks live alongside their page (e.g. `pages/Battle/useGame.ts`)
 - Shared types/constants live at `src/types.ts` and `src/constants.ts`
 - No state management library; hooks + useState
-- Tailwind utility classes inline, dark theme (gray-900 bg)
+- Tailwind utility classes inline. Player-facing screens use the theme in `index.css` (`bg-night`, `pitch-*` green, `gold-*` amber, `font-body` Plus Jakarta Sans, `font-display` Teko, `glass-panel`/`glass-card`) and the class strings in `src/theme.ts`; don't hard-code hex colours
+- Icons: `lucide-react`, with `aria-hidden` on decorative ones
+- Admin keeps its own gray-900 styling and does not use AppShell
 
 ## Game-specific docs
 
