@@ -394,22 +394,23 @@ export interface MissingBadgeClub {
   id: string;
   name: string;
   transfermarkt_id: string | null;
+  /** How many player_clubs rows point at the club */
+  usage_count: number;
 }
 
-/** One page of clubs with no badge, by id, plus how many there are in total */
+/** One page of clubs with no badge, most-used first, plus how many there are in total */
 export async function getClubsWithoutBadge(
   offset: number,
   limit: number,
 ): Promise<{ clubs: MissingBadgeClub[]; total: number }> {
   if (!supabase) return { clubs: [], total: 0 };
-  const { data, count, error } = await supabase
-    .from("clubs")
-    .select("id, name, transfermarkt_id", { count: "exact" })
-    .eq("badge", "")
-    .order("id")
-    .range(offset, offset + limit - 1);
+  const { data, error } = await supabase.rpc("get_clubs_without_badge", { p_offset: offset, p_limit: limit });
   if (error) throw new Error(error.message);
-  return { clubs: data ?? [], total: count ?? 0 };
+  const rows = (data ?? []) as (MissingBadgeClub & { total_count: number })[];
+  return {
+    clubs: rows.map(({ id, name, transfermarkt_id, usage_count }) => ({ id, name, transfermarkt_id, usage_count })),
+    total: rows[0]?.total_count ?? 0,
+  };
 }
 
 /**

@@ -1,9 +1,10 @@
 /**
  * Backfill missing club logos from Wikidata/Wikipedia.
  *
- * For every club with an empty badge, looks up its logo (Wikidata P154, else
- * the English Wikipedia article's lead image if it looks like a crest),
- * downloads it into the club-crests bucket and points the badge at our copy.
+ * For every club with an empty badge, most-used first (by player_clubs rows),
+ * looks up its logo (Wikidata P154, else the English Wikipedia article's lead
+ * image if it looks like a crest), downloads it into the club-crests bucket
+ * and points the badge at our copy.
  * A same-named duplicate club without a badge gets the same crest. Anything
  * uncertain is listed for checking by hand and never saved.
  *
@@ -11,7 +12,7 @@
  *   npx tsx --env-file=.env scripts/backfill-club-logos.ts                  # All clubs missing a badge
  *   npx tsx --env-file=.env scripts/backfill-club-logos.ts --dry-run        # Preview without writing
  *   npx tsx --env-file=.env scripts/backfill-club-logos.ts --club wd_Q9617  # A single club
- *   npx tsx --env-file=.env scripts/backfill-club-logos.ts --limit 50       # The first 50 clubs only
+ *   npx tsx --env-file=.env scripts/backfill-club-logos.ts --limit 50       # The 50 most-used clubs only
  *
  * Requires:
  *   VITE_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY (the anon key can only do --dry-run)
@@ -52,7 +53,10 @@ function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-async function getClubsMissingBadge(): Promise<LogoClub[]> {
+/** usage_count: how many player_clubs rows point at the club (not fetched for --club) */
+type BackfillClub = LogoClub & { usage_count?: number };
+
+async function getClubsMissingBadge(): Promise<BackfillClub[]> {
   if (SINGLE_CLUB) {
     const { data, error } = await supabase.from("clubs").select("id, name, transfermarkt_id, badge").eq("id", SINGLE_CLUB).single();
     if (error || !data) throw new Error(`Club ${SINGLE_CLUB} not found`);
@@ -60,18 +64,13 @@ async function getClubsMissingBadge(): Promise<LogoClub[]> {
     return [data];
   }
 
-  const clubs: LogoClub[] = [];
+  const clubs: BackfillClub[] = [];
   const pageSize = 1000;
   for (let from = 0; clubs.length < LIMIT; from += pageSize) {
-    const { data, error } = await supabase
-      .from("clubs")
-      .select("id, name, transfermarkt_id")
-      .eq("badge", "")
-      .order("id")
-      .range(from, from + pageSize - 1);
+    const { data, error } = await supabase.rpc("get_clubs_without_badge", { p_offset: from, p_limit: pageSize });
     if (error) throw new Error(`Failed to query clubs: ${error.message}`);
     if (!data || data.length === 0) break;
-    clubs.push(...data);
+    clubs.push(...(data as BackfillClub[]));
     if (data.length < pageSize) break;
   }
   return clubs.slice(0, LIMIT);
@@ -98,7 +97,8 @@ async function main() {
 
   for (const [i, club] of clubs.entries()) {
     if (filled.has(club.id)) continue;
-    const label = `  [${i + 1}/${clubs.length}] ${club.id} ${club.name}`;
+    const usage = club.usage_count === undefined ? "" : ` (${club.usage_count} spells)`;
+    const label = `  [${i + 1}/${clubs.length}] ${club.id} ${club.name}${usage}`;
     try {
       const logo = await findClubLogo(club, HEADERS);
       if (logo.status === "review") {
