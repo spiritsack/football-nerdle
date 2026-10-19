@@ -25,11 +25,15 @@ async function eachLimited<T>(items: T[], limit: number, task: (item: T) => Prom
   await Promise.all(Array.from({ length: Math.min(limit, items.length) }, worker));
 }
 
+function usageLabel(count: number): string {
+  return `${count.toLocaleString()} spell${count === 1 ? "" : "s"}`;
+}
+
 function canSave(row: Row): row is Row & { lookup: LogoLookup & { imageUrl: string } } {
   return "imageUrl" in row.lookup && !!row.lookup.imageUrl && row.save?.status !== "saved";
 }
 
-/** "Fill all missing": every club without a badge with its proposed logo, a page at a time */
+/** "Fill all missing": every club without a badge with its proposed logo, most-used first, a page at a time */
 export default function MissingLogosPanel({ onClose }: { onClose: () => void }) {
   const [offset, setOffset] = useState(0);
   const [total, setTotal] = useState<number | null>(null);
@@ -128,7 +132,7 @@ export default function MissingLogosPanel({ onClose }: { onClose: () => void }) 
       <li key={club.id} className="flex items-center gap-3 py-2">
         <div className="w-40 shrink-0 min-w-0">
           <p className="text-sm text-white truncate" title={club.name}>{club.name}</p>
-          <p className="text-[11px] text-gray-500 truncate">{club.id}</p>
+          <p className="text-[11px] text-gray-500 truncate" title="Spells in players' club histories">{club.id} · {usageLabel(club.usage_count)}</p>
         </div>
         <div className={`flex-1 min-w-0 ${row.accepted || lookup.status !== "found" ? "" : "opacity-50"}`}>
           {lookup.status === "loading" && <p className="text-xs text-gray-400">Looking on Wikipedia...</p>}
@@ -181,7 +185,7 @@ export default function MissingLogosPanel({ onClose }: { onClose: () => void }) 
         <h3 className="text-sm font-semibold text-white">Fill all missing logos</h3>
         {total !== null && rows && (
           <span className="text-xs text-gray-400">
-            {total.toLocaleString()} clubs without a logo · showing {Math.min(offset + 1, total)}–{Math.min(offset + rows.length, total)}
+            {total.toLocaleString()} clubs without a logo, most-used first · showing {Math.min(offset + 1, total)}–{Math.min(offset + rows.length, total)}
           </span>
         )}
         <button onClick={onClose} disabled={saving} className="ml-auto text-xs text-gray-400 hover:text-white transition-colors">

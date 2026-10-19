@@ -31,7 +31,7 @@ A football (soccer) trivia web app with multiple game modes, deployed to GitHub 
 - `npx tsx scripts/import-transfermarkt.ts` — Import target league players
 - `npx tsx scripts/import-transfermarkt.ts --all` — Import all players from dataset
 - `npx tsx scripts/backfill-wikidata.ts` — Backfill missing club history from Wikidata
-- `npx tsx --env-file=.env scripts/backfill-club-logos.ts --dry-run` — Find logos for clubs with no badge on Wikidata/Wikipedia (`--club <id>`, `--limit <n>`; drop `--dry-run` to save them)
+- `npx tsx --env-file=.env scripts/backfill-club-logos.ts --dry-run` — Find logos for clubs with no badge on Wikidata/Wikipedia, most-used first (`--club <id>`, `--limit <n>`; drop `--dry-run` to save them)
 - `npx tsx scripts/copy-db.ts` — Copy data between Supabase instances (e.g. production to a new or local project)
 
 ## Project Structure
@@ -76,7 +76,7 @@ src/
       ImageDropZone.tsx   — Drag-and-drop image upload (club crests, player photos)
       clubLogo.ts         — Pure logo lookup rules: club id → Wikidata/TransferMarkt/name lookup, article pick, crest-vs-photo check
       FindLogoPanel.tsx   — "Find logo" on a club row with no badge: preview, Accept/Skip
-      MissingLogosPanel.tsx — "Fill all missing": clubs without a badge a page at a time, found vs check-by-hand, accept all or per row
+      MissingLogosPanel.tsx — "Fill all missing": clubs without a badge, most-used first (`get_clubs_without_badge` RPC), a page at a time, found vs check-by-hand, accept all or per row
       LogoCandidate.tsx   — Logo preview (or check-by-hand reason) shared by both
     NotFound/           — Catch-all "Page not found" screen with a link back to Home
       index.tsx, types.ts
