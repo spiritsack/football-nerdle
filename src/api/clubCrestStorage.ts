@@ -5,6 +5,8 @@
  */
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { isDuplicateClub } from "../pages/Admin/clubLogo";
+import { downloadLogo } from "./clubLogoLookup";
+import type { LogoLookup } from "./clubLogoLookup";
 
 const BUCKET = "club-crests";
 
@@ -69,4 +71,34 @@ export async function shareClubCrest(client: SupabaseClient, clubIds: string[], 
     return [];
   }
   return (data ?? []).map((c) => c.id);
+}
+
+/**
+ * Save a logo the lookup found (or a person accepted) for a club. A youth team
+ * whose parent has a badge just points at the parent's crest, so a new parent
+ * crest uploaded later reaches it too. Otherwise the image is downloaded into
+ * the bucket as the club's crest (the parent's, for a youth team) and shared
+ * with same-named duplicates without a badge. `alsoFilled`: the other clubs
+ * that got the crest. Throws with a message the UI can show.
+ */
+export async function saveFoundLogo(
+  client: SupabaseClient,
+  club: { id: string; name: string },
+  logo: LogoLookup & { imageUrl: string },
+  headers?: HeadersInit,
+): Promise<{ badge: string; alsoFilled: string[] }> {
+  if (logo.parent?.badge) {
+    const shared = await shareClubCrest(client, [club.id], logo.parent.badge);
+    if (shared.length === 0) throw new Error("Couldn't point the badge at the parent's crest");
+    return { badge: logo.parent.badge, alsoFilled: [] };
+  }
+
+  const owner = logo.parent ?? club;
+  const { blob, ext } = await downloadLogo(logo.imageUrl, headers);
+  const badge = await storeClubCrest(client, owner.id, blob, ext);
+  if (!badge) throw new Error("Upload failed");
+  const others = await findDuplicateClubsWithoutBadge(client, owner.id, owner.name);
+  if (logo.parent) others.push(club.id);
+  const alsoFilled = await shareClubCrest(client, others, badge);
+  return { badge, alsoFilled: logo.parent ? [owner.id, ...alsoFilled.filter((id) => id !== club.id)] : alsoFilled };
 }

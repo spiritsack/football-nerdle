@@ -3,8 +3,9 @@ import type { Player } from "../types";
 import type { AdminClubRow } from "../pages/Admin/types";
 import { finalOrder } from "../pages/Admin/clubHistoryCleanup";
 import type { CleanupPlan, ProposedRow } from "../pages/Admin/clubHistoryCleanup";
-import { findDuplicateClubsWithoutBadge, shareClubCrest, storeClubCrest } from "./clubCrestStorage";
-import { downloadLogo } from "./clubLogoLookup";
+import { saveFoundLogo, storeClubCrest } from "./clubCrestStorage";
+import { findClubOrParentLogo } from "./clubLogoLookup";
+import type { LogoClub, LogoLookup } from "./clubLogoLookup";
 
 // --- Player lookup ---
 
@@ -413,22 +414,23 @@ export async function getClubsWithoutBadge(
   };
 }
 
+/** Look up a club's logo; a youth team uses its parent club's (see findClubOrParentLogo) */
+export async function findLogo(club: LogoClub): Promise<LogoLookup> {
+  if (!supabase) throw new Error("Supabase is not configured");
+  return findClubOrParentLogo(supabase, club);
+}
+
 /**
- * Download a logo found on Wikipedia, store our own copy as the club's crest,
- * and give a same-named duplicate club without a badge the same crest.
- * Throws with a message the UI can show.
+ * Save a found logo as the club's crest: our own copy of a Wikipedia logo, or
+ * the parent club's crest for a youth team. Same-named duplicates without a
+ * badge get it too. Throws with a message the UI can show.
  */
 export async function saveClubLogo(
   club: { id: string; name: string },
-  imageUrl: string,
+  logo: LogoLookup & { imageUrl: string },
 ): Promise<{ badge: string; alsoFilled: string[] }> {
   if (!supabase) throw new Error("Supabase is not configured");
-  const { blob, ext } = await downloadLogo(imageUrl);
-  const badge = await storeClubCrest(supabase, club.id, blob, ext);
-  if (!badge) throw new Error("Upload failed");
-  const duplicates = await findDuplicateClubsWithoutBadge(supabase, club.id, club.name);
-  const alsoFilled = await shareClubCrest(supabase, duplicates, badge);
-  return { badge, alsoFilled };
+  return saveFoundLogo(supabase, club, logo);
 }
 
 // --- Player thumbnail operations ---

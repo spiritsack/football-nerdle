@@ -122,3 +122,125 @@ export function extensionForMime(mime: string): string | null {
   const type = mime.split(";")[0].trim().toLowerCase();
   return { "image/png": "png", "image/jpeg": "jpg", "image/webp": "webp", "image/svg+xml": "svg", "image/gif": "gif" }[type] ?? null;
 }
+
+// TransferMarkt abbreviates youth/reserve teams: "Derby U18", "Lens Yth.", "Malmö FF Jgd.", "Toulouse For.", "Sevilla FC C"
+const YOUTH_SUFFIX =
+  /\s+-?\s*(U-?\d{2}|Sub-?\d{2}|S\d{2}|Yth\.?|Youth|Yout|You|Y\.?|Jgd\.?|Jugend|Jun\.|J\.|Gio\.|Giovanili|Primavera|For\.?|Fo\.|Formação|Acad\.|Academy|II|III|B|C|2|3|Reserves?|Res\.|Juvenil(?: [AB])?|Juv\.?(?: [AB])?)$/;
+
+/** The parent club's name for a youth or reserve team ("Derby U18" → "Derby"), or null for a first team */
+export function parentClubName(name: string): string | null {
+  const trimmed = name.trim();
+  const match = YOUTH_SUFFIX.exec(trimmed);
+  if (!match) return null;
+  const base = trimmed.slice(0, match.index).trim();
+  return base || null;
+}
+
+/** Key for matching a parent name: case, accents and punctuation don't count ("SönderjyskE" = "Sonderjyske") */
+export function parentNameKey(name: string): string {
+  return normalizeClubName(name.normalize("NFD").replace(/[̀-ͯ]/g, ""))
+    .replace(/[^a-z0-9 ]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+/**
+ * An `ilike` pattern that finds every club whose name could have the same
+ * parentNameKey: vowels (the letters that usually carry an accent) and
+ * anything that isn't an ASCII letter or digit become `_`, so "Concordia" also
+ * finds "Concórdia". Keeping the consonants keeps the result small: at most
+ * ~175 rows for any youth team in the data. Filter the rows with pickParentClub.
+ */
+export function parentNamePattern(name: string): string {
+  return [...name.trim()].map((ch) => (/[a-z0-9]/i.test(ch) && !/[aeiouy]/i.test(ch) ? ch : "_")).join("");
+}
+
+export interface ParentCandidate {
+  id: string;
+  name: string;
+  badge: string;
+}
+
+export type ParentPick =
+  | { kind: "match"; parent: ParentCandidate }
+  | { kind: "ambiguous"; candidates: ParentCandidate[] }
+  /** Another club has the youth team's own name (two TransferMarkt "Red Star U19"), so its parent can't be told apart */
+  | { kind: "same-name"; others: ParentCandidate[] }
+  | { kind: "none" };
+
+/** wd_ items have the best Wikidata link, then tm_ (TransferMarkt id), then sportsdb (name only) */
+const SOURCE_RANK: Record<string, number> = { wd: 0, tm: 1, sportsdb: 2 };
+
+/** Fewest players a youth team must share with a club for that club to count as its parent */
+export const MIN_SHARED_PLAYERS = 2;
+
+/** Prefer a copy with a badge, then the one with the best Wikipedia link */
+function bestCopy(copies: ParentCandidate[]): ParentCandidate {
+  return [...copies].sort((a, b) =>
+    Number(!a.badge) - Number(!b.badge) || SOURCE_RANK[idSource(a.id)] - SOURCE_RANK[idSource(b.id)])[0];
+}
+
+/** Clubs with the youth team's parent name, and first teams whose name starts with it */
+export function parentPool(
+  youth: { id: string; name: string },
+  candidates: ParentCandidate[],
+): { exact: ParentCandidate[]; longer: ParentCandidate[] } {
+  const base = parentClubName(youth.name);
+  if (!base) return { exact: [], longer: [] };
+  const key = parentNameKey(base);
+  const others = candidates.filter((c) => c.id !== youth.id);
+  return {
+    exact: others.filter((c) => parentNameKey(c.name) === key),
+    longer: others.filter((c) => !parentClubName(c.name) && parentNameKey(c.name).startsWith(`${key} `)),
+  };
+}
+
+/**
+ * Pick a youth team's parent. TransferMarkt shortens names, so "Newcastle U18"
+ * can belong to "Newcastle United" as well as to a club called "Newcastle":
+ * the candidates are clubs with the parent's name and first teams whose name
+ * starts with it. `sharedPlayers` (club id → players who also played for the
+ * youth team) decides: the parent is the one candidate that clearly shares the
+ * most. With no shared players, a single club with exactly the parent's name
+ * is a match, and so is one club imported from several sources (sportsdb
+ * "133612" and "tm_985" "Manchester United"), or same-named clubs with one
+ * badge. Anything else is ambiguous, never guessed. `candidates` should also
+ * hold clubs with the youth team's own name: another youth team from the same
+ * source with that name ("Red Star U19" twice) can't be told apart.
+ */
+export function pickParentClub(
+  youth: { id: string; name: string },
+  candidates: ParentCandidate[],
+  sharedPlayers: Record<string, number> = {},
+): ParentPick {
+  const base = parentClubName(youth.name);
+  if (!base) return { kind: "none" };
+  const ownKey = parentNameKey(youth.name);
+  const others = candidates.filter((c) =>
+    c.id !== youth.id && idSource(c.id) === idSource(youth.id) && parentNameKey(c.name) === ownKey);
+  if (others.length > 0) return { kind: "same-name", others };
+
+  const { exact, longer } = parentPool(youth, candidates);
+  const pool = [...exact, ...longer];
+  if (pool.length === 0) return { kind: "none" };
+
+  const shared = (c: ParentCandidate) => sharedPlayers[c.id] ?? 0;
+  const ranked = pool.filter((c) => shared(c) > 0).sort((a, b) => shared(b) - shared(a));
+  if (ranked.length > 0) {
+    const [top, next] = ranked;
+    if (shared(top) < MIN_SHARED_PLAYERS || (next && shared(next) === shared(top))) {
+      return { kind: "ambiguous", candidates: ranked };
+    }
+    // Copies of the same club from other sources have no player history of their own
+    const topKey = parentNameKey(top.name);
+    const copies = pool.filter((c) => idSource(c.id) !== idSource(top.id) && parentNameKey(c.name) === topKey);
+    return { kind: "match", parent: bestCopy([top, ...copies]) };
+  }
+
+  if (longer.length > 0 || exact.length === 0) return { kind: "ambiguous", candidates: pool };
+  const sources = new Set(exact.map((c) => idSource(c.id)));
+  const badges = new Set(exact.map((c) => c.badge));
+  const oneClub = sources.size === exact.length || (badges.size === 1 && !badges.has(""));
+  if (!oneClub) return { kind: "ambiguous", candidates: exact };
+  return { kind: "match", parent: bestCopy(exact) };
+}

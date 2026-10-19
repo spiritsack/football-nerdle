@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
-import { getClubsWithoutBadge, saveClubLogo } from "../../api/adminApi";
+import { findLogo, getClubsWithoutBadge, saveClubLogo } from "../../api/adminApi";
 import type { MissingBadgeClub } from "../../api/adminApi";
-import { findClubLogo } from "../../api/clubLogoLookup";
 import type { LogoLookup } from "../../api/clubLogoLookup";
 import LogoCandidate from "./LogoCandidate";
 import { LOGO_LOOKUP_CONCURRENCY, MISSING_LOGOS_PAGE_SIZE } from "./constants";
@@ -48,7 +47,7 @@ export default function MissingLogosPanel({ onClose }: { onClose: () => void }) 
 
   const lookUp = useCallback(async (club: MissingBadgeClub, isCancelled: () => boolean) => {
     try {
-      const logo = await findClubLogo(club);
+      const logo = await findLogo(club);
       if (!isCancelled()) updateRow(club.id, (r) => ({ ...r, lookup: logo, accepted: logo.status === "found" }));
     } catch (err) {
       console.error(`Find logo failed for ${club.id}:`, err);
@@ -88,7 +87,7 @@ export default function MissingLogosPanel({ onClose }: { onClose: () => void }) 
       if (filled.has(row.club.id) || !canSave(row)) continue;
       updateRow(row.club.id, (r) => ({ ...r, save: { status: "saving" } }));
       try {
-        const { badge, alsoFilled } = await saveClubLogo(row.club, row.lookup.imageUrl);
+        const { badge, alsoFilled } = await saveClubLogo(row.club, row.lookup);
         saved++;
         filled.add(row.club.id);
         updateRow(row.club.id, (r) => ({

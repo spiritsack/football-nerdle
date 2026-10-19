@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
-import { findClubLogo } from "../../api/clubLogoLookup";
 import type { LogoLookup } from "../../api/clubLogoLookup";
-import { saveClubLogo } from "../../api/adminApi";
+import { findLogo, saveClubLogo } from "../../api/adminApi";
 import LogoCandidate from "./LogoCandidate";
 
 interface Props {
@@ -24,7 +23,7 @@ export default function FindLogoPanel({ club, onSaved, onClose }: Props) {
 
   useEffect(() => {
     let cancelled = false;
-    findClubLogo({ id, name })
+    findLogo({ id, name })
       .then((logo) => { if (!cancelled) setState({ status: "ready", logo, saving: false, saveError: null }); })
       .catch((err: unknown) => {
         console.error("Find logo failed:", err);
@@ -42,7 +41,7 @@ export default function FindLogoPanel({ club, onSaved, onClose }: Props) {
     if (!logo.imageUrl) return;
     setState({ status: "ready", logo, saving: true, saveError: null });
     try {
-      const { badge, alsoFilled } = await saveClubLogo(club, logo.imageUrl);
+      const { badge, alsoFilled } = await saveClubLogo(club, { ...logo, imageUrl: logo.imageUrl });
       onSaved(badge, alsoFilled);
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
@@ -81,7 +80,7 @@ export default function FindLogoPanel({ club, onSaved, onClose }: Props) {
                   onClick={() => accept(state.logo)}
                   disabled={state.saving}
                   className="px-2.5 py-1 bg-green-600 hover:bg-green-700 disabled:opacity-40 disabled:cursor-not-allowed text-white text-xs font-medium rounded-lg transition-colors"
-                  title={state.logo.status === "review" ? "Use this image anyway — you've checked it by hand" : "Download this logo and save it as the club's crest"}
+                  title={state.logo.status === "review" ? "Use this image anyway — you've checked it by hand" : state.logo.source === "parent" ? "Use the parent club's crest for this club" : "Download this logo and save it as the club's crest"}
                 >
                   {state.saving ? "Saving..." : state.logo.status === "review" ? "Use anyway" : "Accept"}
                 </button>

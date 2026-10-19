@@ -6,7 +6,12 @@ const FOUND_BY: Record<string, string> = {
   name: "name search",
 };
 
-/** Preview of a logo found on Wikipedia, or why it needs checking by hand */
+const SOURCE: Record<string, string> = {
+  wikidata: "Wikidata logo",
+  article: "article image",
+};
+
+/** Preview of a logo found on Wikipedia or reused from a youth team's parent club, or why it needs checking by hand */
 export default function LogoCandidate({ logo }: { logo: LogoLookup }) {
   return (
     <div className="flex items-center gap-3 min-w-0">
@@ -18,10 +23,18 @@ export default function LogoCandidate({ logo }: { logo: LogoLookup }) {
         )}
       </div>
       <div className="min-w-0 text-xs">
-        {logo.status === "found" ? (
+        {logo.parent && (
+          <p className="text-sky-300 truncate" title={`${logo.parent.name} (${logo.parent.id})`}>
+            From parent club {logo.parent.name}
+            <span className="text-gray-500"> · {logo.parent.id}</span>
+          </p>
+        )}
+        {logo.status === "found" && logo.source === "parent" ? (
+          <p className="text-gray-500 truncate">Its current crest</p>
+        ) : logo.status === "found" ? (
           <p className="text-gray-300 truncate" title={logo.file}>
             {logo.file}
-            <span className="text-gray-500"> · {logo.source === "wikidata" ? "Wikidata logo" : "article image"}, by {FOUND_BY[logo.foundBy]}</span>
+            <span className="text-gray-500"> · {SOURCE[logo.source]}, by {FOUND_BY[logo.foundBy]}</span>
           </p>
         ) : (
           <p className="text-amber-200">
