@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { sortAndMergeTeams, isNationalTeam } from "../api/playerCache";
+import { sortAndMergeTeams, isNationalTeam, toFormerTeams, type PlayerClubRow } from "../api/playerCache";
 import type { FormerTeam } from "../types";
 
 function team(id: string, name: string, joined: string, departed: string): FormerTeam {
@@ -135,5 +135,59 @@ describe("isNationalTeam", () => {
   it("handles case insensitivity", () => {
     expect(isNationalTeam("argentina", countries)).toBe(true);
     expect(isNationalTeam("FRANCE", countries)).toBe(true);
+  });
+});
+
+function pcRow(club_id: string, name: string, joined: string, departed: string, sort_order: number | null, flags: Partial<PlayerClubRow> = {}): PlayerClubRow {
+  return {
+    club_id, year_joined: joined, year_departed: departed, sort_order,
+    is_hidden: false, is_youth_team: false, is_loan: false,
+    clubs: { id: club_id, name, badge: "" },
+    ...flags,
+  };
+}
+
+describe("sortAndMergeTeams loans", () => {
+  it("keeps the last club when a loan is followed by a permanent move with the same club id", () => {
+    const merged = sortAndMergeTeams([
+      { ...team("1", "Club A", "2015", "2019") },
+      { ...team("2", "Club B", "2019", "2020"), isLoan: true },
+      { ...team("2", "Club B", "2020", "") },
+    ]);
+    expect(merged).toHaveLength(3);
+    expect(merged[1]).toMatchObject({ yearDeparted: "2020", isLoan: true });
+    expect(merged[2]).toMatchObject({ teamId: "2", yearJoined: "2020", yearDeparted: "" });
+    expect(merged[2].isLoan).toBeFalsy();
+  });
+});
+
+describe("toFormerTeams", () => {
+  const countries = new Set(["england"]);
+
+  it("leaves out hidden, youth and national-team rows", () => {
+    const teams = toFormerTeams([
+      pcRow("y", "Chelsea U18", "2014", "2015", null, { is_youth_team: true }),
+      pcRow("c", "Chelsea FC", "2015", "2021", null),
+      pcRow("n", "England U21", "2018", "2019", null),
+      pcRow("h", "Hidden FC", "2016", "2016", null, { is_hidden: true }),
+      pcRow("m", "AC Milan", "2021", "", null),
+    ], countries);
+    expect(teams.map((t) => t.teamId)).toEqual(["c", "m"]);
+  });
+
+  it("keeps a hidden last club hidden", () => {
+    const teams = toFormerTeams([
+      pcRow("c", "Chelsea FC", "2015", "2021", 0),
+      pcRow("m", "AC Milan", "2021", "", 1, { is_hidden: true }),
+    ], countries);
+    expect(teams.map((t) => t.teamId)).toEqual(["c"]);
+  });
+
+  it("orders by sort_order when any row has one", () => {
+    const teams = toFormerTeams([
+      pcRow("b", "Club B", "2010", "2012", 1),
+      pcRow("a", "Club A", "2012", "", 0),
+    ], countries);
+    expect(teams.map((t) => t.teamId)).toEqual(["a", "b"]);
   });
 });

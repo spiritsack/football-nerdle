@@ -4,6 +4,7 @@ import { Check, X, type LucideIcon } from "lucide-react";
 import { getAllScheduledDays } from "../../../api/dailySchedule";
 import { getDayNumber, getDailyResultForDate } from "../helpers";
 import { SEED_PLAYERS } from "../../../data/seedPlayers";
+import { getTodayString } from "../../../utils/dates";
 import AppShell from "../../../components/AppShell";
 import { BACK_LINK, PANEL } from "../../../theme";
 
@@ -37,7 +38,7 @@ export default function GuessArchive() {
   useEffect(() => {
     async function load() {
       const rows = await getAllScheduledDays();
-      const today = new Date().toISOString().split("T")[0];
+      const today = getTodayString();
       const result = rows
         .filter((r) => r.date < today) // only past days
         .map((r) => {

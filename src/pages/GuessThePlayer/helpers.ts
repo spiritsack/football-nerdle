@@ -83,7 +83,9 @@ export function mergeConsecutiveClubs(clubs: FormerTeam[]): MergedClub[] {
   for (const club of clubs) {
     const baseName = getBaseClubName(club.teamName);
     const last = merged[merged.length - 1];
-    if (last && getBaseClubName(last.teamName) === baseName) {
+    // A loan never merges with a permanent spell: a loan followed by a permanent move to
+    // the same club (often a different club id with the same name) is two tiles, as in Admin
+    if (last && getBaseClubName(last.teamName) === baseName && !last.isLoan === !club.isLoan) {
       last.stints.push(club);
       if (!last.yearJoined || (club.yearJoined && club.yearJoined < last.yearJoined)) {
         last.yearJoined = club.yearJoined;

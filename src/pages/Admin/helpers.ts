@@ -1,5 +1,22 @@
 import type { Player } from "../../types";
 import type { DayState, ScheduleOp } from "./types";
+import { formatLocalDate } from "../../utils/dates";
+
+/**
+ * Local `YYYY-MM-DD` days from `daysBack` days before `now` up to (not including)
+ * `daysAhead` days after it. Each day is built with the local Date constructor,
+ * so no time of day is carried over and DST changes never skip or repeat a day.
+ */
+export function getDateRange(daysBack: number, daysAhead: number, now: Date = new Date()): string[] {
+  const y = now.getFullYear();
+  const m = now.getMonth();
+  const d = now.getDate();
+  const dates: string[] = [];
+  for (let i = -daysBack; i < daysAhead; i++) {
+    dates.push(formatLocalDate(new Date(y, m, d + i)));
+  }
+  return dates;
+}
 
 /**
  * Move an item within a list from one index to another (pure).
