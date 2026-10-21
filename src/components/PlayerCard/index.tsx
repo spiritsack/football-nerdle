@@ -195,26 +195,33 @@ export default function PlayerCard({ player, clubs, hints, revealed, hardMode, r
       )}
 
       {!revealed && onGuess && (
-        <div className="flex items-center gap-2 w-full">
-          <div className="flex-1 min-w-0">
-            <PlayerSearch
-              onSelect={onGuess}
-              disabledPlayerIds={disabledPlayerIds}
-              placeholder={hints.initials
-                ? player.name.split(" ").map((part) => part[0] + ".".repeat(part.length - 1)).join(" ")
-                : "Player name"}
-            />
+        // Sticky to the viewport bottom while the card runs past the fold; settles under the hints at the end.
+        // No ancestor may set overflow, or sticky stops working.
+        <div
+          data-testid="guess-bar"
+          className="sticky bottom-0 z-20 -mx-4 sm:-mx-6 px-4 sm:px-6 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] bg-slate-900/75 backdrop-blur-lg border-t border-slate-800 shadow-[0_-8px_32px_rgba(0,0,0,0.37)] lg:rounded-t-2xl lg:border-x"
+        >
+          <div className="flex items-center gap-2 w-full">
+            <div className="flex-1 min-w-0">
+              <PlayerSearch
+                onSelect={onGuess}
+                disabledPlayerIds={disabledPlayerIds}
+                placeholder={hints.initials
+                  ? player.name.split(" ").map((part) => part[0] + ".".repeat(part.length - 1)).join(" ")
+                  : "Player name"}
+              />
+            </div>
+            {onSkip && (
+              <button
+                onClick={onSkip}
+                className="px-4 py-3.5 glass-card border-slate-700 hover:bg-slate-800 text-slate-300 hover:text-white text-sm font-bold rounded-xl transition-colors shrink-0 inline-flex items-center gap-1.5"
+                title={`Skip and reveal hint (${(attempts ?? 0) + 1}/${maxAttempts ?? 5})`}
+              >
+                <SkipForward className="w-4 h-4" aria-hidden="true" />
+                Skip
+              </button>
+            )}
           </div>
-          {onSkip && (
-            <button
-              onClick={onSkip}
-              className="px-4 py-3.5 glass-card border-slate-700 hover:bg-slate-800 text-slate-300 hover:text-white text-sm font-bold rounded-xl transition-colors shrink-0 inline-flex items-center gap-1.5"
-              title={`Skip and reveal hint (${(attempts ?? 0) + 1}/${maxAttempts ?? 5})`}
-            >
-              <SkipForward className="w-4 h-4" aria-hidden="true" />
-              Skip
-            </button>
-          )}
         </div>
       )}
     </div>
