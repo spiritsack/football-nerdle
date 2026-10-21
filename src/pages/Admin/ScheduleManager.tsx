@@ -3,7 +3,8 @@ import { SEED_PLAYERS } from "../../data/seedPlayers";
 import { getAllScheduledDays } from "../../api/dailySchedule";
 import { upsertSchedule, deleteSchedule, getScheduleRange, getPlayerThumbnails, getPlayersByIds, uploadPlayerThumbnail } from "../../api/adminApi";
 import { SCHEDULE_DAYS_AHEAD, SCHEDULE_DAYS_BACK } from "./constants";
-import { reshuffleSuggestions, movePlayerBetweenDays } from "./helpers";
+import { reshuffleSuggestions, movePlayerBetweenDays, getDateRange } from "./helpers";
+import { getTodayString } from "../../utils/dates";
 import type { DayState } from "./types";
 import type { Player } from "../../types";
 import PlayerSearch from "../../components/PlayerSearch";
@@ -13,21 +14,6 @@ import ImageDropZone from "./ImageDropZone";
 function formatDate(dateStr: string): string {
   const d = new Date(dateStr + "T12:00:00");
   return d.toLocaleDateString("en-GB", { weekday: "short", month: "short", day: "numeric" });
-}
-
-function getTodayString(): string {
-  return new Date().toISOString().slice(0, 10);
-}
-
-function getDateRange(daysBack: number, daysAhead: number): string[] {
-  const today = new Date();
-  const dates: string[] = [];
-  for (let i = -daysBack; i < daysAhead; i++) {
-    const d = new Date(today);
-    d.setDate(today.getDate() + i);
-    dates.push(d.toISOString().slice(0, 10));
-  }
-  return dates;
 }
 
 export default function ScheduleManager() {

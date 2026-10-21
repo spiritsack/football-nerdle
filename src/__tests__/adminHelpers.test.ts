@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { reshuffleSuggestions, reorderList, movePlayerBetweenDays } from "../pages/Admin/helpers";
+import { reshuffleSuggestions, reorderList, movePlayerBetweenDays, getDateRange } from "../pages/Admin/helpers";
 import type { DayState } from "../pages/Admin/types";
 import type { Player } from "../types";
 
@@ -155,5 +155,35 @@ describe("movePlayerBetweenDays", () => {
     movePlayerBetweenDays(days, "2026-06-11", "2026-06-12", TODAY);
     expect(days[0].assignedPlayer?.id).toBe("a");
     expect(days[1].assignedPlayer?.id).toBe("b");
+  });
+});
+
+describe("getDateRange", () => {
+  it("getDateRange lists local days around now", () => {
+    expect(getDateRange(2, 3, new Date(2026, 9, 22, 0, 30))).toEqual([
+      "2026-10-20",
+      "2026-10-21",
+      "2026-10-22",
+      "2026-10-23",
+      "2026-10-24",
+    ]);
+  });
+
+  it("does not skip or repeat a day across the EU DST change", () => {
+    expect(getDateRange(1, 3, new Date(2026, 9, 25, 1, 30))).toEqual([
+      "2026-10-24",
+      "2026-10-25",
+      "2026-10-26",
+      "2026-10-27",
+    ]);
+  });
+
+  it("crosses month and year boundaries", () => {
+    expect(getDateRange(1, 2, new Date(2026, 11, 31, 12))).toEqual(["2026-12-30", "2026-12-31", "2027-01-01"]);
+    expect(getDateRange(1, 1, new Date(2026, 2, 1, 0, 30))).toEqual(["2026-02-28", "2026-03-01"]);
+  });
+
+  it("returns an empty list for an empty range", () => {
+    expect(getDateRange(0, 0, new Date(2026, 9, 22, 0, 30))).toEqual([]);
   });
 });

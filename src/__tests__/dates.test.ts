@@ -1,5 +1,30 @@
-import { describe, it, expect } from "vitest";
-import { getMsUntilNextDay } from "../utils/dates";
+import { describe, it, expect, vi, afterEach } from "vitest";
+import { formatLocalDate, getMsUntilNextDay, getTodayString } from "../utils/dates";
+
+describe("formatLocalDate", () => {
+  it("formatLocalDate uses the local calendar day", () => {
+    // 00:30 local is still the previous day in UTC east of Greenwich
+    expect(formatLocalDate(new Date(2026, 9, 22, 0, 30))).toBe("2026-10-22");
+  });
+
+  it("pads month and day", () => {
+    // 23:59 local is already the next day in UTC west of Greenwich
+    expect(formatLocalDate(new Date(2026, 0, 5, 23, 59))).toBe("2026-01-05");
+  });
+});
+
+describe("getTodayString", () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("returns the local date just after local midnight", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(2026, 9, 22, 0, 30));
+    expect(getTodayString()).toBe("2026-10-22");
+    expect(getTodayString()).toBe(formatLocalDate(new Date()));
+  });
+});
 
 describe("getMsUntilNextDay", () => {
   it("returns the time left until local midnight ending the day", () => {

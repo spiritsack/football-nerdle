@@ -35,6 +35,7 @@ The daily game must remain backwards compatible. Changing day numbering, share t
 
 - All player data comes from Supabase (no runtime API calls)
 - Daily player selection via `daily_schedule` table (api/dailySchedule.ts)
+- "Today" is the player's local date from `utils/dates.ts` (`getTodayString` / `formatLocalDate`), shared by the game, Archive and Admin so they all pick the same `daily_schedule` row. Never use `toISOString()` to get a day: it is UTC and is off by one around local midnight
 - Player search queries `players` table via `ilike`
 - Guess matching compares by player ID or name (handles TransferMarkt ID differences)
 - Loaders (`startDaily`, `loadArchiveDay`, `startById`) are guarded by `createLoadGuard`: the latest started load wins, and an older load's result or error is dropped
