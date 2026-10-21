@@ -5,7 +5,7 @@ Route: `/guess` — Page: `index.tsx` — Hook: `useGuessGame.ts`
 ## How It Works
 
 1. A player's club history is shown (badges only in hard mode, full details in normal mode)
-2. Consecutive stints at related clubs are merged (e.g. Barcelona + Barcelona B = Barcelona)
+2. Consecutive stints at related clubs are merged (e.g. Barcelona + Barcelona B = Barcelona), by base name in `mergeConsecutiveClubs` (`helpers.ts`) and by club id in `sortAndMergeTeams` (`api/playerCache.ts`). A loan never merges with a permanent spell: a loan followed by signing for the same club shows as two tiles, as in Admin. Hidden, youth and national-team rows are left out (`toFormerTeams` in `api/playerCache.ts`)
 3. National team entries are filtered out
 4. User has 5 attempts to guess who it is
 5. Wrong guesses are listed (`formatWrongGuesses` in `helpers.ts`, `data-testid="wrong-guesses"`) during play and, for the session they were made in, on the won/lost result screen under the revealed card; correct guess or 5 failures ends the game. Guesses are not persisted, so a re-opened completed puzzle shows no guess line

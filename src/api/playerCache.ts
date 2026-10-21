@@ -61,7 +61,8 @@ export function sortAndMergeTeams(teams: FormerTeam[]): FormerTeam[] {
   const merged: FormerTeam[] = [];
   for (const team of sorted) {
     const last = merged[merged.length - 1];
-    if (last && last.teamId === team.teamId) {
+    // A loan and a permanent spell stay separate even at the same club (e.g. loan, then signed)
+    if (last && last.teamId === team.teamId && !last.isLoan === !team.isLoan) {
       const lastDep = parseInt(last.yearDeparted, 10) || 0;
       const currDep = parseInt(team.yearDeparted, 10) || 0;
       if (!team.yearDeparted || currDep > lastDep) {
@@ -74,7 +75,7 @@ export function sortAndMergeTeams(teams: FormerTeam[]): FormerTeam[] {
   return merged;
 }
 
-interface PlayerClubRow {
+export interface PlayerClubRow {
   club_id: string;
   year_joined: string;
   year_departed: string;
@@ -167,9 +168,13 @@ async function getFromCache(playerId: string, playerName?: string): Promise<Play
   return null;
 }
 
-async function buildPlayerWithTeams(row: PlayerRow): Promise<PlayerWithTeams> {
-  const countryNames = await getCountryNames();
-  const filtered = row.player_clubs
+/**
+ * The game's view of a player's club rows (pure): drops rows with no `clubs` join,
+ * hidden rows, youth rows and national teams, then orders them by `sort_order` when
+ * any row has one, else by year with consecutive same-club stints merged.
+ */
+export function toFormerTeams(rows: PlayerClubRow[], countryNames: Set<string>): FormerTeam[] {
+  const filtered = rows
     .filter((pc) => pc.clubs)
     .filter((pc) => !pc.is_hidden)
     .filter((pc) => !pc.is_youth_team)
@@ -191,9 +196,12 @@ async function buildPlayerWithTeams(row: PlayerRow): Promise<PlayerWithTeams> {
     isLoan: pc.is_loan || undefined,
   }));
 
-  const orderedTeams = hasCustomOrder
-    ? rawTeams
-    : sortAndMergeTeams(rawTeams);
+  return hasCustomOrder ? rawTeams : sortAndMergeTeams(rawTeams);
+}
+
+async function buildPlayerWithTeams(row: PlayerRow): Promise<PlayerWithTeams> {
+  const countryNames = await getCountryNames();
+  const orderedTeams = toFormerTeams(row.player_clubs, countryNames);
 
   return {
     id: row.id,
