@@ -2,6 +2,7 @@ import { describe, it, expect, vi } from "vitest";
 import { mergeConsecutiveClubs, getDailyPlayerIndex, getDayNumber, getDateForDay, getGuessAnnouncement, getAlreadyGuessedMap, getArchiveDayError, formatCountdown, formatWrongGuesses, shareResult, createLoadGuard } from "../pages/GuessThePlayer/helpers";
 import type { ShareNavigator } from "../pages/GuessThePlayer/types";
 import { toFormerTeams, type PlayerClubRow } from "../api/playerCache";
+import { pcRow } from "./helpers/playerClubRow";
 import { SEED_PLAYERS } from "../data/seedPlayers";
 
 describe("getDailyPlayerIndex (fallback sequential algorithm)", () => {
@@ -327,15 +328,6 @@ describe("createLoadGuard", () => {
 // first-team name; Tomori's permanent row pointing at it is a data error. The two
 // clubs were checked and deliberately not merged. The fixture tests id-based tile
 // logic, not live data.
-function pcRow(club_id: string, name: string, joined: string, departed: string, sort_order: number | null, flags: Partial<PlayerClubRow> = {}): PlayerClubRow {
-  return {
-    club_id, year_joined: joined, year_departed: departed, sort_order,
-    is_hidden: false, is_youth_team: false, is_loan: false,
-    clubs: { id: club_id, name, badge: "" },
-    ...flags,
-  };
-}
-
 const TOMORI_ROWS: PlayerClubRow[] = [
   pcRow("tm_631", "Chelsea FC", "2017", "2021", 3),
   pcRow("tm_9250", "Chelsea U23", "2015", "2017", 2, { is_youth_team: true }),
