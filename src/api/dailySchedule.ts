@@ -1,5 +1,10 @@
 import { supabase } from "./supabaseClient";
 import { SEED_PLAYERS } from "../data/seedPlayers";
+import { getPlayerWithTeamsCached } from "./playerCache";
+import {
+  DailyPuzzleError, MAX_FALLBACK_ATTEMPTS, NO_PUZZLE_MESSAGE, UNLOADABLE_PUZZLE_MESSAGE,
+  orderFallbackCandidates, pickPlayableCandidate,
+} from "./dailyFallback";
 import type { Player } from "../types";
 
 async function lookupPlayerById(id: string): Promise<Player | null> {
@@ -30,6 +35,20 @@ function fallbackDailyPlayer(date: string): Player {
   return SEED_PLAYERS[(dayNum - 1) % SEED_PLAYERS.length];
 }
 
+/** A player the daily can show: their club history loads with at least one visible club. */
+async function isPlayableDailyPlayer(player: Player): Promise<boolean> {
+  try {
+    const withTeams = await getPlayerWithTeamsCached(player);
+    return withTeams.formerTeams.length > 0;
+  } catch {
+    return false;
+  }
+}
+
+async function resolveScheduledPlayer(playerId: string): Promise<Player | null> {
+  return SEED_PLAYERS.find((p) => p.id === playerId) ?? await lookupPlayerById(playerId);
+}
+
 export async function getOrCreateDailyPlayer(date: string): Promise<Player> {
   if (!supabase) return fallbackDailyPlayer(date);
 
@@ -40,10 +59,11 @@ export async function getOrCreateDailyPlayer(date: string): Promise<Player> {
       .eq("date", date)
       .single();
 
+    // Today's row always wins: never swap in a random player for one user
     if (existing) {
-      const player = SEED_PLAYERS.find((p) => p.id === existing.player_id)
-        ?? await lookupPlayerById(existing.player_id);
+      const player = await resolveScheduledPlayer(existing.player_id);
       if (player) return player;
+      throw new DailyPuzzleError(UNLOADABLE_PUZZLE_MESSAGE);
     }
 
     const { data: usedRows } = await supabase
@@ -51,9 +71,9 @@ export async function getOrCreateDailyPlayer(date: string): Promise<Player> {
       .select("player_id");
 
     const usedIds = new Set((usedRows || []).map((r: { player_id: string }) => r.player_id));
-    const unused = SEED_PLAYERS.filter((p) => !usedIds.has(p.id));
-    const pool = unused.length > 0 ? unused : SEED_PLAYERS;
-    const picked = pool[Math.floor(Math.random() * pool.length)];
+    const candidates = orderFallbackCandidates(SEED_PLAYERS, usedIds);
+    const picked = await pickPlayableCandidate(candidates, isPlayableDailyPlayer, MAX_FALLBACK_ATTEMPTS);
+    if (!picked) throw new DailyPuzzleError(NO_PUZZLE_MESSAGE);
 
     // Insert — if another user beat us to it (race condition), this fails silently
     await supabase
@@ -67,14 +87,16 @@ export async function getOrCreateDailyPlayer(date: string): Promise<Player> {
       .eq("date", date)
       .single();
 
-    if (final) {
-      const player = SEED_PLAYERS.find((p) => p.id === final.player_id)
-        ?? await lookupPlayerById(final.player_id);
+    if (final && final.player_id !== picked.id) {
+      const player = await resolveScheduledPlayer(final.player_id);
       if (player) return player;
+      throw new DailyPuzzleError(UNLOADABLE_PUZZLE_MESSAGE);
     }
 
     return picked;
-  } catch {
+  } catch (e) {
+    // Only Supabase failures fall back; a daily-puzzle error is shown to the player
+    if (e instanceof DailyPuzzleError) throw e;
     return fallbackDailyPlayer(date);
   }
 }

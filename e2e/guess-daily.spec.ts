@@ -1,5 +1,5 @@
 import {
-  test, expect, mockDailySchedule, loadPuzzle, searchFor, seedStorage, todayString, type Page,
+  test, expect, mockDailySchedule, loadPuzzle, DATA_TIMEOUT, searchFor, seedStorage, todayString, type Page,
 } from "./fixtures";
 
 const openDaily = (page: Page) => loadPuzzle(page, () => page.goto("/#/guess"));
@@ -171,5 +171,108 @@ test.describe("Daily Guess the Player", () => {
   test("shows data updated timestamp", async ({ page }) => {
     await openDaily(page);
     await expect(page.getByText(/Data updated:/)).toBeVisible();
+  });
+});
+
+// No approved daily_schedule row for today: the first visitor's browser picks
+// a seed player, and must only save and show one that can actually be played.
+test.describe("Daily fallback when no player is scheduled", () => {
+  const NO_ROW = { code: "PGRST116", details: "The result contains 0 rows", hint: null, message: "JSON object requested, multiple (or no) rows returned" };
+
+  /** No row for today (PostgREST's `.single()` 406) and nothing used yet. Returns the captured insert bodies. */
+  async function mockEmptySchedule(page: Page) {
+    const inserted: { date: string; player_id: string }[] = [];
+    const today = todayString();
+    await page.route("**/rest/v1/daily_schedule*", async (route) => {
+      const request = route.request();
+      if (request.method() === "POST") {
+        inserted.push(request.postDataJSON());
+        return route.fallback(); // the blockDbWrites fixture records and stubs it
+      }
+      if (request.method() !== "GET") return route.fallback();
+      const date = new URL(request.url()).searchParams.get("date");
+      if (date === `eq.${today}`) {
+        return route.fulfill({ status: 406, contentType: "application/json", body: JSON.stringify(NO_ROW) });
+      }
+      if (!date) return route.fulfill({ status: 200, contentType: "application/json", body: "[]" });
+      return route.fallback();
+    });
+    return inserted;
+  }
+
+  /** Player-with-clubs lookups (`getFromCache`): `reject` decides which ones get no row. */
+  async function mockPlayerLookups(
+    page: Page,
+    reject: (lookup: { id: string | null; name: string | null }) => boolean,
+  ) {
+    const lookedUpIds: string[] = [];
+    await page.route("**/rest/v1/players*", (route) => {
+      const url = new URL(route.request().url());
+      if (route.request().method() !== "GET" || !url.searchParams.get("select")?.includes("player_clubs")) {
+        return route.fallback();
+      }
+      const id = url.searchParams.get("id")?.replace(/^eq\./, "") ?? null;
+      const name = url.searchParams.get("name")?.replace(/^ilike\./, "") ?? null;
+      if (id) lookedUpIds.push(id);
+      if (reject({ id, name })) {
+        return route.fulfill({ status: 406, contentType: "application/json", body: JSON.stringify(NO_ROW) });
+      }
+      return route.fallback();
+    });
+    return lookedUpIds;
+  }
+
+  test("skips an unplayable fallback player", async ({ page, blockedWrites }) => {
+    const inserted = await mockEmptySchedule(page);
+    // The first candidate checked is rejected, by id and by its name lookup
+    let rejectedId: string | null = null;
+    let rejectedName: string | null = null;
+    const lookedUpIds = await mockPlayerLookups(page, ({ id, name }) => {
+      if (id && rejectedId === null) rejectedId = id;
+      if (name && rejectedName === null) rejectedName = name;
+      return (id !== null && id === rejectedId) || (name !== null && name === rejectedName);
+    });
+
+    await loadPuzzle(page, () => page.goto("/#/guess"));
+    await expect(page.getByText(/Attempts:.*0.*\/.*5/)).toBeVisible();
+
+    expect(rejectedId).not.toBeNull();
+    expect(blockedWrites.filter((w) => w.url.includes("/rest/v1/daily_schedule"))).toHaveLength(1);
+    expect(inserted).toHaveLength(1);
+    expect(inserted[0].date).toBe(todayString());
+    expect(inserted[0].player_id).not.toBe(rejectedId);
+    // The saved player is one the fallback checked after the rejected one
+    expect(lookedUpIds.slice(1)).toContain(inserted[0].player_id);
+  });
+
+  test("shows an error when no fallback player is playable", async ({ page, blockedWrites }) => {
+    const inserted = await mockEmptySchedule(page);
+    const lookedUpIds = await mockPlayerLookups(page, () => true);
+
+    await page.goto("/#/guess");
+    await expect(page.getByRole("alert")).toHaveText(
+      "No puzzle is set up for today yet. Please try again later.", { timeout: DATA_TIMEOUT },
+    );
+    await expect(page.getByRole("button", { name: "Try Again" })).toBeVisible();
+    await expect(page.getByText("Club History")).toHaveCount(0);
+
+    // At most five candidates are checked, and nothing is saved
+    expect(new Set(lookedUpIds).size).toBe(5);
+    expect(inserted).toHaveLength(0);
+    expect(blockedWrites.filter((w) => w.url.includes("/rest/v1/daily_schedule"))).toHaveLength(0);
+  });
+
+  test("shows an error when today's scheduled player can't be loaded", async ({ page, blockedWrites }) => {
+    // tm_0 is not a player in the database
+    await mockDailySchedule(page, { date: todayString(), playerId: "tm_0" });
+
+    await page.goto("/#/guess");
+    await expect(page.getByRole("alert")).toHaveText(
+      "Today's puzzle couldn't be loaded. Please try again.", { timeout: DATA_TIMEOUT },
+    );
+    await expect(page.getByRole("button", { name: "Try Again" })).toBeVisible();
+    // Never a random other player
+    await expect(page.getByText("Club History")).toHaveCount(0);
+    expect(blockedWrites.filter((w) => w.url.includes("/rest/v1/daily_schedule"))).toHaveLength(0);
   });
 });

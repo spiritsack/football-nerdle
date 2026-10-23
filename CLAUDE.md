@@ -48,6 +48,7 @@ src/
     supabaseClient.ts   — Supabase client singleton
     playerCache.ts      — Player data queries: search, lookup
     dailySchedule.ts    — Daily player selection (Supabase daily_schedule table)
+    dailyFallback.ts    — Pure daily auto-pick rules: candidate order, first playable pick (max 5), DailyPuzzleError
     dailyLeaderboard.ts — Community leaderboard: submit results, fetch distribution
     multiplayerRoom.ts  — Room CRUD: createRoom, joinRoom, updateTurn, subscribeToRoom
     adminApi.ts         — Admin write operations: schedule, clubs, crests, player thumbnails, auto-clean writes
