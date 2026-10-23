@@ -42,6 +42,11 @@ describe("getBaseClubName", () => {
     expect(getBaseClubName("France Olympique")).toBe("France");
   });
 
+  it("strips Primavera (Italian youth team)", () => {
+    expect(getBaseClubName("AC Milan Primavera")).toBe("AC Milan");
+    expect(getBaseClubName("Inter Primavera")).toBe("Inter");
+  });
+
   it("leaves normal club names unchanged", () => {
     expect(getBaseClubName("FC Barcelona")).toBe("FC Barcelona");
     expect(getBaseClubName("Manchester United")).toBe("Manchester United");
@@ -61,11 +66,13 @@ describe("isYouthOrReserveTeam", () => {
     expect(isYouthOrReserveTeam("Arsenal U18")).toBe(true);
     expect(isYouthOrReserveTeam("Bayern Munich II")).toBe(true);
     expect(isYouthOrReserveTeam("AC Milan Youth")).toBe(true);
+    expect(isYouthOrReserveTeam("AC Milan Primavera")).toBe(true);
   });
 
   it("returns false for regular clubs", () => {
     expect(isYouthOrReserveTeam("FC Barcelona")).toBe(false);
     expect(isYouthOrReserveTeam("Inter Milan")).toBe(false);
+    expect(isYouthOrReserveTeam("AC Milan")).toBe(false);
     expect(isYouthOrReserveTeam("Arsenal FC")).toBe(false);
   });
 });

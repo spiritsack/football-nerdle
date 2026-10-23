@@ -324,10 +324,10 @@ describe("createLoadGuard", () => {
 
 // Rows shaped like player_clubs for Fikayo Tomori (tm_303254, daily puzzle 2026-10-21):
 // a loan to AC Milan (tm_5) then a permanent move (tm_10958), both named "AC Milan".
-// tm_10958 is TransferMarkt's "AC Milan Primavera" (youth team), stored under the
-// first-team name; Tomori's permanent row pointing at it is a data error. The two
-// clubs were checked and deliberately not merged. The fixture tests id-based tile
-// logic, not live data.
+// tm_10958 is TransferMarkt's "AC Milan Primavera" (youth team). Migration 017
+// renames it to "AC Milan Primavera" and moves Tomori's permanent row to tm_5; the
+// two clubs were deliberately not merged. This fixture keeps the pre-017 ids and
+// names on purpose: it tests id-based tile logic, not live data.
 const TOMORI_ROWS: PlayerClubRow[] = [
   pcRow("tm_631", "Chelsea FC", "2017", "2021", 3),
   pcRow("tm_9250", "Chelsea U23", "2015", "2017", 2, { is_youth_team: true }),
@@ -375,6 +375,25 @@ describe("mergeConsecutiveClubs", () => {
     expect(tiles).toHaveLength(2);
     expect(tiles[0]).toMatchObject({ teamName: "Barcelona", yearJoined: "2010", yearDeparted: "", badge: "x" });
     expect(tiles[0].stints).toHaveLength(2);
+  });
+
+  it("merges a Primavera spell into the following first-team spell", () => {
+    const tiles = mergeConsecutiveClubs([
+      { teamId: "tm_10958", teamName: "AC Milan Primavera", yearJoined: "2014", yearDeparted: "2016", badge: "" },
+      { teamId: "tm_5", teamName: "AC Milan", yearJoined: "2016", yearDeparted: "2019", badge: "m" },
+    ]);
+    expect(tiles).toHaveLength(1);
+    expect(tiles[0]).toMatchObject({ teamName: "AC Milan", yearJoined: "2014", yearDeparted: "2019", badge: "m" });
+    expect(tiles[0].stints).toHaveLength(2);
+  });
+
+  it("keeps a Primavera spell separate from a following first-team loan", () => {
+    const tiles = mergeConsecutiveClubs([
+      { teamId: "tm_10958", teamName: "AC Milan Primavera", yearJoined: "2014", yearDeparted: "2016", badge: "" },
+      { teamId: "tm_5", teamName: "AC Milan", yearJoined: "2016", yearDeparted: "2017", badge: "m", isLoan: true },
+    ]);
+    expect(tiles.map((t) => t.teamName)).toEqual(["AC Milan Primavera", "AC Milan"]);
+    expect(tiles[1].isLoan).toBe(true);
   });
 
   it("still merges two consecutive loans at the same club", () => {
