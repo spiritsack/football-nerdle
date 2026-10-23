@@ -275,4 +275,37 @@ test.describe("Daily fallback when no player is scheduled", () => {
     await expect(page.getByText("Club History")).toHaveCount(0);
     expect(blockedWrites.filter((w) => w.url.includes("/rest/v1/daily_schedule"))).toHaveLength(0);
   });
+
+  test("shows an error when today's schedule can't be read", async ({ page, blockedWrites }) => {
+    // Today's row is served (fixed player) once the read recovers
+    await mockDailySchedule(page, { date: todayString() });
+    // The first read of today's row fails with a 5xx, then reads go through
+    const today = todayString();
+    let failedReads = 0;
+    await page.route("**/rest/v1/daily_schedule*", (route) => {
+      const request = route.request();
+      const date = new URL(request.url()).searchParams.get("date");
+      if (request.method() === "GET" && date === `eq.${today}` && failedReads === 0) {
+        failedReads++;
+        return route.fulfill({
+          status: 500, contentType: "application/json", body: JSON.stringify({ code: "XX000", message: "boom" }),
+        });
+      }
+      return route.fallback();
+    });
+
+    await page.goto("/#/guess");
+    await expect(page.getByRole("alert")).toHaveText(
+      "Today's puzzle couldn't be loaded. Please try again.", { timeout: DATA_TIMEOUT },
+    );
+    await expect(page.getByText("Club History")).toHaveCount(0);
+    // Not mistaken for "no row yet": nothing is picked or saved
+    expect(failedReads).toBe(1);
+    expect(blockedWrites.filter((w) => w.url.includes("/rest/v1/daily_schedule"))).toHaveLength(0);
+
+    await loadPuzzle(page, () => page.getByRole("button", { name: "Try Again" }).click());
+    await expect(page.getByText(/Attempts:.*0.*\/.*5/)).toBeVisible();
+    await expect(page.getByRole("alert")).toHaveCount(0);
+    expect(blockedWrites.filter((w) => w.url.includes("/rest/v1/daily_schedule"))).toHaveLength(0);
+  });
 });

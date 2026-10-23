@@ -6,6 +6,18 @@ export const MAX_FALLBACK_ATTEMPTS = 5;
 export const NO_PUZZLE_MESSAGE = "No puzzle is set up for today yet. Please try again later.";
 export const UNLOADABLE_PUZZLE_MESSAGE = "Today's puzzle couldn't be loaded. Please try again.";
 
+/** PostgREST's error code when `.single()` finds no row. */
+export const NO_ROWS_ERROR_CODE = "PGRST116";
+
+/**
+ * True only for PostgREST's "no rows" error, so a missing row can be told
+ * apart from a failed read (5xx, timeout, network), which must not be treated
+ * as "nothing scheduled".
+ */
+export function isNoRowsError(error: { code?: string } | null | undefined): boolean {
+  return error?.code === NO_ROWS_ERROR_CODE;
+}
+
 /**
  * An error the daily loader must show to the player as-is, rather than
  * replacing it with the offline sequential fallback.

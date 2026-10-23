@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from "vitest";
 import {
-  DailyPuzzleError, MAX_FALLBACK_ATTEMPTS, orderFallbackCandidates, pickPlayableCandidate,
+  DailyPuzzleError, MAX_FALLBACK_ATTEMPTS, isNoRowsError, orderFallbackCandidates, pickPlayableCandidate,
 } from "../api/dailyFallback";
 import type { Player } from "../types";
 
@@ -97,5 +97,21 @@ describe("DailyPuzzleError", () => {
     const e = new DailyPuzzleError("nope");
     expect(e).toBeInstanceOf(Error);
     expect(e.message).toBe("nope");
+  });
+});
+
+describe("isNoRowsError", () => {
+  it("isNoRowsError is true for PostgREST's no-rows code", () => {
+    expect(isNoRowsError({ code: "PGRST116" })).toBe(true);
+  });
+
+  it.each([
+    ["a server error", { code: "500" }],
+    ["a fetch error with an empty code", { code: "" }],
+    ["an error without a code", {}],
+    ["null", null],
+    ["undefined", undefined],
+  ])("isNoRowsError is false for %s", (_label, error) => {
+    expect(isNoRowsError(error)).toBe(false);
   });
 });
