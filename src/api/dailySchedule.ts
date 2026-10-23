@@ -3,7 +3,7 @@ import { SEED_PLAYERS } from "../data/seedPlayers";
 import { getPlayerWithTeamsCached } from "./playerCache";
 import {
   DailyPuzzleError, MAX_FALLBACK_ATTEMPTS, NO_PUZZLE_MESSAGE, UNLOADABLE_PUZZLE_MESSAGE,
-  orderFallbackCandidates, pickPlayableCandidate,
+  isNoRowsError, orderFallbackCandidates, pickPlayableCandidate,
 } from "./dailyFallback";
 import type { Player } from "../types";
 
@@ -53,11 +53,17 @@ export async function getOrCreateDailyPlayer(date: string): Promise<Player> {
   if (!supabase) return fallbackDailyPlayer(date);
 
   try {
-    const { data: existing } = await supabase
+    const { data: existing, error: readError } = await supabase
       .from("daily_schedule")
       .select("player_id")
       .eq("date", date)
       .single();
+
+    // A failed read is not "no row yet": auto-picking here could replace a
+    // row that exists with a different player for this one user
+    if (readError && !isNoRowsError(readError)) {
+      throw new DailyPuzzleError(UNLOADABLE_PUZZLE_MESSAGE);
+    }
 
     // Today's row always wins: never swap in a random player for one user
     if (existing) {
