@@ -345,6 +345,10 @@ const TOMORI_ROWS: PlayerClubRow[] = [
 ];
 
 describe("mergeConsecutiveClubs", () => {
+  it("returns an empty list for no clubs", () => {
+    expect(mergeConsecutiveClubs([])).toEqual([]);
+  });
+
   it("keeps the last club when a loan is followed by a permanent move to the same club", () => {
     const tiles = mergeConsecutiveClubs(toFormerTeams(TOMORI_ROWS, new Set()));
     expect(tiles.map((t) => t.teamName)).toEqual([

@@ -99,6 +99,7 @@ src/
     gameLogic.ts        — didPlayTogether (pure function), ApiError
     dates.ts            — Shared date formatting (getTodayString)
     clubNames.ts        — Club name normalization
+    clubSpells.ts       — canMergeLoanStatus: the loan-merge rule shared by sortAndMergeTeams and mergeConsecutiveClubs
   data/
     seedPlayers.ts      — 107 seed players for daily puzzle (TransferMarkt IDs)
 scripts/

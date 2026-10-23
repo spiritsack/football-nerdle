@@ -7,6 +7,10 @@ function team(id: string, name: string, joined: string, departed: string): Forme
 }
 
 describe("sortAndMergeTeams", () => {
+  it("returns an empty list for no teams", () => {
+    expect(sortAndMergeTeams([])).toEqual([]);
+  });
+
   it("sorts by yearJoined ascending", () => {
     const teams = [
       team("3", "Club C", "2015", "2018"),
