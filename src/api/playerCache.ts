@@ -1,5 +1,6 @@
 import { supabase } from "./supabaseClient";
 import { getBaseClubName } from "../utils/clubNames";
+import { canMergeLoanStatus } from "../utils/clubSpells";
 import type { Player, PlayerWithTeams, FormerTeam } from "../types";
 
 interface PlayerSearchRow {
@@ -61,8 +62,7 @@ export function sortAndMergeTeams(teams: FormerTeam[]): FormerTeam[] {
   const merged: FormerTeam[] = [];
   for (const team of sorted) {
     const last = merged[merged.length - 1];
-    // A loan and a permanent spell stay separate even at the same club (e.g. loan, then signed)
-    if (last && last.teamId === team.teamId && !last.isLoan === !team.isLoan) {
+    if (last && last.teamId === team.teamId && canMergeLoanStatus(last, team)) {
       const lastDep = parseInt(last.yearDeparted, 10) || 0;
       const currDep = parseInt(team.yearDeparted, 10) || 0;
       if (!team.yearDeparted || currDep > lastDep) {
