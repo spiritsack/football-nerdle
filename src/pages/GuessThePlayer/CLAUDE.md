@@ -9,7 +9,7 @@ Route: `/guess` — Page: `index.tsx` — Hook: `useGuessGame.ts`
 3. National team entries are filtered out
 4. User has 5 attempts to guess who it is
 5. Wrong guesses are listed (`formatWrongGuesses` in `helpers.ts`, `data-testid="wrong-guesses"`) during play and, for the session they were made in, on the won/lost result screen under the revealed card; correct guess or 5 failures ends the game. Guesses are not persisted, so a re-opened completed puzzle shows no guess line
-6. Result can be shared as emoji grid text (penalty-style circles). "Share Result" calls `shareResult` in `helpers.ts`: it opens the native share sheet (`navigator.share({ text })`) when available (and `canShare` allows it), falls back to the clipboard if there is no share sheet or it fails, and treats a dismissed sheet (`AbortError`) as cancelled. A clipboard copy shows "Copied!" for 2s; if both fail, a `role="alert"` message with the share text (for manual copying) is shown until the next click
+6. Result can be shared as emoji grid text (penalty-style circles). "Share Result" calls `shareResult` in `helpers.ts`: it opens the native share sheet (`navigator.share({ text })`) when available (and `canShare` allows it), falls back to the clipboard if there is no share sheet or it fails, and treats a dismissed sheet (`AbortError`) as cancelled. A clipboard copy shows "Copied!" for 2s; if both fail, a `role="alert"` message with the share text (for manual copying) is shown until the next click. The share text's last line is a URL: today's daily links to its result page `…/r/<code>/` (`getShareUrl` in `sharePreview.ts`), the Archive to `…/#/guess?day=N`, debug to `…/#/guess`. Codes are `1`-`5` (solved in N) or `x` (failed), plus `h` for hard mode: 12 static pages built by the `share-preview-pages` plugin in `vite.config.ts` (`renderResultPage`), each with OG/Twitter tags for that outcome only ("Football Nerdle: solved in 3/5", the emoji row, hard mode, hint count; never player data) and a `location.replace` to `#/guess` (no meta refresh, so unfurlers read the page's own tags). `og:url` is the page's own URL; the image is the shared `og-image.png`. A generated `404.html` (`renderFallbackPage`) carries the generic preview for any other path and sends browsers home. Known limit: GitHub Pages serves `404.html` with status 404, so some unfurlers show no preview for an invalid code. The day number is not in the preview (it is unbounded, so it can't be prerendered)
 7. A visually hidden `role="status"` live region (`data-testid="guess-announcer"`) announces each wrong guess, skip, win or loss to screen readers; text comes from `getGuessAnnouncement` in `helpers.ts` and is cleared whenever a new puzzle loads
 8. Players already guessed wrong stay in the search dropdown but are greyed out, labelled "Already guessed" and can't be selected (`getAlreadyGuessedMap` → `PlayerSearch` `disabledPlayerIds`); `submitGuess` also ignores a repeated wrong guess, so it never costs an attempt. The list resets with each new puzzle and is not persisted
 9. Today's daily result screen (not Archive/debug) shows `NextPuzzleCountdown`: "Next puzzle in HH:MM:SS" to the local midnight ending `today` (`getMsUntilNextDay` in `utils/dates.ts`, `formatCountdown` in `helpers.ts`); at zero it becomes a "Play new daily" button that reloads the page (the hook freezes `today` at mount)
@@ -19,7 +19,8 @@ Route: `/guess` — Page: `index.tsx` — Hook: `useGuessGame.ts`
 
 The daily game must remain backwards compatible. Changing day numbering, share text format, or localStorage keys would invalidate existing players' streaks and shared results. Any changes must preserve:
 - `getDayNumber` calculation (start date: 2026-03-24)
-- Share text format and emoji grid layout
+- Share text format and emoji grid layout: the title line and emoji row are frozen. Only the daily URL line changed, from `…/#/guess` to `…/r/<code>/`; old `#/guess` links keep working, and the Archive and debug URLs are unchanged
+- The result page paths `r/<code>/` and their codes, since shared links point at them
 - localStorage key formats for daily results and stats
 
 ## Modes
@@ -45,7 +46,8 @@ The daily game must remain backwards compatible. Changing day numbering, share t
 - `index.tsx` — Page component (UI, hard mode toggle, share, archive banner)
 - `useGuessGame.ts` — Hook: daily/archive/debug logic, guess submission, hints, stats
 - `types.ts` — GuessStatus, GuessGameState, DailyResult, GuessStats, RevealedHints
-- `constants.ts` — MAX_ATTEMPTS, localStorage keys, DAY_ONE_DATE, SHARE_URL, STATS_KEY
+- `constants.ts` — MAX_ATTEMPTS, localStorage keys, DAY_ONE_DATE, SITE_ORIGIN/SITE_BASE/SITE_URL, SHARE_URL, STATS_KEY
+- `sharePreview.ts` — Pure, DOM-free (imported by `vite.config.ts`): result codes, emoji row (`getResultSquares`), share URL, preview meta and the static result/404 pages
 - `helpers.ts` — Date helpers, daily result persistence, club merging, stats recording, guess distribution (`loadDistribution`/`recordWin`)
 - `GuessDistribution/index.tsx` — "Guess Distribution" bar chart (daily wins by attempts) inside the "Your Stats" panel
 - `Archive/index.tsx` — Archive page listing past daily puzzles with results

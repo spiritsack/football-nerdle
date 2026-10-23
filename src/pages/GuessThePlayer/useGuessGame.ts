@@ -3,7 +3,8 @@ import { getPlayerWithTeamsCached, getFromCacheById } from "../../api/playerCach
 import { getOrCreateDailyPlayer, getScheduledPlayerForDate } from "../../api/dailySchedule";
 import { submitDailyResult } from "../../api/dailyLeaderboard";
 import type { Player } from "../../types";
-import { MAX_ATTEMPTS, SHARE_URL } from "./constants";
+import { MAX_ATTEMPTS } from "./constants";
+import { getResultSquares, getShareUrl } from "./sharePreview";
 import type { GuessGameState, GuessStats, RevealedHints } from "./types";
 import {
   getTodayString, getDailyPlayerIndex, getDayNumber, getDateForDay,
@@ -269,15 +270,19 @@ export function useGuessGame() {
     const won = state.status === "won";
     const score = won ? `${state.attempts}/${MAX_ATTEMPTS}` : `X/${MAX_ATTEMPTS}`;
     const wrongCount = won ? state.attempts - 1 : state.attempts;
-    const squares = Array.from({ length: MAX_ATTEMPTS }, (_, i) => {
-      if (i < wrongCount) return "🔴";
-      return won ? "🟢" : "⬛";
-    }).join("");
+    const squares = getResultSquares(won, state.attempts);
     const mode = state.isArchive ? `#${dayNum} (Archive)` : state.isDaily ? `#${dayNum}` : "Random";
     const hardIndicator = hardMode ? "*" : "";
     const hintCount = wrongCount;
     const hintIndicator = hintCount > 0 ? ` (${hintCount} hint${hintCount > 1 ? "s" : ""})` : "";
-    const shareUrl = state.isArchive ? `${SHARE_URL}?day=${dayNum}` : SHARE_URL;
+    const shareUrl = getShareUrl({
+      isDaily: state.isDaily,
+      isArchive: state.isArchive,
+      dayNumber: dayNum,
+      won,
+      attempts: state.attempts,
+      hardMode: !!hardMode,
+    });
     return `Football Nerdle ${mode} ${score}${hardIndicator}${hintIndicator}\n${squares}\n${shareUrl}`;
   }
 
