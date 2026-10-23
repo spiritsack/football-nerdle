@@ -323,6 +323,10 @@ describe("createLoadGuard", () => {
 
 // Rows shaped like player_clubs for Fikayo Tomori (tm_303254, daily puzzle 2026-10-21):
 // a loan to AC Milan (tm_5) then a permanent move (tm_10958), both named "AC Milan".
+// tm_10958 is TransferMarkt's "AC Milan Primavera" (youth team), stored under the
+// first-team name; Tomori's permanent row pointing at it is a data error. The two
+// clubs were checked and deliberately not merged. The fixture tests id-based tile
+// logic, not live data.
 function pcRow(club_id: string, name: string, joined: string, departed: string, sort_order: number | null, flags: Partial<PlayerClubRow> = {}): PlayerClubRow {
   return {
     club_id, year_joined: joined, year_departed: departed, sort_order,
