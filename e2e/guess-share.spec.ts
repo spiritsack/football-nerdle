@@ -2,7 +2,8 @@ import {
   test, expect, mockDailySchedule, loadPuzzle, seedStorage, todayString, type Page,
 } from "./fixtures";
 
-const SHARE_URL_RE = /https:\/\/spiritsack\.github\.io\/football-nerdle\/#\/guess$/;
+// The seeded daily is lost with hard mode on (the default), so it links to /r/xh/
+const SHARE_URL_RE = /\nhttps:\/\/spiritsack\.github\.io\/football-nerdle\/r\/xh\/$/;
 
 // Seed a lost daily for today and land on the "Game Over!" result screen.
 async function openCompletedDaily(page: Page) {
@@ -30,7 +31,7 @@ test.describe("Guess the Player share result", () => {
 
     await expect(page.getByRole("button", { name: "Copied!" })).toBeVisible();
     const clipboard = await page.evaluate(() => navigator.clipboard.readText());
-    expect(clipboard).toMatch(/^Football Nerdle .+\n.+\nhttps:\/\/spiritsack\.github\.io\/football-nerdle\/#\/guess/);
+    expect(clipboard).toMatch(/^Football Nerdle #\d+ X\/5\* \(5 hints\)\n🔴🔴🔴🔴🔴\nhttps:\/\/spiritsack\.github\.io\/football-nerdle\/r\/xh\/$/);
     await expect(page.getByRole("alert")).toHaveCount(0);
 
     // Label resets so the player can share again
@@ -93,5 +94,44 @@ test.describe("Guess the Player share result", () => {
     // Retrying is possible and still reports the failure
     await shareButton.click();
     await expect(alert).toBeVisible();
+  });
+});
+
+/** Content of `<meta {attr}="{key}" content="...">` in raw HTML, still HTML-escaped. */
+function metaContent(html: string, attr: "property" | "name", key: string): string | undefined {
+  const re = new RegExp(`<meta ${attr}="${key.replace(/[:.]/g, "\\$&")}" content="([^"]*)" />`);
+  return html.match(re)?.[1];
+}
+
+test.describe("Share result preview pages", () => {
+  // Like a link unfurler: plain HTTP, no JS, no hash fragment.
+  test("serves personalised OG tags for a solve in 3", async ({ request }) => {
+    const response = await request.get("r/3/");
+    expect(response.status()).toBe(200);
+    const html = await response.text();
+    for (const title of [metaContent(html, "property", "og:title"), metaContent(html, "name", "twitter:title")]) {
+      expect(title).toContain("3/5");
+      expect(title).toContain("solved");
+    }
+    expect(metaContent(html, "property", "og:description")).toContain("🔴🔴🟢🟢🟢");
+    expect(metaContent(html, "name", "twitter:description")).toContain("🔴🔴🟢🟢🟢");
+    expect(metaContent(html, "property", "og:url")).toBe("https://spiritsack.github.io/football-nerdle/r/3/");
+    expect(metaContent(html, "property", "og:image")).toBe("https://spiritsack.github.io/football-nerdle/og-image.png");
+  });
+
+  test("serves personalised OG tags for a hard-mode loss", async ({ request }) => {
+    const response = await request.get("r/xh/");
+    expect(response.status()).toBe(200);
+    const html = await response.text();
+    expect(metaContent(html, "property", "og:title")).toContain("X/5");
+    expect(metaContent(html, "property", "og:title")).toContain("missed");
+    expect(metaContent(html, "property", "og:description")).toContain("Hard mode");
+    expect(metaContent(html, "property", "og:url")).toBe("https://spiritsack.github.io/football-nerdle/r/xh/");
+  });
+
+  test("sends a browser on to today's daily", async ({ page }) => {
+    await mockDailySchedule(page, { date: todayString() });
+    await loadPuzzle(page, () => page.goto("r/3/"));
+    await expect(page).toHaveURL(/\/football-nerdle\/#\/guess$/);
   });
 });
