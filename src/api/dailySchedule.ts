@@ -72,9 +72,12 @@ export async function getOrCreateDailyPlayer(date: string): Promise<Player> {
       throw new DailyPuzzleError(UNLOADABLE_PUZZLE_MESSAGE);
     }
 
-    const { data: usedRows } = await supabase
+    const { data: usedRows, error: usedError } = await supabase
       .from("daily_schedule")
       .select("player_id");
+
+    // An unknown used set could make the auto-pick repeat a player
+    if (usedError) throw new DailyPuzzleError(UNLOADABLE_PUZZLE_MESSAGE);
 
     const usedIds = new Set((usedRows || []).map((r: { player_id: string }) => r.player_id));
     const candidates = orderFallbackCandidates(SEED_PLAYERS, usedIds);
@@ -87,11 +90,17 @@ export async function getOrCreateDailyPlayer(date: string): Promise<Player> {
       .insert({ date, player_id: picked.id });
 
     // Read back the actual winner (might differ if race condition)
-    const { data: final } = await supabase
+    const { data: final, error: finalError } = await supabase
       .from("daily_schedule")
       .select("player_id")
       .eq("date", date)
       .single();
+
+    // A failed read-back means our pick may not be the saved row: another
+    // client may have won the race with a different player
+    if (finalError && !isNoRowsError(finalError)) {
+      throw new DailyPuzzleError(UNLOADABLE_PUZZLE_MESSAGE);
+    }
 
     if (final && final.player_id !== picked.id) {
       const player = await resolveScheduledPlayer(final.player_id);
