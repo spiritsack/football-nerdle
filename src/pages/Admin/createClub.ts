@@ -110,3 +110,23 @@ export function rankSimilarClubs<T extends { name: string }>(name: string, candi
   }
   return [...same, ...similar];
 }
+
+/** What the create-club panel is doing: `checking` for duplicates, or `creating` the club */
+export type Status = "idle" | "checking" | "creating";
+
+/** How the create-club panel closed */
+export type CreatePanelOutcome = "created" | "used" | "cancelled";
+
+/**
+ * Where focus goes once the panel closes: a picked club (created or existing)
+ * fills the search input, so the next step is the "Joined" year; a cancel goes
+ * back to the "+ Create new club" button that opened the panel.
+ */
+export function focusAfterCreatePanel(outcome: CreatePanelOutcome): "joined" | "createButton" {
+  return outcome === "cancelled" ? "createButton" : "joined";
+}
+
+/** Escape closes the panel, except while the club is being created (Cancel is disabled then too) */
+export function closesCreatePanel(key: string, status: Status): boolean {
+  return key === "Escape" && status !== "creating";
+}

@@ -1,6 +1,8 @@
 import { describe, it, expect } from "vitest";
 import {
   CREATED_CLUB_PREFIX,
+  closesCreatePanel,
+  focusAfterCreatePanel,
   newCreatedClubId,
   rankSimilarClubs,
   similarClubSearchTerms,
@@ -114,5 +116,38 @@ describe("similarClubSearchTerms", () => {
   it("falls back to the whole name when every word is short", () => {
     expect(similarClubSearchTerms("KV")).toEqual(["kv"]);
     expect(similarClubSearchTerms("  ")).toEqual([]);
+  });
+});
+
+describe("focusAfterCreatePanel", () => {
+  it("moves to the Joined year after creating a club", () => {
+    expect(focusAfterCreatePanel("created")).toBe("joined");
+  });
+
+  it("moves to the Joined year after using an existing club", () => {
+    expect(focusAfterCreatePanel("used")).toBe("joined");
+  });
+
+  it("returns to the + Create new club button after a cancel", () => {
+    expect(focusAfterCreatePanel("cancelled")).toBe("createButton");
+  });
+});
+
+describe("closesCreatePanel", () => {
+  it("closes on Escape while idle", () => {
+    expect(closesCreatePanel("Escape", "idle")).toBe(true);
+  });
+
+  it("closes on Escape while checking for duplicates", () => {
+    expect(closesCreatePanel("Escape", "checking")).toBe(true);
+  });
+
+  it("ignores Escape while the club is being created", () => {
+    expect(closesCreatePanel("Escape", "creating")).toBe(false);
+  });
+
+  it("ignores other keys", () => {
+    expect(closesCreatePanel("Enter", "idle")).toBe(false);
+    expect(closesCreatePanel("Esc", "idle")).toBe(false);
   });
 });

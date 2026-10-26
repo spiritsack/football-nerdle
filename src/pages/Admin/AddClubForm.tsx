@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { addPlayerClub, searchClubs } from "../../api/adminApi";
 import type { AdminClubRow } from "./types";
 import CreateClubForm from "./CreateClubForm";
+import { focusAfterCreatePanel } from "./createClub";
 
 interface Props {
   playerId: string;
@@ -30,6 +31,19 @@ export default function AddClubForm({ playerId, onAdded }: Props) {
   const searchRef = useRef<HTMLInputElement>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout>>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const joinedRef = useRef<HTMLInputElement>(null);
+  const createButtonRef = useRef<HTMLButtonElement>(null);
+  /** Where focus goes once the create-club panel has unmounted */
+  const pendingFocusRef = useRef<ReturnType<typeof focusAfterCreatePanel> | null>(null);
+
+  useEffect(() => {
+    if (creating || !pendingFocusRef.current) return;
+    const target = pendingFocusRef.current;
+    pendingFocusRef.current = null;
+    if (target === "joined") joinedRef.current?.focus();
+    // The button only renders for a query of 2+ characters; else go back to the search
+    else (createButtonRef.current ?? searchRef.current)?.focus();
+  }, [creating]);
 
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
@@ -83,18 +97,20 @@ export default function AddClubForm({ playerId, onAdded }: Props) {
 
   function handleCreated(club: ClubHit, crestFailed: boolean) {
     pickClub(club);
+    pendingFocusRef.current = focusAfterCreatePanel("created");
     setCreating(false);
     setNotice({ kind: crestFailed ? "crestFailed" : "created", name: club.name });
   }
 
   function handleUseClub(club: ClubHit) {
     pickClub(club);
+    pendingFocusRef.current = focusAfterCreatePanel("used");
     setCreating(false);
   }
 
   function handleCancelCreate() {
+    pendingFocusRef.current = focusAfterCreatePanel("cancelled");
     setCreating(false);
-    searchRef.current?.focus();
   }
 
   const canCreate = query.trim().length >= 2 && !selected && !creating;
@@ -175,6 +191,7 @@ export default function AddClubForm({ playerId, onAdded }: Props) {
 
       {canCreate && !dropdownOpen && (
         <button
+          ref={createButtonRef}
           type="button"
           onClick={openCreate}
           className="block text-xs text-green-400 hover:text-green-300 transition-colors"
@@ -203,9 +220,11 @@ export default function AddClubForm({ playerId, onAdded }: Props) {
 
       <div className="flex flex-wrap items-center gap-2">
         <input
+          ref={joinedRef}
           type="text"
           inputMode="numeric"
           maxLength={4}
+          aria-label="Year joined"
           value={yearJoined}
           onChange={(e) => setYearJoined(e.target.value.replace(/\D/g, ""))}
           placeholder="Joined"
