@@ -34,10 +34,14 @@ export function removeDiacritics(s: string): string {
 const COMMON_WORDS = new Set(["fc", "club", "de", "united", "city", "real", "sporting", "athletic"]);
 
 /**
- * Leading club-type abbreviations ("Club Nacional", "CR Flamengo", "AS Roma"),
- * dropped only to decide whether two names are the same club.
+ * Leading club-type words ("Club Nacional", "CR Flamengo", "AS Roma"). They
+ * often tell clubs apart ("AC Milan" vs "BK Milan"), so names that only match
+ * once one is dropped are "similar", never "same".
  */
-const LEADING_PREFIX = /^(club|fc|cf|afc|ac|as|sc|ssc|cd|ca|cr|sl|fk|sk|bk|sv|ud|rc|rcd)\s+/;
+const LEADING_PREFIX = /^(club|fc|cf|afc|ac|as|sc|cd|cr|fk|bk|sv)\s+/;
+
+/** Trailing suffixes that never tell clubs apart: "Liverpool FC" is "Liverpool" */
+const SAME_NAME_SUFFIX = /\s+(fc|cf|afc)$/;
 
 function tokens(s: string): string[] {
   return s.split(/[^\p{L}\p{N}]+/u).filter(Boolean);
@@ -68,28 +72,31 @@ export interface RankedClub<T> {
   match: ClubMatch;
 }
 
+/** Equal after case, accents, punctuation and whitespace, plus one trailing FC/CF/AFC */
 function isSameName(a: string, b: string): boolean {
-  const na = normalizeClubName(removeDiacritics(a));
-  const nb = normalizeClubName(removeDiacritics(b));
-  if (na === nb) return true;
-  const sa = strippedName(a);
-  const sb = strippedName(b);
-  if (sa === sb) return true;
-  return sa.replace(LEADING_PREFIX, "") === sb.replace(LEADING_PREFIX, "");
+  const key = (s: string) => normalizeClubName(removeDiacritics(s)).replace(SAME_NAME_SUFFIX, "");
+  return key(a) === key(b);
 }
 
-/**
- * Whole words only: every word of the shorter name appears in the longer one
- * (which also covers one name containing the other), so "Nacional" is not
- * similar to "Internacional".
- */
-function isSimilarName(a: string, b: string): boolean {
-  const ta = tokens(strippedName(a));
-  const tb = tokens(strippedName(b));
+/** Every word of the shorter list appears in the longer one */
+function isWordSubset(ta: string[], tb: string[]): boolean {
   if (ta.length === 0 || tb.length === 0) return false;
   const [shorter, longer] = ta.length <= tb.length ? [ta, tb] : [tb, ta];
   const longerSet = new Set(longer);
   return shorter.every((t) => longerSet.has(t));
+}
+
+/**
+ * Whole words only (which also covers one name containing the other), so
+ * "Nacional" is not similar to "Internacional". Names that are equal once a
+ * leading club-type word is dropped ("AC Milan" vs "BK Milan FC") count too;
+ * "AC Milan" vs "Inter Milan" does not.
+ */
+function isSimilarName(a: string, b: string): boolean {
+  const sa = strippedName(a);
+  const sb = strippedName(b);
+  if (isWordSubset(tokens(sa), tokens(sb))) return true;
+  return sa.replace(LEADING_PREFIX, "") === sb.replace(LEADING_PREFIX, "");
 }
 
 /** Candidates with the same or a similar name as `name`, "same" first; the rest are dropped */

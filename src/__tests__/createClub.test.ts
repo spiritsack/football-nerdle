@@ -58,8 +58,22 @@ describe("rankSimilarClubs", () => {
     ]);
   });
 
-  it("treats a leading Club as the same club", () => {
-    expect(rankSimilarClubs("Nacional", [club("a", "Club Nacional")])[0]?.match).toBe("same");
+  it("rates AC Milan vs AC Milan as same", () => {
+    expect(rankSimilarClubs("AC Milan", [club("a", "AC Milan")])[0]?.match).toBe("same");
+  });
+
+  it("ignores a trailing FC for same", () => {
+    expect(rankSimilarClubs("Liverpool", [club("a", "Liverpool FC")])[0]?.match).toBe("same");
+    expect(rankSimilarClubs("Liverpool", [club("a", "Liverpool F.C.")])[0]?.match).toBe("same");
+  });
+
+  it("rates names that only match without a leading prefix as similar", () => {
+    expect(rankSimilarClubs("AC Milan", [club("tm_85168", "BK Milan FC")])[0]?.match).toBe("similar");
+    expect(rankSimilarClubs("Nacional", [club("a", "Club Nacional")])[0]?.match).toBe("similar");
+  });
+
+  it("does not match other clubs that only share a word once the prefix is dropped", () => {
+    expect(rankSimilarClubs("AC Milan", [club("a", "Inter Milan"), club("b", "Milan Futuro")])).toEqual([]);
   });
 
   it("matches Flamengo with CR Flamengo", () => {
