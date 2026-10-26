@@ -6,6 +6,8 @@ import type { CleanupPlan, ProposedRow } from "../pages/Admin/clubHistoryCleanup
 import { saveFoundLogo, storeClubCrest } from "./clubCrestStorage";
 import { findClubOrParentLogo } from "./clubLogoLookup";
 import type { LogoClub, LogoLookup } from "./clubLogoLookup";
+import { newCreatedClubId, rankSimilarClubs, similarClubSearchTerms } from "../pages/Admin/createClub";
+import type { RankedClub } from "../pages/Admin/createClub";
 
 // --- Player lookup ---
 
@@ -383,6 +385,60 @@ export async function searchClubs(query: string): Promise<{ id: string; name: st
     .ilike("name", `%${query}%`)
     .limit(20);
   return data ?? [];
+}
+
+// --- Club creation ---
+
+export interface ClubSummary {
+  id: string;
+  name: string;
+  badge: string;
+}
+
+/** Escape LIKE wildcards so a club name is matched literally */
+function escapeLike(term: string): string {
+  return term.replace(/[%_\\]/g, "\\$&");
+}
+
+/**
+ * Existing clubs with the same or a similar name, "same" first. One `ilike`
+ * query per distinctive word of the name (never a string-built `.or()`
+ * filter). Throws when a query fails, so the caller doesn't create a
+ * duplicate it couldn't check for.
+ */
+export async function findSimilarClubs(name: string): Promise<RankedClub<ClubSummary>[]> {
+  if (!supabase) throw new Error("Supabase is not configured");
+  const byId = new Map<string, ClubSummary>();
+  for (const term of similarClubSearchTerms(name)) {
+    const { data, error } = await supabase
+      .from("clubs")
+      .select("id, name, badge")
+      .ilike("name", `%${escapeLike(term)}%`)
+      .limit(50);
+    if (error) throw new Error(error.message);
+    for (const club of (data ?? []) as ClubSummary[]) byId.set(club.id, club);
+  }
+  return rankSimilarClubs(name, [...byId.values()]);
+}
+
+export async function getCountries(): Promise<{ id: string; name: string }[]> {
+  if (!supabase) return [];
+  const { data, error } = await supabase.from("countries").select("id, name").order("name");
+  if (error) throw new Error(error.message);
+  return data ?? [];
+}
+
+/** Insert a club with an `admin_<uuid>` id. Throws with the Supabase message (e.g. RLS for a non-admin). */
+export async function createClub({ name, countryId }: { name: string; countryId?: string | null }): Promise<ClubSummary> {
+  if (!supabase) throw new Error("Supabase is not configured");
+  const { data, error } = await supabase
+    .from("clubs")
+    .insert({ id: newCreatedClubId(), name: name.trim(), country_id: countryId || null, badge: "" })
+    .select("id, name, badge")
+    .single();
+  if (error) throw new Error(error.message);
+  if (!data) throw new Error("The club was not created.");
+  return data as ClubSummary;
 }
 
 export async function uploadClubCrest(clubId: string, file: File): Promise<string | null> {
