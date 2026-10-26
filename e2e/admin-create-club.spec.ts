@@ -128,6 +128,16 @@ function joinedInput(page: Page) {
   return page.getByRole("textbox", { name: "Year joined" });
 }
 
+/** Fail unless the element shows the green keyboard focus outline (not the browser default `auto` one) */
+async function expectFocusOutline(locator: ReturnType<Page["locator"]>) {
+  await expect(locator).toBeFocused();
+  const style = await locator.evaluate((el) => {
+    const s = getComputedStyle(el);
+    return { visible: el.matches(":focus-visible"), outlineStyle: s.outlineStyle, outlineWidth: s.outlineWidth };
+  });
+  expect(style).toEqual({ visible: true, outlineStyle: "solid", outlineWidth: "2px" });
+}
+
 /** Record console errors that mention the crest upload */
 function collectCrestErrors(page: Page): string[] {
   const errors: string[] = [];
@@ -184,7 +194,7 @@ test.describe("Admin: create a club", () => {
     await expect(panel.getByRole("textbox", { name: "Name", exact: true })).toBeFocused();
     await page.keyboard.press("Escape");
     await expect(panel).toHaveCount(0);
-    await expect(createButton).toBeFocused();
+    await expectFocusOutline(createButton);
     await expect(page.getByPlaceholder("Search club...")).toHaveValue(NEW_CLUB);
 
     // From the (closed) Country select
@@ -206,6 +216,24 @@ test.describe("Admin: create a club", () => {
     await expect(page.getByRole("button", { name: "+ Create new club" })).toBeFocused();
     await expect(page.getByPlaceholder("Search club...")).toHaveValue("AC Milan");
     expect(writes).toEqual([]);
+  });
+
+  test("the panel buttons show a focus outline when tabbed to", async ({ page }) => {
+    await openAddClubForm(page);
+    const panel = await openDuplicatesPanel(page);
+    const useClub = panel.getByRole("button", { name: "Use this club" }).first();
+    await useClub.focus();
+    // Shift+Tab then Tab lands back on it by keyboard, so :focus-visible applies
+    await page.keyboard.press("Shift+Tab");
+    await page.keyboard.press("Tab");
+    await expectFocusOutline(useClub);
+    for (const name of ["Create anyway", "Cancel"]) {
+      const button = panel.getByRole("button", { name });
+      await button.focus();
+      await page.keyboard.press("Shift+Tab");
+      await page.keyboard.press("Tab");
+      await expectFocusOutline(button);
+    }
   });
 
   test("create anyway focuses the Joined year", async ({ page }) => {

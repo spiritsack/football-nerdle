@@ -4,6 +4,7 @@ import type { ClubSummary } from "../../api/adminApi";
 import type { RankedClub, Status } from "./createClub";
 import { closesCreatePanel, validateNewClubName } from "./createClub";
 import ImageDropZone from "./ImageDropZone";
+import { FOCUS_OUTLINE } from "./constants";
 
 interface Props {
   initialName: string;
@@ -19,9 +20,9 @@ const INPUT_CLASS =
 // Below `sm` the buttons are 44×44 px tap targets; from `sm` up they keep their compact size
 const TAP_TARGET = "inline-flex items-center justify-center min-h-11 min-w-11 sm:min-h-0 sm:min-w-0";
 const PRIMARY_BUTTON =
-  `${TAP_TARGET} flex-1 sm:flex-none px-2.5 py-1 bg-green-600 hover:bg-green-700 disabled:opacity-40 disabled:cursor-not-allowed text-white text-xs font-medium rounded-lg transition-colors`;
+  `${TAP_TARGET} ${FOCUS_OUTLINE} flex-1 sm:flex-none px-2.5 py-1 bg-green-600 hover:bg-green-700 disabled:opacity-40 disabled:cursor-not-allowed text-white text-xs font-medium rounded-lg transition-colors`;
 const SECONDARY_BUTTON =
-  `${TAP_TARGET} px-2.5 py-1 bg-gray-700 hover:bg-gray-600 disabled:opacity-40 disabled:cursor-not-allowed text-white text-xs font-medium rounded-lg transition-colors`;
+  `${TAP_TARGET} ${FOCUS_OUTLINE} px-2.5 py-1 bg-gray-700 hover:bg-gray-600 disabled:opacity-40 disabled:cursor-not-allowed text-white text-xs font-medium rounded-lg transition-colors`;
 
 /** Inline "Create a club" panel in AddClubForm: name, country, crest, then a duplicate check before the insert */
 export default function CreateClubForm({ initialName, onCreated, onUseClub, onCancel }: Props) {

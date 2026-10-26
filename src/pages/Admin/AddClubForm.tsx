@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { addPlayerClub, searchClubs } from "../../api/adminApi";
 import type { AdminClubRow } from "./types";
 import CreateClubForm from "./CreateClubForm";
+import { FOCUS_OUTLINE } from "./constants";
 import { focusAfterCreatePanel } from "./createClub";
 
 interface Props {
@@ -179,7 +180,7 @@ export default function AddClubForm({ playerId, onAdded }: Props) {
                 <button
                   type="button"
                   onClick={openCreate}
-                  className="w-full px-3 py-2 text-left text-xs text-green-400 hover:text-green-300 hover:bg-gray-700 border-t border-gray-700 transition-colors"
+                  className={`w-full px-3 py-2 text-left text-xs text-green-400 hover:text-green-300 hover:bg-gray-700 border-t border-gray-700 transition-colors ${FOCUS_OUTLINE} focus-visible:-outline-offset-2`}
                 >
                   + Create new club
                 </button>
@@ -194,7 +195,7 @@ export default function AddClubForm({ playerId, onAdded }: Props) {
           ref={createButtonRef}
           type="button"
           onClick={openCreate}
-          className="block text-xs text-green-400 hover:text-green-300 transition-colors"
+          className={`block rounded-sm text-xs text-green-400 hover:text-green-300 transition-colors ${FOCUS_OUTLINE}`}
         >
           + Create new club
         </button>
