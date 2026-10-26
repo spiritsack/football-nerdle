@@ -123,6 +123,43 @@ async function openCreatePanel(page: Page, name = NEW_CLUB) {
   return panel;
 }
 
+/** The "Joined" year input, where focus lands after a club is picked from the panel */
+function joinedInput(page: Page) {
+  return page.getByRole("textbox", { name: "Year joined" });
+}
+
+/** Fail unless the element shows the green keyboard focus outline (not the browser default `auto` one) */
+async function expectFocusOutline(locator: ReturnType<Page["locator"]>) {
+  await expect(locator).toBeFocused();
+  const style = await locator.evaluate((el) => {
+    const s = getComputedStyle(el);
+    return { visible: el.matches(":focus-visible"), outlineStyle: s.outlineStyle, outlineWidth: s.outlineWidth };
+  });
+  expect(style).toEqual({ visible: true, outlineStyle: "solid", outlineWidth: "2px" });
+}
+
+/** Record console errors that mention the crest upload */
+function collectCrestErrors(page: Page): string[] {
+  const errors: string[] = [];
+  page.on("console", (msg) => {
+    if (msg.type() === "error" && /crest/i.test(msg.text())) errors.push(msg.text());
+  });
+  return errors;
+}
+
+/** Type "AC Milan", open the panel from the dropdown and run the duplicate check */
+async function openDuplicatesPanel(page: Page) {
+  await page.getByPlaceholder("Search club...").fill("AC Milan");
+  // With search hits, the button is the dropdown's last row
+  const createButton = page.getByRole("listitem").getByRole("button", { name: "+ Create new club" });
+  await expect(createButton).toBeVisible({ timeout: DATA_TIMEOUT });
+  await createButton.click();
+  const panel = page.getByRole("region", { name: "Create a club" });
+  await panel.getByRole("button", { name: "Check & create" }).click();
+  await expect(panel.getByRole("button", { name: "Create anyway" })).toBeVisible({ timeout: DATA_TIMEOUT });
+  return panel;
+}
+
 /** Writes other than the ones a create-and-add flow is allowed to send */
 function unexpectedWrites(writes: Write[]): Write[] {
   return writes.filter(
@@ -143,8 +180,73 @@ test.describe("Admin: create a club", () => {
 
     await panel.getByRole("button", { name: "Cancel" }).click();
     await expect(panel).toHaveCount(0);
-    await expect(page.getByPlaceholder("Search club...")).toBeFocused();
+    await expect(page.getByRole("button", { name: "+ Create new club" })).toBeFocused();
+    await expect(page.getByPlaceholder("Search club...")).toHaveValue(NEW_CLUB);
     expect(writes).toEqual([]);
+  });
+
+  test("Escape closes the panel and focuses + Create new club", async ({ page }) => {
+    const writes = await openAddClubForm(page);
+    const createButton = page.getByRole("button", { name: "+ Create new club" });
+
+    // From the Name input
+    let panel = await openCreatePanel(page);
+    await expect(panel.getByRole("textbox", { name: "Name", exact: true })).toBeFocused();
+    await page.keyboard.press("Escape");
+    await expect(panel).toHaveCount(0);
+    await expectFocusOutline(createButton);
+    await expect(page.getByPlaceholder("Search club...")).toHaveValue(NEW_CLUB);
+
+    // From the (closed) Country select
+    await createButton.click();
+    panel = page.getByRole("region", { name: "Create a club" });
+    await panel.getByLabel("Country").focus();
+    await page.keyboard.press("Escape");
+    await expect(panel).toHaveCount(0);
+    await expect(createButton).toBeFocused();
+    expect(writes).toEqual([]);
+  });
+
+  test("Escape on Use this club closes the panel without picking the club", async ({ page }) => {
+    const writes = await openAddClubForm(page);
+    const panel = await openDuplicatesPanel(page);
+    await panel.getByRole("button", { name: "Use this club" }).first().focus();
+    await page.keyboard.press("Escape");
+    await expect(panel).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "+ Create new club" })).toBeFocused();
+    await expect(page.getByPlaceholder("Search club...")).toHaveValue("AC Milan");
+    expect(writes).toEqual([]);
+  });
+
+  test("the panel buttons show a focus outline when tabbed to", async ({ page }) => {
+    await openAddClubForm(page);
+    const panel = await openDuplicatesPanel(page);
+    const useClub = panel.getByRole("button", { name: "Use this club" }).first();
+    await useClub.focus();
+    // Shift+Tab then Tab lands back on it by keyboard, so :focus-visible applies
+    await page.keyboard.press("Shift+Tab");
+    await page.keyboard.press("Tab");
+    await expectFocusOutline(useClub);
+    for (const name of ["Create anyway", "Cancel"]) {
+      const button = panel.getByRole("button", { name });
+      await button.focus();
+      await page.keyboard.press("Shift+Tab");
+      await page.keyboard.press("Tab");
+      await expectFocusOutline(button);
+    }
+  });
+
+  test("create anyway focuses the Joined year", async ({ page }) => {
+    const writes = await openAddClubForm(page);
+    const panel = await openDuplicatesPanel(page);
+    await panel.getByRole("button", { name: "Create anyway" }).click();
+    await expect(panel).toHaveCount(0, { timeout: DATA_TIMEOUT });
+    await expect(joinedInput(page)).toBeFocused();
+    await expect(page.getByRole("status")).toHaveText('Created "AC Milan". Add the spell below.');
+    const inserts = writes.filter((w) => w.path === "clubs" && w.method === "POST");
+    expect(inserts).toHaveLength(1);
+    expect(inserts[0].body).toMatchObject({ name: "AC Milan" });
+    expect(unexpectedWrites(writes)).toEqual([]);
   });
 
   test("rejects an empty or too long name without creating anything", async ({ page }) => {
@@ -185,6 +287,7 @@ test.describe("Admin: create a club", () => {
 
     await expect(panel).toHaveCount(0);
     await expect(search).toHaveValue(clubName!);
+    await expect(joinedInput(page)).toBeFocused();
     await expect(page.getByRole("status")).toHaveCount(0);
     expect(writes).toEqual([]);
   });
@@ -221,6 +324,7 @@ test.describe("Admin: create a club", () => {
 
     await expect(page.getByPlaceholder("Search club...")).toHaveValue(NEW_CLUB);
     await expect(page.getByRole("status")).toHaveText(`Created "${NEW_CLUB}". Add the spell below.`);
+    await expect(joinedInput(page)).toBeFocused();
 
     await page.getByPlaceholder("Joined").fill("2025");
     await page.getByLabel("Present").check();
@@ -253,6 +357,7 @@ test.describe("Admin: create a club", () => {
   });
 
   test("uploads a picked crest after the insert", async ({ page }) => {
+    const crestErrors = collectCrestErrors(page);
     const writes = await openAddClubForm(page);
     const panel = await openCreatePanel(page);
     await panel.locator('input[type="file"]').setInputFiles({ name: "crest.png", mimeType: "image/png", buffer: PNG });
@@ -265,10 +370,12 @@ test.describe("Admin: create a club", () => {
     const order = writes.map((w) => `${w.method} ${w.path.split("?")[0]}`);
     expect(order.indexOf(`POST club-crests/${clubId}.png`)).toBeGreaterThan(order.indexOf("POST clubs"));
     await expect(page.getByRole("status")).toHaveText(`Created "${NEW_CLUB}". Add the spell below.`);
+    expect(crestErrors).toEqual([]);
     expect(unexpectedWrites(writes)).toEqual([]);
   });
 
   test("a failed crest upload still selects the club and says so", async ({ page }) => {
+    const crestErrors = collectCrestErrors(page);
     const writes = await openAddClubForm(page, { storageStatus: 500 });
     const panel = await openCreatePanel(page);
     await panel.locator('input[type="file"]').setInputFiles({ name: "crest.png", mimeType: "image/png", buffer: PNG });
@@ -278,6 +385,7 @@ test.describe("Admin: create a club", () => {
       { timeout: DATA_TIMEOUT },
     );
     await expect(page.getByPlaceholder("Search club...")).toHaveValue(NEW_CLUB);
+    expect(crestErrors.length).toBeGreaterThanOrEqual(1);
     await expect(page.getByRole("button", { name: "Add", exact: true })).toBeDisabled();
     await page.getByPlaceholder("Joined").fill("2025");
     await expect(page.getByRole("button", { name: "Add", exact: true })).toBeEnabled();
@@ -295,5 +403,30 @@ test.describe("Admin: create a club", () => {
     expect(box.x + box.width).toBeLessThanOrEqual(375);
     // Nothing inside the panel scrolls sideways
     expect(await panel.evaluate((el) => el.scrollWidth - el.clientWidth)).toBeLessThanOrEqual(0);
+
+    // Every panel button is a 44×44 px tap target
+    const buttons = [
+      ...(await panel.getByRole("button", { name: "Use this club" }).all()),
+      panel.getByRole("button", { name: "Create anyway" }),
+      panel.getByRole("button", { name: "Cancel" }),
+    ];
+    for (const button of buttons) {
+      const b = (await button.boundingBox())!;
+      expect(b.width).toBeGreaterThanOrEqual(44);
+      expect(b.height).toBeGreaterThanOrEqual(44);
+      expect(b.x + b.width).toBeLessThanOrEqual(375);
+    }
+  });
+
+  test("the panel buttons keep their compact size on a wide screen", async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 800 });
+    await openAddClubForm(page);
+    const panel = await openCreatePanel(page, "AC Milan");
+    await panel.getByRole("button", { name: "Check & create" }).click();
+    await expect(panel.getByRole("button", { name: "Create anyway" })).toBeVisible({ timeout: DATA_TIMEOUT });
+    for (const name of ["Use this club", "Create anyway", "Cancel"]) {
+      const b = (await panel.getByRole("button", { name }).first().boundingBox())!;
+      expect(b.height).toBeLessThan(44);
+    }
   });
 });

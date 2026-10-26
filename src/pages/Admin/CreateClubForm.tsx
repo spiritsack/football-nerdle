@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState } from "react";
 import { createClub, findSimilarClubs, getCountries, uploadClubCrest } from "../../api/adminApi";
 import type { ClubSummary } from "../../api/adminApi";
-import type { RankedClub } from "./createClub";
-import { validateNewClubName } from "./createClub";
+import type { RankedClub, Status } from "./createClub";
+import { closesCreatePanel, validateNewClubName } from "./createClub";
 import ImageDropZone from "./ImageDropZone";
+import { FOCUS_OUTLINE } from "./constants";
 
 interface Props {
   initialName: string;
@@ -14,14 +15,14 @@ interface Props {
   onCancel: () => void;
 }
 
-type Status = "idle" | "checking" | "creating";
-
 const INPUT_CLASS =
   "w-full px-2 py-1.5 bg-gray-700 border rounded-lg text-white text-sm focus:outline-none focus:border-green-500 disabled:opacity-50";
+// Below `sm` the buttons are 44×44 px tap targets; from `sm` up they keep their compact size
+const TAP_TARGET = "inline-flex items-center justify-center min-h-11 min-w-11 sm:min-h-0 sm:min-w-0";
 const PRIMARY_BUTTON =
-  "flex-1 sm:flex-none px-2.5 py-1 bg-green-600 hover:bg-green-700 disabled:opacity-40 disabled:cursor-not-allowed text-white text-xs font-medium rounded-lg transition-colors";
+  `${TAP_TARGET} ${FOCUS_OUTLINE} flex-1 sm:flex-none px-2.5 py-1 bg-green-600 hover:bg-green-700 disabled:opacity-40 disabled:cursor-not-allowed text-white text-xs font-medium rounded-lg transition-colors`;
 const SECONDARY_BUTTON =
-  "px-2.5 py-1 bg-gray-700 hover:bg-gray-600 disabled:opacity-40 disabled:cursor-not-allowed text-white text-xs font-medium rounded-lg transition-colors";
+  `${TAP_TARGET} ${FOCUS_OUTLINE} px-2.5 py-1 bg-gray-700 hover:bg-gray-600 disabled:opacity-40 disabled:cursor-not-allowed text-white text-xs font-medium rounded-lg transition-colors`;
 
 /** Inline "Create a club" panel in AddClubForm: name, country, crest, then a duplicate check before the insert */
 export default function CreateClubForm({ initialName, onCreated, onUseClub, onCancel }: Props) {
@@ -88,9 +89,15 @@ export default function CreateClubForm({ initialName, onCreated, onUseClub, onCa
     }
     let crestFailed = false;
     if (crestFile) {
-      const badge = await uploadClubCrest(club.id, crestFile).catch(() => null);
+      const badge = await uploadClubCrest(club.id, crestFile).catch((err: unknown) => {
+        console.error("uploadClubCrest failed:", err);
+        return null;
+      });
       if (badge) club = { ...club, badge };
-      else crestFailed = true;
+      else {
+        console.error("Crest upload failed for new club", club.id);
+        crestFailed = true;
+      }
     }
     onCreated(club, crestFailed);
   }
@@ -133,6 +140,13 @@ export default function CreateClubForm({ initialName, onCreated, onUseClub, onCa
     <section
       role="region"
       aria-label="Create a club"
+      onKeyDown={(e) => {
+        if (closesCreatePanel(e.key, status)) {
+          e.preventDefault();
+          e.stopPropagation();
+          onCancel();
+        }
+      }}
       className="rounded-lg border border-gray-600 bg-gray-900/60 p-2.5 space-y-2"
     >
       <h3 className="text-sm font-semibold text-white">Create a club</h3>
