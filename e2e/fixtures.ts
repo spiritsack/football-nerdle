@@ -1,4 +1,5 @@
 import { test as base, expect, type Locator, type Page, type Response } from "@playwright/test";
+import { loadEnv } from "vite";
 
 export { expect };
 export type { Page };
@@ -164,4 +165,59 @@ export async function loadPuzzle(page: Page, trigger: () => Promise<unknown>, lo
 export async function searchFor(input: Locator, query: string, option: Locator) {
   await input.fill(query);
   await expect(option).toBeVisible({ timeout: DATA_TIMEOUT });
+}
+
+/** The Supabase URL and anon key the production build uses (CI exports them; locally `.env.production`) */
+export function supabaseEnv(): { url: string; anonKey: string } {
+  const env = { ...loadEnv("production", process.cwd(), "VITE_"), ...process.env };
+  const url = env.VITE_SUPABASE_URL ?? "";
+  const anonKey = env.VITE_SUPABASE_ANON_KEY || env.VITE_SUPABASE_PUBLISHABLE_DEFAULT_KEY || "";
+  if (!url || !anonKey) throw new Error("VITE_SUPABASE_URL and an anon key are needed for admin E2E tests");
+  return { url, anonKey };
+}
+
+function base64Url(value: unknown): string {
+  return Buffer.from(JSON.stringify(value)).toString("base64url");
+}
+
+/**
+ * Sign the Admin page in without real credentials: a fake session goes into
+ * localStorage (where supabase-js keeps it), `auth/v1` calls are stubbed, and
+ * every read (GET and RPC) is sent with the anon key instead of the fake
+ * token, so Supabase still serves real data. Writes keep the fake token: a
+ * spec must stub them (they would fail RLS anyway).
+ */
+export async function seedAdminSession(page: Page, email = "admin@e2e.test") {
+  const { url, anonKey } = supabaseEnv();
+  const ref = new URL(url).hostname.split(".")[0];
+  const now = Math.floor(Date.now() / 1000);
+  const user = {
+    id: "00000000-0000-4000-8000-000000000000",
+    aud: "authenticated",
+    role: "authenticated",
+    email,
+    app_metadata: { provider: "email" },
+    user_metadata: {},
+    created_at: new Date().toISOString(),
+  };
+  const accessToken = `${base64Url({ alg: "HS256", typ: "JWT" })}.${base64Url({ sub: user.id, email, role: "authenticated", exp: now + 3600 })}.e2e`;
+  await seedStorage(page, {
+    [`sb-${ref}-auth-token`]: {
+      access_token: accessToken,
+      refresh_token: "e2e-refresh-token",
+      token_type: "bearer",
+      expires_in: 3600,
+      expires_at: now + 3600,
+      user,
+    },
+  });
+  await page.route("**/auth/v1/**", (route) =>
+    route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ user, ...user }) }),
+  );
+  await page.route("**/rest/v1/**", (route) => {
+    const request = route.request();
+    const isRead = request.method() === "GET" || request.method() === "HEAD" || new URL(request.url()).pathname.includes("/rest/v1/rpc/");
+    if (!isRead) return route.fallback();
+    return route.fallback({ headers: { ...request.headers(), authorization: `Bearer ${anonKey}` } });
+  });
 }

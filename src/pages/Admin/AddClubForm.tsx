@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { addPlayerClub, searchClubs } from "../../api/adminApi";
 import type { AdminClubRow } from "./types";
+import CreateClubForm from "./CreateClubForm";
 
 interface Props {
   playerId: string;
@@ -24,6 +25,9 @@ export default function AddClubForm({ playerId, onAdded }: Props) {
   const [isLoan, setIsLoan] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [creating, setCreating] = useState(false);
+  const [notice, setNotice] = useState<{ kind: "created" | "crestFailed"; name: string } | null>(null);
+  const searchRef = useRef<HTMLInputElement>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout>>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -40,6 +44,7 @@ export default function AddClubForm({ playerId, onAdded }: Props) {
   function handleQueryChange(value: string) {
     setQuery(value);
     setSelected(null);
+    setNotice(null);
     if (debounceRef.current) clearTimeout(debounceRef.current);
     if (value.trim().length < 2) {
       setResults([]);
@@ -68,7 +73,32 @@ export default function AddClubForm({ playerId, onAdded }: Props) {
     setIsPresent(false);
     setIsLoan(false);
     setError(null);
+    setNotice(null);
   }
+
+  function openCreate() {
+    setIsOpen(false);
+    setCreating(true);
+  }
+
+  function handleCreated(club: ClubHit, crestFailed: boolean) {
+    pickClub(club);
+    setCreating(false);
+    setNotice({ kind: crestFailed ? "crestFailed" : "created", name: club.name });
+  }
+
+  function handleUseClub(club: ClubHit) {
+    pickClub(club);
+    setCreating(false);
+  }
+
+  function handleCancelCreate() {
+    setCreating(false);
+    searchRef.current?.focus();
+  }
+
+  const canCreate = query.trim().length >= 2 && !selected && !creating;
+  const dropdownOpen = isOpen && results.length > 0;
 
   async function handleAdd() {
     setError(null);
@@ -101,13 +131,14 @@ export default function AddClubForm({ playerId, onAdded }: Props) {
       <p className="text-xs text-gray-500">Add a club</p>
       <div ref={containerRef} className="relative">
         <input
+          ref={searchRef}
           type="text"
           value={query}
           onChange={(e) => handleQueryChange(e.target.value)}
           placeholder="Search club..."
           className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 text-sm focus:outline-none focus:border-green-500"
         />
-        {isOpen && results.length > 0 && (
+        {dropdownOpen && (
           <ul className="absolute z-10 mt-1 w-full bg-gray-800 border border-gray-600 rounded-lg overflow-hidden shadow-lg max-h-64 overflow-y-auto">
             {results.map((club) => (
               <li key={club.id}>
@@ -127,11 +158,50 @@ export default function AddClubForm({ playerId, onAdded }: Props) {
                 </button>
               </li>
             ))}
+            {canCreate && (
+              <li>
+                <button
+                  type="button"
+                  onClick={openCreate}
+                  className="w-full px-3 py-2 text-left text-xs text-green-400 hover:text-green-300 hover:bg-gray-700 border-t border-gray-700 transition-colors"
+                >
+                  + Create new club
+                </button>
+              </li>
+            )}
           </ul>
         )}
       </div>
 
-      <div className="flex items-center gap-2">
+      {canCreate && !dropdownOpen && (
+        <button
+          type="button"
+          onClick={openCreate}
+          className="block text-xs text-green-400 hover:text-green-300 transition-colors"
+        >
+          + Create new club
+        </button>
+      )}
+
+      {notice?.kind === "created" && (
+        <p className="text-xs text-green-400" role="status">Created "{notice.name}". Add the spell below.</p>
+      )}
+      {notice?.kind === "crestFailed" && (
+        <p className="text-xs text-amber-400" role="status">
+          Club created, but the crest upload failed — drag a crest onto its badge.
+        </p>
+      )}
+
+      {creating && (
+        <CreateClubForm
+          initialName={query}
+          onCreated={handleCreated}
+          onUseClub={handleUseClub}
+          onCancel={handleCancelCreate}
+        />
+      )}
+
+      <div className="flex flex-wrap items-center gap-2">
         <input
           type="text"
           inputMode="numeric"

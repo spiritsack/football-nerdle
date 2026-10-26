@@ -51,7 +51,7 @@ src/
     dailyFallback.ts    — Pure daily auto-pick rules: candidate order, first playable pick (max 5), DailyPuzzleError
     dailyLeaderboard.ts — Community leaderboard: submit results, fetch distribution
     multiplayerRoom.ts  — Room CRUD: createRoom, joinRoom, updateTurn, subscribeToRoom
-    adminApi.ts         — Admin write operations: schedule, clubs, crests, player thumbnails, auto-clean writes
+    adminApi.ts         — Admin write operations: schedule, clubs (incl. createClub, findSimilarClubs, getCountries), crests, player thumbnails, auto-clean writes
     wikipedia.ts        — Find a player's English Wikipedia page (Wikidata P2446 → enwiki, name search fallback) and fetch its wikitext from the browser
     clubLogoLookup.ts   — Find a club's logo (Wikidata P154, else the article's lead image if it looks like a crest) and download it; shared with the backfill script
     clubCrestStorage.ts — Store a crest in the `club-crests` bucket and point `clubs.badge` at it; fill a sportsdb/tm_ duplicate pair (takes a Supabase client, shared with the script)
@@ -76,6 +76,8 @@ src/
       AutoCleanPanel.tsx  — "Auto-clean": current vs Wikipedia-suggested history, accept all or per row
       clubHistoryCleanup.ts — Pure infobox parser + diff (loan splits, youth hiding, current club, review notes)
       ImageDropZone.tsx   — Drag-and-drop image upload (club crests, player photos)
+      CreateClubForm.tsx  — "Create new club" panel inside AddClubForm: name, country, crest; lists same/similar existing clubs ("Use this club" or "Create anyway") before the insert
+      createClub.ts       — Pure club-creation rules: `admin_<uuid>` ids, name validation, duplicate search terms and same/similar ranking
       clubLogo.ts         — Pure logo lookup rules: club id → Wikidata/TransferMarkt/name lookup, article pick, crest-vs-photo check
       FindLogoPanel.tsx   — "Find logo" on a club row with no badge: preview, Accept/Skip
       MissingLogosPanel.tsx — "Fill all missing": clubs without a badge, most-used first (`get_clubs_without_badge` RPC), a page at a time, found vs check-by-hand, accept all or per row
