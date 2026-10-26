@@ -308,4 +308,63 @@ test.describe("Daily fallback when no player is scheduled", () => {
     await expect(page.getByRole("alert")).toHaveCount(0);
     expect(blockedWrites.filter((w) => w.url.includes("/rest/v1/daily_schedule"))).toHaveLength(0);
   });
+
+  /** A PostgREST 5xx response for a failed read. */
+  const SERVER_ERROR = {
+    status: 500, contentType: "application/json", body: JSON.stringify({ code: "XX000", message: "boom" }),
+  };
+
+  test("shows an error when the used schedule rows can't be read", async ({ page, blockedWrites }) => {
+    const today = todayString();
+    let usedReads = 0;
+    await page.route("**/rest/v1/daily_schedule*", (route) => {
+      const request = route.request();
+      if (request.method() !== "GET") return route.fallback();
+      const date = new URL(request.url()).searchParams.get("date");
+      if (date === `eq.${today}`) {
+        return route.fulfill({ status: 406, contentType: "application/json", body: JSON.stringify(NO_ROW) });
+      }
+      if (!date) {
+        usedReads++;
+        return route.fulfill(SERVER_ERROR);
+      }
+      return route.fallback();
+    });
+
+    await page.goto("/#/guess");
+    await expect(page.getByRole("alert")).toHaveText(
+      "Today's puzzle couldn't be loaded. Please try again.", { timeout: DATA_TIMEOUT },
+    );
+    await expect(page.getByRole("button", { name: "Try Again" })).toBeVisible();
+    await expect(page.getByText("Club History")).toHaveCount(0);
+    // Never an auto-pick from an unknown used set
+    expect(usedReads).toBe(1);
+    expect(blockedWrites.filter((w) => w.url.includes("/rest/v1/daily_schedule"))).toHaveLength(0);
+  });
+
+  test("shows an error when the read-back after saving the pick fails", async ({ page, blockedWrites }) => {
+    const inserted = await mockEmptySchedule(page);
+    // The first read of today's row finds none; the read-back after the insert fails
+    const today = todayString();
+    let todayReads = 0;
+    await page.route("**/rest/v1/daily_schedule*", (route) => {
+      const request = route.request();
+      const date = new URL(request.url()).searchParams.get("date");
+      if (request.method() === "GET" && date === `eq.${today}` && ++todayReads === 2) {
+        return route.fulfill(SERVER_ERROR);
+      }
+      return route.fallback();
+    });
+
+    await page.goto("/#/guess");
+    await expect(page.getByRole("alert")).toHaveText(
+      "Today's puzzle couldn't be loaded. Please try again.", { timeout: DATA_TIMEOUT },
+    );
+    await expect(page.getByRole("button", { name: "Try Again" })).toBeVisible();
+    // Never this client's own, unconfirmed pick
+    await expect(page.getByText("Club History")).toHaveCount(0);
+    expect(todayReads).toBe(2);
+    expect(inserted).toHaveLength(1);
+    expect(blockedWrites.filter((w) => w.url.includes("/rest/v1/daily_schedule"))).toHaveLength(1);
+  });
 });

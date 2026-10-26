@@ -26,6 +26,7 @@ vi.mock("../api/playerCache", () => ({
 import { getOrCreateDailyPlayer } from "../api/dailySchedule";
 import { DailyPuzzleError, UNLOADABLE_PUZZLE_MESSAGE } from "../api/dailyFallback";
 import { SEED_PLAYERS } from "../data/seedPlayers";
+import { getPlayerWithTeamsCached } from "../api/playerCache";
 
 const DATE = "2026-10-23";
 const NO_ROW = { code: "PGRST116", message: "JSON object requested, multiple (or no) rows returned" };
@@ -56,6 +57,7 @@ beforeEach(() => {
   mocks.usedRowsResult = { data: [], error: null };
   mocks.inserted = [];
   mocks.from.mockReset();
+  vi.mocked(getPlayerWithTeamsCached).mockClear();
   mocks.from.mockImplementation(() => builder());
 });
 
@@ -92,5 +94,60 @@ describe("getOrCreateDailyPlayer", () => {
     // No used-rows read and no insert
     expect(scheduleCalls()).toBe(1);
     expect(mocks.inserted).toHaveLength(0);
+  });
+
+  const READ_ERRORS = [
+    ["a server error", { code: "500", message: "Internal Server Error" }],
+    ["a fetch error", { code: "", message: "TypeError: Failed to fetch" }],
+  ] as const;
+
+  it.each(READ_ERRORS)("throws and never auto-picks when the used-rows read fails (%s)", async (_label, error) => {
+    mocks.singleResults = [{ data: null, error: NO_ROW }];
+    mocks.usedRowsResult = { data: null, error };
+
+    const result = getOrCreateDailyPlayer(DATE);
+    await expect(result).rejects.toBeInstanceOf(DailyPuzzleError);
+    await expect(result).rejects.toThrow(UNLOADABLE_PUZZLE_MESSAGE);
+    // Today's read and used rows only: no candidate check, insert or read-back
+    expect(scheduleCalls()).toBe(2);
+    expect(mocks.inserted).toHaveLength(0);
+    expect(getPlayerWithTeamsCached).not.toHaveBeenCalled();
+  });
+
+  it.each(READ_ERRORS)("throws when the read-back after inserting fails (%s)", async (_label, error) => {
+    mocks.singleResults = [{ data: null, error: NO_ROW }, { data: null, error }];
+
+    const result = getOrCreateDailyPlayer(DATE);
+    await expect(result).rejects.toBeInstanceOf(DailyPuzzleError);
+    await expect(result).rejects.toThrow(UNLOADABLE_PUZZLE_MESSAGE);
+    // Today's read, used rows, insert, read-back
+    expect(scheduleCalls()).toBe(4);
+    expect(mocks.inserted).toHaveLength(1);
+  });
+
+  it("returns its own pick when the read-back finds no row", async () => {
+    mocks.singleResults = [{ data: null, error: NO_ROW }, { data: null, error: NO_ROW }];
+
+    const picked = await getOrCreateDailyPlayer(DATE);
+
+    expect(SEED_PLAYERS).toContainEqual(picked);
+    expect(mocks.inserted).toEqual([{ date: DATE, player_id: picked.id }]);
+    expect(scheduleCalls()).toBe(4);
+  });
+
+  it("returns the row another client saved first", async () => {
+    // Only one seed is unused, so this client picks it; another client saved the winner
+    const winner = SEED_PLAYERS[7];
+    const pick = SEED_PLAYERS[8];
+    mocks.usedRowsResult = {
+      data: SEED_PLAYERS.filter((p) => p.id !== pick.id).map((p) => ({ player_id: p.id })),
+      error: null,
+    };
+    mocks.singleResults = [{ data: null, error: NO_ROW }, { data: { player_id: winner.id }, error: null }];
+
+    const result = await getOrCreateDailyPlayer(DATE);
+
+    expect(mocks.inserted).toEqual([{ date: DATE, player_id: pick.id }]);
+    expect(result).toEqual(winner);
   });
 });
