@@ -3,7 +3,7 @@ import { SEED_PLAYERS } from "../data/seedPlayers";
 import { getPlayerWithTeamsCached } from "./playerCache";
 import {
   DailyPuzzleError, MAX_FALLBACK_ATTEMPTS, NO_PUZZLE_MESSAGE, UNLOADABLE_PUZZLE_MESSAGE,
-  isNoRowsError, orderFallbackCandidates, pickPlayableCandidate,
+  isNoRowsError, orderFallbackCandidates, orderRepeatCandidateIds, pickPlayableCandidate,
 } from "./dailyFallback";
 import type { Player } from "../types";
 
@@ -49,6 +49,16 @@ async function resolveScheduledPlayer(playerId: string): Promise<Player | null> 
   return SEED_PLAYERS.find((p) => p.id === playerId) ?? await lookupPlayerById(playerId);
 }
 
+/**
+ * Every seed has been used: repeat an earlier player, but not one from the last
+ * few days. Only as many ids are resolved as the auto-pick will try.
+ */
+async function resolveRepeatCandidates(rows: { date: string; player_id: string }[]): Promise<Player[]> {
+  const ids = orderRepeatCandidateIds(rows).slice(0, MAX_FALLBACK_ATTEMPTS);
+  const players = await Promise.all(ids.map(resolveScheduledPlayer));
+  return players.filter((p): p is Player => p !== null);
+}
+
 export async function getOrCreateDailyPlayer(date: string): Promise<Player> {
   if (!supabase) return fallbackDailyPlayer(date);
 
@@ -74,13 +84,16 @@ export async function getOrCreateDailyPlayer(date: string): Promise<Player> {
 
     const { data: usedRows, error: usedError } = await supabase
       .from("daily_schedule")
-      .select("player_id");
+      .select("date, player_id");
 
     // An unknown used set could make the auto-pick repeat a player
     if (usedError) throw new DailyPuzzleError(UNLOADABLE_PUZZLE_MESSAGE);
 
-    const usedIds = new Set((usedRows || []).map((r: { player_id: string }) => r.player_id));
-    const candidates = orderFallbackCandidates(SEED_PLAYERS, usedIds);
+    const rows = (usedRows || []) as { date: string; player_id: string }[];
+    const usedIds = new Set(rows.map((r) => r.player_id));
+    const candidates = SEED_PLAYERS.some((p) => !usedIds.has(p.id))
+      ? orderFallbackCandidates(SEED_PLAYERS, usedIds)
+      : await resolveRepeatCandidates(rows);
     const picked = await pickPlayableCandidate(candidates, isPlayableDailyPlayer, MAX_FALLBACK_ATTEMPTS);
     if (!picked) throw new DailyPuzzleError(NO_PUZZLE_MESSAGE);
 

@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from "vitest";
 import {
-  DailyPuzzleError, MAX_FALLBACK_ATTEMPTS, isNoRowsError, orderFallbackCandidates, pickPlayableCandidate,
+  DailyPuzzleError, MAX_FALLBACK_ATTEMPTS, isNoRowsError, orderFallbackCandidates, orderRepeatCandidateIds, pickPlayableCandidate,
 } from "../api/dailyFallback";
 import type { Player } from "../types";
 
@@ -44,6 +44,34 @@ describe("orderFallbackCandidates", () => {
     const copy = [...seeds];
     orderFallbackCandidates(seeds, new Set(), () => 0);
     expect(seeds).toEqual(copy);
+  });
+});
+
+describe("orderRepeatCandidateIds", () => {
+  const day = (n: number) => `2026-01-${String(n).padStart(2, "0")}`;
+  const history = (n: number) => Array.from({ length: n }, (_, i) => ({ date: day(i + 1), player_id: `p${i + 1}` }));
+
+  it("excludes the players of the most recent days", () => {
+    const result = orderRepeatCandidateIds(history(25), 20, () => 0.5);
+    expect(result.sort()).toEqual(["p1", "p2", "p3", "p4", "p5"]);
+  });
+
+  it("goes by date, not row order", () => {
+    const rows = history(25).reverse();
+    expect(orderRepeatCandidateIds(rows, 20).sort()).toEqual(["p1", "p2", "p3", "p4", "p5"]);
+  });
+
+  it("lists a player once even if scheduled several times", () => {
+    const rows = [...history(25), { date: "2025-12-01", player_id: "p1" }];
+    expect(orderRepeatCandidateIds(rows, 20).filter((id) => id === "p1")).toHaveLength(1);
+  });
+
+  it("excludes nobody when the whole history is within the cooldown", () => {
+    expect(orderRepeatCandidateIds(history(10), 20).sort()).toEqual(history(10).map((r) => r.player_id).sort());
+  });
+
+  it("returns an empty array for no history", () => {
+    expect(orderRepeatCandidateIds([])).toEqual([]);
   });
 });
 
